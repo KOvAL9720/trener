@@ -15,6 +15,8 @@
 })();
 
 const STORAGE_KEY = 'trainer-app-v1';
+// AI asistent bol z aplikácie odstránený – zmazať jeho API kľúč a konverzáciu z tohto zariadenia
+try { localStorage.removeItem('trainer-ai-key'); localStorage.removeItem('trainer-ai-chat'); } catch (e) { /* úložisko nedostupné */ }
 // Permanentky sú zatiaľ vypnuté – každý tréning sa platí zvlášť (dáta balíkov ostávajú uložené)
 const PACKAGES = false;
 
