@@ -805,6 +805,114 @@ function planText(p) {
   return lines.join('\n');
 }
 
+// Plán ako obrázok (PNG) v dizajne aplikácie – na zdieľanie klientovi
+function planImageFile(p) {
+  const W = 1080;
+  const PAD = 72;
+  const INNER = W - 2 * PAD;
+  const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const C = { bg: '#09090b', card: '#16161a', text: '#f6f6f8', muted: '#8c8c97', soft: '#c9c9d1', pink: '#ffa8d5', ink: '#1a0611' };
+  const items = p.items.map(exerciseLine);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  const font = (weight, size) => { ctx.font = `${weight} ${size}px ${FONT}`; };
+  const wrap = (text, maxW) => {
+    const lines = [];
+    let line = '';
+    for (const word of String(text).split(/\s+/).filter(Boolean)) {
+      const test = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(test).width > maxW) { lines.push(line); line = word; } else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  };
+  const rrect = (x, y, w, h, r) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  };
+
+  // Prvý prechod zmeria výšku, druhý kreslí
+  const layout = (draw) => {
+    let y = PAD;
+    const text = (str, x, weight, size, color, lh = 1.2) => {
+      font(weight, size);
+      if (draw) { ctx.fillStyle = color; ctx.fillText(str, x, y + size * 0.85); }
+      y += size * lh;
+    };
+    const block = (str, x, maxW, weight, size, color, lh = 1.2) => {
+      font(weight, size);
+      wrap(str, maxW).forEach((l) => text(l, x, weight, size, color, lh));
+    };
+
+    text('TRÉNINGOVÝ PLÁN', PAD, 800, 28, C.pink, 1.6);
+    block(p.name.toUpperCase(), PAD, INNER, 900, 76, C.text, 1.05);
+    y += 14;
+    if (p.clientId) text(clientName(p.clientId), PAD, 600, 34, C.soft, 1.4);
+    if (p.notes) block(p.notes, PAD, INNER, 400, 30, C.muted, 1.35);
+    y += 36;
+
+    items.forEach((it, i) => {
+      const top = y;
+      const x = PAD + 36 + 64 + 28;
+      const maxW = W - PAD - 36 - x;
+      // zmerať výšku karty
+      let h = 36;
+      font(800, 40); h += wrap(it.name, maxW).length * 48;
+      if (it.dose) { font(600, 32); h += wrap(it.dose, maxW).length * 42 + 4; }
+      if (it.note) { font(400, 28); h += wrap(it.note, maxW).length * 38 + 4; }
+      h = Math.max(h + 32, 136);
+      if (draw) {
+        ctx.fillStyle = C.card;
+        rrect(PAD, top, INNER, h, 32);
+        ctx.fill();
+        ctx.fillStyle = C.pink;
+        ctx.beginPath();
+        ctx.arc(PAD + 36 + 32, top + 36 + 32, 32, 0, Math.PI * 2);
+        ctx.fill();
+        font(900, 30);
+        ctx.fillStyle = C.ink;
+        ctx.textAlign = 'center';
+        ctx.fillText(String(i + 1), PAD + 36 + 32, top + 36 + 32 + 11);
+        ctx.textAlign = 'left';
+      }
+      y = top + 36;
+      block(it.name, x, maxW, 800, 40, C.text, 1.2);
+      if (it.dose) { y += 4; block(it.dose, x, maxW, 600, 32, C.pink, 1.3); }
+      if (it.note) { y += 4; block(it.note, x, maxW, 400, 28, C.muted, 1.35); }
+      y = top + h + 20;
+    });
+    if (!items.length) text('Plán zatiaľ neobsahuje žiadne cviky.', PAD, 400, 32, C.muted, 1.4);
+
+    y += 28;
+    text(`TRÉNER · ${fmtShort(today())} ${parseDate(today()).getFullYear()}`, PAD, 800, 24, C.muted, 1);
+    return y + PAD - 24;
+  };
+
+  canvas.width = W;
+  canvas.height = Math.ceil(layout(false));
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, W, canvas.height);
+  const glow = ctx.createRadialGradient(W, 0, 0, W, 0, 700);
+  glow.addColorStop(0, 'rgba(255, 126, 191, 0.22)');
+  glow.addColorStop(1, 'rgba(255, 126, 191, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, canvas.height);
+  ctx.textBaseline = 'alphabetic';
+  layout(true);
+
+  const bin = atob(canvas.toDataURL('image/png').split(',')[1]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const slug = p.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'plan';
+  return new File([bytes], `${slug}.png`, { type: 'image/png' });
+}
+
 function exportData() {
   const t = today();
   db.settings.lastBackup = t;
@@ -947,11 +1055,23 @@ const actions = {
     });
   },
   'share-plan': async (d) => {
-    const text = planText(getPlan(d.id));
+    const p = getPlan(d.id);
     try {
-      if (navigator.share) { await navigator.share({ text }); return; }
-      await navigator.clipboard.writeText(text);
-      toast('Plán skopírovaný do schránky');
+      // Obrázok sa generuje synchrónne, aby iOS nestratil „klik“ používateľa pred navigator.share
+      const file = planImageFile(p);
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: p.name });
+        return;
+      }
+      if (navigator.share) { await navigator.share({ text: planText(p) }); return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(file);
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast('Obrázok plánu stiahnutý');
     } catch (e) {
       if (e.name !== 'AbortError') toast('Zdieľanie sa nepodarilo');
     }
