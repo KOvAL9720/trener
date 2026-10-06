@@ -1330,13 +1330,6 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       });
     }).catch(() => {});
   });
-  // Nová verzia sa nainštalovala → obnoviť stránku (nie uprostred vypĺňania formulára)
-  let hadController = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController) { hadController = true; return; }
-    if (modal.open) modal.addEventListener('close', () => location.reload(), { once: true });
-    else location.reload();
-  });
 }
 // Požiadať prehliadač, aby dáta nemazal pri nedostatku miesta
 navigator.storage?.persist?.().catch(() => {});
