@@ -1,4 +1,4 @@
-const CACHE = 'trener-v20';
+const CACHE = 'trener-v21';
 const ASSETS = [
   './',
   'index.html',
