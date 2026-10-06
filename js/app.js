@@ -739,7 +739,7 @@ function viewPlan(id) {
     <div class="card-head"><h2>Cviky</h2><button class="btn small primary no-print" data-action="new-item" data-plan="${p.id}">+ Cvik</button></div>
     ${p.items.length ? `<ol class="list plan-items">${p.items.map((it, i) => {
       const l = exerciseLine(it);
-      return `<li>
+      return `<li data-item="${it.id}">
         <span class="n">${i + 1}</span>
         <span class="info"><strong>${esc(l.name)}</strong><br><small>${esc(l.dose) || '–'}${l.note ? ' · ' + esc(l.note) : ''}</small></span>
         <span class="acts no-print">
@@ -1043,6 +1043,11 @@ window.addEventListener('hashchange', () => {
     main.classList.remove('push');
     void main.offsetWidth;
     main.classList.add('push');
+    // vkĺznutie len raz pri otvorení detailu – inak by každá zmena na stránke (šípky, formulár) obsah trhla
+    clearTimeout(main.pushT);
+    main.pushT = setTimeout(() => main.classList.remove('push'), 320);
+  } else {
+    main.classList.remove('push');
   }
 });
 
@@ -2553,8 +2558,17 @@ const actions = {
     const j = i + Number(d.dir);
     if (j < 0 || j >= p.items.length) return;
     [p.items[i], p.items[j]] = [p.items[j], p.items[i]];
+    // plynulý presun: riadky prekĺznu z pôvodnej polohy na novú (FLIP)
+    const rows = () => main.querySelectorAll('.plan-items > li[data-item]');
+    const before = new Map([...rows()].map((li) => [li.dataset.item, li.getBoundingClientRect().top]));
     save();
     render();
+    if (!reduceMotion.matches) {
+      rows().forEach((li) => {
+        const dy = (before.get(li.dataset.item) ?? li.getBoundingClientRect().top) - li.getBoundingClientRect().top;
+        if (dy) li.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+      });
+    }
   },
   'new-exercise': () => openExerciseForm(),
   'edit-exercise': (d) => openExerciseForm(getExercise(d.id)),
