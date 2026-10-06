@@ -498,7 +498,10 @@ const routes = [
   [/^#\/settings$/, viewSettings]
 ];
 
-function render() {
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let flashId = null;
+
+function render(animate = false) {
   const hash = location.hash || '#/';
   for (const [re, view] of routes) {
     const m = hash.match(re);
@@ -509,13 +512,68 @@ function render() {
         : hash.startsWith('#/plan') || hash.startsWith('#/exercises') ? 'plans'
         : hash.startsWith('#/settings') ? 'settings' : 'home';
       document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === section));
+      if (flashId) {
+        main.querySelectorAll(`[data-id="${flashId}"]`).forEach((el) => el.closest('.session')?.classList.add('flash'));
+        flashId = null;
+      }
+      if (animate && !reduceMotion.matches) animateEnter();
       return;
     }
   }
   location.hash = '#/';
 }
 
-window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+/* =========================================================
+   Animácie
+   ========================================================= */
+// Postupné nabehnutie obsahu po prechode na inú obrazovku
+function animateEnter() {
+  main.classList.remove('animate');
+  void main.offsetWidth;
+  main.classList.add('animate');
+  const els = main.querySelectorAll(':scope > *, .stats > .stat, .card .list > li, .days > .day, .plan-items > li');
+  let i = 0;
+  els.forEach((el) => { el.style.animationDelay = `${Math.min(i++, 14) * 45}ms`; });
+  clearTimeout(animateEnter.t);
+  animateEnter.t = setTimeout(() => main.classList.remove('animate'), 1400);
+  main.querySelectorAll('.hero-big b, .stat b, .credits b').forEach(countUp);
+}
+
+// Číslo „nabehne“ od nuly po svoju hodnotu
+function countUp(el) {
+  const target = parseInt(el.textContent, 10);
+  if (!Number.isFinite(target) || target === 0) return;
+  const start = performance.now();
+  const dur = 900;
+  const step = (now) => {
+    const t = Math.min((now - start) / dur, 1);
+    el.textContent = Math.round(target * (1 - Math.pow(1 - t, 3)));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  el.textContent = '0';
+  requestAnimationFrame(step);
+}
+
+// Ružová „oslava“ pri odtrénovanom tréningu
+function burst(x, y) {
+  if (reduceMotion.matches || !document.body.animate) return;
+  const colors = ['#ffa8d5', '#ff7ebf', '#ffffff', '#ffc2e2'];
+  for (let i = 0; i < 18; i++) {
+    const dot = document.createElement('span');
+    dot.className = 'particle';
+    const size = 5 + Math.random() * 6;
+    Object.assign(dot.style, { left: `${x}px`, top: `${y}px`, width: `${size}px`, height: `${size}px`, background: colors[i % colors.length] });
+    document.body.appendChild(dot);
+    const angle = (Math.PI * 2 * i) / 18 + Math.random() * 0.4;
+    const dist = 40 + Math.random() * 60;
+    dot.animate([
+      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${Math.cos(angle) * dist}px), calc(-50% + ${Math.sin(angle) * dist}px)) scale(0)`, opacity: 0 }
+    ], { duration: 650 + Math.random() * 300, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => dot.remove();
+  }
+}
+
+window.addEventListener('hashchange', () => { render(true); window.scrollTo(0, 0); });
 
 /* =========================================================
    Formuláre v modálnom okne
@@ -783,6 +841,7 @@ function setStatus(id, status) {
   const s = getSession(id);
   if (!s) return;
   s.status = status;
+  flashId = id;
   save();
   render();
   if (status === 'done') {
@@ -1016,7 +1075,12 @@ const actions = {
   'edit-client': (d) => openClientForm(getClient(d.id)),
   'new-session': (d) => openSessionForm(null, { date: d.date || today(), clientId: d.client || '' }),
   'edit-session': (d) => openSessionForm(getSession(d.id)),
-  'session-done': (d) => setStatus(d.id, 'done'),
+  'session-done': (d, el) => {
+    const r = el.getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top + r.height / 2);
+    navigator.vibrate?.(15);
+    setStatus(d.id, 'done');
+  },
   'session-cancel': (d) => setStatus(d.id, 'cancelled'),
   'remind': (d) => {
     const s = getSession(d.id);
@@ -1135,7 +1199,7 @@ document.addEventListener('change', (e) => {
 /* =========================================================
    Štart
    ========================================================= */
-render();
+render(true);
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
