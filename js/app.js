@@ -1084,6 +1084,74 @@ function openExerciseForm(e) {
   });
 }
 
+// Zaplatenie: označí tréningy ako zaplatené (vybraným spôsobom) + oslava
+function payDue(list, method, el) {
+  if (!list.length) return;
+  const total = sumPrice(list);
+  list.forEach((s) => { s.paid = true; s.paidDate = today(); s.payMethod = method; });
+  if (el) { const r = el.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2); }
+  save();
+  render();
+  toast(`Zaplatené ${method === 'bank' ? 'na účet' : 'v hotovosti'}: ${fmtMoney(total)}`);
+}
+
+// Panel „Koľko zaplatil?“ – suma po krokoch ceny tréningu (−/+ a rýchle voľby), platia sa najstaršie tréningy
+function openPaySheet(clientId, method) {
+  const c = getClient(clientId);
+  const due = clientDue(clientId); // od najstaršieho
+  const sums = due.map((_, i) => sumPrice(due.slice(0, i + 1)));
+  let n = due.length;
+  let m = method;
+
+  modalForm.innerHTML = `
+    <header class="modal-head"><h2>Koľko zaplatil? · ${esc(firstName(c))}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
+    <div class="modal-body">
+      <div class="pay-stepper">
+        <button type="button" class="step-btn" data-step="-1" aria-label="Menej">−</button>
+        <div class="pay-amount" aria-live="polite"><b id="pay-amt"></b><small id="pay-cnt"></small></div>
+        <button type="button" class="step-btn" data-step="1" aria-label="Viac">+</button>
+      </div>
+      <div class="chips pay-chips">${sums.map((v, i) => `<button type="button" class="chip" data-n="${i + 1}">${fmtMoney(v)}</button>`).join('')}</div>
+      <div class="seg" role="radiogroup" aria-label="Spôsob platby">
+        <button type="button" class="seg-btn" data-m="cash" role="radio">Hotovosť</button>
+        <button type="button" class="seg-btn" data-m="bank" role="radio">Na účet</button>
+      </div>
+      <p class="hint" id="pay-which" style="margin:0"></p>
+    </div>
+    <footer class="modal-foot">
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Zrušiť</button>
+      <button type="submit" class="btn primary" id="pay-ok"></button>
+    </footer>`;
+
+  const $ = (sel) => modalForm.querySelector(sel);
+  const update = () => {
+    const sum = sums[n - 1];
+    $('#pay-amt').textContent = fmtMoney(sum);
+    $('#pay-cnt').textContent = `${nTr(n)} z ${due.length} · dlh ${fmtMoney(sums[sums.length - 1])}`;
+    $('#pay-which').textContent = `Zaplatia sa: ${due.slice(0, n).map((s) => fmtShort(s.date)).join(', ')}${n < due.length ? ` · ostane ${fmtMoney(sums[sums.length - 1] - sum)}` : ''}`;
+    $('#pay-ok').textContent = `Zaplatiť ${fmtMoney(sum)}`;
+    $('[data-step="-1"]').disabled = n <= 1;
+    $('[data-step="1"]').disabled = n >= due.length;
+    modalForm.querySelectorAll('.pay-chips .chip').forEach((x) => x.classList.toggle('active', Number(x.dataset.n) === n));
+    modalForm.querySelectorAll('.seg-btn').forEach((x) => { x.classList.toggle('active', x.dataset.m === m); x.setAttribute('aria-checked', x.dataset.m === m); });
+  };
+  modalForm.querySelectorAll('[data-step]').forEach((b) => { b.onclick = () => { n = Math.min(due.length, Math.max(1, n + Number(b.dataset.step))); update(); }; });
+  modalForm.querySelectorAll('.pay-chips .chip').forEach((b) => { b.onclick = () => { n = Number(b.dataset.n); update(); }; });
+  modalForm.querySelectorAll('.seg-btn').forEach((b) => { b.onclick = () => { m = b.dataset.m; update(); }; });
+  modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
+  modalForm.onsubmit = (e) => {
+    e.preventDefault();
+    const okBtn = $('#pay-ok');
+    const r = okBtn.getBoundingClientRect();
+    modal.close();
+    payDue(due.slice(0, n), m, null);
+    burst(r.left + r.width / 2, r.top + r.height / 2);
+  };
+  update();
+  modal.showModal();
+}
+
 function reminderTemplate() {
   return db.settings.reminderText || 'Ahoj {meno}, pripomínam tréning {datum} o {cas}. Teším sa!';
 }
@@ -1440,14 +1508,9 @@ const actions = {
   'pay-client': (d, el) => {
     const due = clientDue(d.id);
     if (!due.length) return;
-    const total = sumPrice(due);
     const method = d.method === 'bank' ? 'bank' : 'cash';
-    due.forEach((s) => { s.paid = true; s.paidDate = today(); s.payMethod = method; });
-    const r = el.getBoundingClientRect();
-    burst(r.left + r.width / 2, r.top + r.height / 2);
-    save();
-    render();
-    toast(`Zaplatené ${method === 'bank' ? 'na účet' : 'v hotovosti'}: ${fmtMoney(total)}`);
+    if (due.length === 1) payDue(due, method, el);
+    else openPaySheet(d.id, method);
   },
   'remind-pay': (d) => {
     const c = getClient(d.id);
