@@ -1024,3 +1024,20 @@ h1 { font-weight: 800; }
 .nav { background: rgba(24, 29, 31, .82); border-color: rgba(255, 255, 255, .06); }
 /* toast – krémový namiesto čisto bieleho */
 #toast { background: rgba(236, 243, 242, .95); color: #14201f; }
+
+/* =========================================================
+   ÚVODNÁ KARTA – tmavé sklo ako ostatné karty (bez farebného prechodu)
+   ========================================================= */
+.hero {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035), 0 16px 34px -22px rgba(0, 0, 0, .65);
+}
+.hero::before, .hero::after { display: none; }
+.hero .eyebrow, .hero-big span, .fin-split { color: var(--muted); }
+.hero-big b, .fin-big { color: var(--text); }
+.fin-split b { color: var(--text); }
+.hero .btn.primary { background: var(--primary); color: var(--primary-ink); box-shadow: 0 10px 24px -14px rgba(63, 174, 163, .7); }
+.hero-next { background: var(--surface-2); color: var(--text); }
+.hero-next:hover { background: var(--surface-3); }
