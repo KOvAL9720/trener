@@ -308,7 +308,7 @@ function viewClients() {
     ${list.length ? `<ul class="list" id="client-list">${list.map((c) => {
       const cr = credits(c.id);
       const next = clientSessions(c.id).filter((s) => s.status === 'planned' && s.date >= t).sort(bySessionTime)[0];
-      const meta = [next ? `Ďalší tréning ${fmtDate(next.date)} ${next.time || ''}` : 'Bez naplánovaného tréningu', c.goal].filter(Boolean).map(esc).join(' · ');
+      const meta = [c.test ? 'Test' : '', next ? `Ďalší tréning ${fmtDate(next.date)} ${next.time || ''}` : 'Bez naplánovaného tréningu', c.goal].filter(Boolean).map(esc).join(' · ');
       return `<li data-name="${esc(c.name.toLowerCase())} ${esc((c.phone || '').replace(/\s/g, ''))} ${esc((c.email || '').toLowerCase())}">
         <a class="list-item" href="#/client/${c.id}">
           <span class="avatar">${esc(initials(c.name))}</span>
@@ -350,7 +350,7 @@ function viewClient(id) {
     <div class="profile">
       <span class="avatar lg">${esc(initials(c.name))}</span>
       <div>
-        <h1>${esc(c.name)} ${c.archived ? '<span class="badge">Archív</span>' : ''}</h1>
+        <h1>${esc(c.name)} ${c.archived ? '<span class="badge">Archív</span>' : ''}${c.test ? ' <span class="badge">Test</span>' : ''}</h1>
         <div class="contact">
           ${c.phone ? `<a href="tel:${esc(c.phone.replace(/\s/g, ''))}">${esc(c.phone)}</a>` : ''}
           ${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}
@@ -678,6 +678,14 @@ function viewSettings() {
   <section class="card">
     <div class="card-head"><h2>Inštalácia na telefón</h2></div>
     <p class="muted" style="margin:0">Android (Chrome): menu ⋮ → <b>Inštalovať aplikáciu</b>.<br>iPhone (Safari): tlačidlo Zdieľať → <b>Pridať na plochu</b>.<br>Aplikácia potom funguje aj bez internetu.</p>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Testovacie dáta</h2></div>
+    <p class="muted" style="margin-top:-6px">Pridá 20 vymyslených klientov s tréningami, platbami a meraniami k tvojim dátam (nič nezmaže). Sú označení „Test“ a dajú sa naraz odstrániť.</p>
+    <div class="row">
+      <button class="btn primary" data-action="add-test">Pridať 20 testovacích klientov</button>
+      ${(() => { const n = db.clients.filter((c) => c.test).length; return n ? `<button class="btn danger" data-action="remove-test">Odstrániť testovacích (${n})</button>` : ''; })()}
+    </div>
   </section>
   <section class="card">
     <div class="card-head"><h2>Ostatné</h2></div>
@@ -1414,6 +1422,80 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
   }
 });
 
+// 20 testovacích klientov s realistickou históriou (pridajú sa k existujúcim dátam)
+function addTestClients() {
+  const first = ['Adam', 'Barbora', 'Dávid', 'Eva', 'Filip', 'Gabriela', 'Hana', 'Igor', 'Katarína', 'Lukáš', 'Michaela', 'Norbert', 'Oliver', 'Petra', 'Róbert', 'Simona', 'Tomáš', 'Veronika', 'Zuzana', 'Marek'];
+  const last = ['Bartoš', 'Čierna', 'Dudáš', 'Fedorová', 'Gajdoš', 'Hudecová', 'Jurčová', 'Kollár', 'Lacková', 'Mikuš', 'Nemcová', 'Oravec', 'Polák', 'Repková', 'Sloboda', 'Šimková', 'Tóth', 'Urbanová', 'Vargová', 'Zelenák'];
+  const goals = ['Schudnúť 5 kg', 'Silnejší chrbát', 'Lepšia kondícia', 'Príprava na polmaratón', 'Spevniť zadok a nohy', 'Zbaviť sa bolestí chrbta', 'Nabrať svaly', 'Mobilita a flexibilita', 'Po pôrode – návrat do formy', 'Udržiavanie formy'];
+  const notes = ['', '', '', 'Citlivé koleno', 'Bolesti krížov', 'Astma – pozor na intenzitu', 'Po operácii ramena (2024)', 'Ranné tréningy', ''];
+  const times = ['06:30', '07:00', '08:00', '09:00', '10:00', '12:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+  let seed = Date.now() % 100000;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const t = today();
+  const taken = new Set(db.sessions.filter((x) => x.status !== 'cancelled').map((x) => x.date + x.time));
+  const plans = db.plans.filter((p) => !p.clientId);
+  for (let i = 0; i < 20; i++) {
+    const name = `${first[i]} ${last[i]}`;
+    const female = /[aá]$/.test(first[i]) && first[i] !== 'Lukáš';
+    const c = {
+      id: uid(), name, test: true, archived: false,
+      phone: `09${pick(['05', '07', '10', '11', '15', '17', '44', '48'])} ${String(100 + Math.floor(rnd() * 900))} ${String(100 + Math.floor(rnd() * 900))}`,
+      email: rnd() < 0.6 ? `${first[i].toLowerCase()}.${last[i].toLowerCase()}@example.com`.normalize('NFD').replace(/[̀-ͯ]/g, '') : '',
+      goal: pick(goals), notes: pick(notes), createdAt: addDays(t, -(30 + Math.floor(rnd() * 90)))
+    };
+    db.clients.push(c);
+    const perWeek = 1 + Math.floor(rnd() * 3);              // 1–3 tréningy týždenne
+    const days = [0, 1, 2, 3, 4, 5].sort(() => rnd() - 0.5).slice(0, perWeek);
+    const time = pick(times);
+    const payer = rnd() < 0.5 ? 'cash' : 'bank';
+    const plan = plans.length && rnd() < 0.5 ? pick(plans).id : '';
+    const start = startOfWeek(addDays(t, -7 * (4 + Math.floor(rnd() * 5))));  // 4–8 týždňov dozadu
+    for (let date = start; date <= addDays(t, 14); date = addDays(date, 7)) {
+      for (const dd of days) {
+        const d = addDays(date, dd);
+        if (d < c.createdAt) continue;
+        let tm = time;
+        for (let k = 0; taken.has(d + tm) && k < times.length; k++) tm = times[(times.indexOf(tm) + 1) % times.length];
+        if (taken.has(d + tm)) continue;
+        taken.add(d + tm);
+        const past = d < t;
+        const status = !past ? 'planned' : rnd() < 0.08 ? 'cancelled' : 'done';
+        const sess = { id: uid(), clientId: c.id, date: d, time: tm, duration: rnd() < 0.8 ? 60 : 45, status, planId: plan, notes: '', price: sessionPrice() };
+        // staršie tréningy väčšinou zaplatené, posledné dni často ešte nie
+        if (status === 'done' && (d < addDays(t, -10) ? rnd() < 0.92 : rnd() < 0.35)) {
+          const pd = addDays(d, Math.floor(rnd() * 3));
+          sess.paid = true; sess.paidDate = pd > t ? t : pd; sess.payMethod = rnd() < 0.8 ? payer : payer === 'cash' ? 'bank' : 'cash';
+        }
+        db.sessions.push(sess);
+      }
+    }
+    // merania
+    const nm = Math.floor(rnd() * 4);
+    let w = (female ? 58 : 75) + Math.round(rnd() * 25);
+    for (let k = 0; k < nm; k++) {
+      db.measurements.push({ id: uid(), clientId: c.id, date: addDays(c.createdAt, k * 21), weight: w, bodyFat: Math.round((female ? 26 : 18) + rnd() * 8 - k), waist: Math.round((female ? 72 : 85) + rnd() * 15 - k), hips: null, note: k === 0 ? 'vstupné meranie' : '' });
+      w = Math.round((w - 0.5 - rnd() * 1.5) * 10) / 10;
+    }
+  }
+  save();
+  render();
+  toast('Pridaných 20 testovacích klientov');
+}
+
+function removeTestClients() {
+  const ids = new Set(db.clients.filter((c) => c.test).map((c) => c.id));
+  if (!ids.size || !confirm(`Odstrániť ${cnt(ids.size, 'testovacieho klienta', 'testovacích klientov', 'testovacích klientov')} vrátane ich tréningov a meraní? Tvoji klienti ostanú.`)) return;
+  db.clients = db.clients.filter((c) => !ids.has(c.id));
+  db.sessions = db.sessions.filter((x) => !ids.has(x.clientId));
+  db.measurements = db.measurements.filter((x) => !ids.has(x.clientId));
+  db.plans = db.plans.filter((x) => !ids.has(x.clientId));
+  db.packages = db.packages.filter((x) => !ids.has(x.clientId));
+  save();
+  render();
+  toast('Testovací klienti odstránení');
+}
+
 function loadDemo() {
   if (db.clients.length && !confirm('Ukážkové dáta nahradia všetky aktuálne dáta. Pokračovať?')) return;
   const d = freshDb();
@@ -1599,6 +1681,8 @@ const actions = {
   'export': exportData,
   'import': () => document.getElementById('import-file').click(),
   'demo': loadDemo,
+  'add-test': addTestClients,
+  'remove-test': removeTestClients,
   'wipe': () => {
     if (!confirm('Naozaj vymazať VŠETKY dáta? Túto akciu nie je možné vrátiť späť.')) return;
     db = freshDb();
