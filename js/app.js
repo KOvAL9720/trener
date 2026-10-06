@@ -1908,7 +1908,9 @@ function friendlyDate(date) {
 }
 
 function reminderText(c, s) {
-  return reminderTemplate()
+  // tréning bez času: vynechať „o {cas}“, aby nevzniklo „zajtra o .“
+  const tpl = s.time ? reminderTemplate() : reminderTemplate().replace(/\s*\bo\s*\{cas\}/gi, '').replace(/\s*\{cas\}/gi, '');
+  return tpl
     .replaceAll('{meno}', firstName(c))
     .replaceAll('{datum}', friendlyDate(s.date))
     .replaceAll('{cas}', s.time || '');
