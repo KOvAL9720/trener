@@ -917,3 +917,51 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
   .remind-row .avatar { display: none; }
 }
 .remind-row .info strong { white-space: normal; line-height: 1.2; }
+
+/* =========================================================
+   PRÍVETIVEJŠÍ DIZAJN – prehľadnosť a väčšie ovládacie prvky
+   ========================================================= */
+/* väčšie písmo v malých tlačidlách */
+.btn.small { min-height: 36px; padding: 6px 14px; font-size: .8rem; }
+.btn .i, .btn svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* rozostupy medzi kartami a upozorneniami na Prehľade */
+.card + .notice, .card + .stats, .notice + .card, .stats + .notice, .card + .grid { margin-top: 14px; }
+.hero + .card, .hero + .notice { margin-top: 14px; }
+
+/* upozornenie na nezaplatené – jeden riadok so šípkou */
+.notice-money { flex-wrap: nowrap; }
+.notice-money .chev { font-size: 1.5rem; line-height: 1; font-weight: 400; opacity: .8; }
+
+/* riadok tréningu: hlavné tlačidlo s popisom */
+.done-btn { min-height: 38px; padding: 6px 16px; font-size: .85rem; white-space: nowrap; }
+.btn.log { min-height: 38px; white-space: nowrap; }
+.btn.log.logged { color: var(--primary); border-color: rgba(255, 168, 213, .45); background: rgba(255, 168, 213, .1); }
+.quick { align-items: center; }
+@media (max-width: 600px) {
+  /* meno na celú šírku, tlačidlá pod ním vpravo */
+  .session { flex-wrap: wrap; row-gap: 0; }
+  .session .info strong { white-space: nowrap; }
+  .session .quick { width: 100%; justify-content: flex-end; margin: -2px 0 4px; }
+  .quick { gap: 8px; }
+}
+.day .session .quick { gap: 8px; }
+
+/* profil klienta – tlačidlá v hlavičke rovnako široké */
+@media (max-width: 600px) {
+  .client-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; }
+  .client-actions .btn { padding: 8px 6px; white-space: nowrap; }
+}
+/* rýchle skoky na sekcie klienta */
+.jump { display: flex; gap: 8px; overflow-x: auto; margin: 2px -16px 14px; padding: 2px 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.jump::-webkit-scrollbar { display: none; }
+.jump .chip { flex: none; min-height: 34px; padding: 6px 14px; font-size: .82rem; }
+#sec-sessions, #sec-plans, #sec-photos, #sec-history, #records-card, #measure-card { scroll-margin-top: calc(76px + env(safe-area-inset-top)); }
+
+/* rýchla voľba vo formulári */
+.mini-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.chip.mini { min-height: 30px; padding: 4px 12px; font-size: .78rem; }
+
+/* správa s tlačidlom Späť */
+#toast.has-undo { display: flex; align-items: center; gap: 14px; pointer-events: auto; padding-right: 10px; }
+.toast-undo { background: rgba(20, 20, 26, .08); border: 0; border-radius: 999px; padding: 6px 14px; color: #c2187a; font: inherit; font-weight: 800; cursor: pointer; }
