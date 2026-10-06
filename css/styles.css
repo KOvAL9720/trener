@@ -1112,3 +1112,7 @@ body.bg-ready::before { opacity: 1; }
 /* Zoznam klientov – zelená gulička pri klientovi s prístupom do klientskej zóny */
 .avatar-wrap { position: relative; flex: none; display: inline-flex; }
 .share-dot { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; border-radius: 50%; background: var(--ok); border: 2px solid #15191b; box-shadow: 0 0 0 1px rgba(143, 214, 174, .35); }
+
+/* Teplý štart – bez prechodov (pozadie hneď, bez zatočenia loga) */
+body.no-anim::before { transition: none; }
+body.no-anim .brand img { animation: none; }
