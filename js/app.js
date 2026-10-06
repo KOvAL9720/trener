@@ -247,6 +247,9 @@ function viewClients() {
   </section>`;
 }
 
+const HISTORY_LIMIT = 15;
+let showAllHistory = null;
+
 function viewClient(id) {
   const c = getClient(id);
   if (!c) return `<p class="empty">Klient neexistuje.</p><a class="btn" href="#/clients">Späť na klientov</a>`;
@@ -342,8 +345,9 @@ function viewClient(id) {
   </section>
 
   <section class="card">
-    <div class="card-head"><h2>História tréningov</h2></div>
-    ${sessionList(history, { showClient: false }, 'Zatiaľ žiadna história.')}
+    <div class="card-head"><h2>História tréningov</h2>${history.length ? `<span class="badge">${history.length}</span>` : ''}</div>
+    ${sessionList(showAllHistory === id ? history : history.slice(0, HISTORY_LIMIT), { showClient: false }, 'Zatiaľ žiadna história.')}
+    ${history.length > HISTORY_LIMIT && showAllHistory !== id ? `<button class="btn small" style="margin-top:10px" data-action="show-history" data-id="${id}">Zobraziť celú históriu (${history.length})</button>` : ''}
   </section>`;
 }
 
@@ -1180,6 +1184,7 @@ const actions = {
     const c = getClient(s?.clientId);
     if (c) openContact(c, s);
   },
+  'show-history': (d) => { showAllHistory = d.id; render(); },
   'contact': (d) => {
     const c = getClient(d.id);
     if (c) openContact(c);
