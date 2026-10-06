@@ -276,8 +276,9 @@ function exerciseLine(item) {
 
 /* ---------- Výkony: váhy a opakovania z tréningov ---------- */
 const exName = (id) => getExercise(id)?.name || 'Vymazaný cvik';
-const fmtSet = (st) => (st.w != null && st.r != null ? `${fmtNum(st.w, 2)} kg × ${fmtNum(st.r, 0)}`
-  : st.w != null ? `${fmtNum(st.w, 2)} kg` : st.r != null ? `${fmtNum(st.r, 0)} opak.` : '');
+// váha 0 (alebo prázdna) = vlastná váha → len opakovania
+const fmtSet = (st) => (st.w && st.r != null ? `${fmtNum(st.w, 2)} kg × ${fmtNum(st.r, 0)}`
+  : st.w ? `${fmtNum(st.w, 2)} kg` : st.r != null ? `${fmtNum(st.r, 0)} opak.` : '');
 // lepšia séria = vyššia váha, pri rovnakej váhe viac opakovaní
 const betterSet = (a, b) => (a.w ?? 0) - (b.w ?? 0) || (a.r ?? 0) - (b.r ?? 0);
 const topSet = (sets) => sets.reduce((a, b) => (betterSet(b, a) > 0 ? b : a));
@@ -845,7 +846,7 @@ function viewFinance(monthParam) {
   <div class="stats">
     <div class="stat"><b>${doneInMonth.length}</b><span>odtrénované</span></div>
     <div class="stat"><b>${paidSessions.length}</b><span>zaplatené</span></div>
-    <div class="stat ${allDue.length ? 'stat-warn' : ''}"><b>${fmtMoney(sumPrice(allDue))}</b><span>nezaplatené</span></div>
+    <div class="stat ${allDue.length ? 'stat-warn' : ''}"><b>${fmtMoney(sumPrice(allDue))}</b><span>nezaplatené celkovo</span></div>
   </div>
 
   <section class="card">
@@ -1233,7 +1234,8 @@ function usualTimes() {
 }
 
 function openSessionForm(s, defaults = {}) {
-  const active = db.clients.filter((c) => !c.archived || c.id === s?.clientId).sort(byName);
+  const keep = s?.clientId || defaults.clientId;
+  const active = db.clients.filter((c) => !c.archived || c.id === keep).sort(byName);
   if (!active.length) {
     toast('Najprv pridaj klienta');
     openClientForm();
