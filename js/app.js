@@ -2690,6 +2690,14 @@ document.addEventListener('change', (e) => {
    ========================================================= */
 // Úvodná obrazovka s čiarou → potom zatočenie loga a nabehnutie obsahu
 const splash = document.getElementById('splash');
+// Fotka pozadia: počkať na jej dekódovanie (max 1,5 s) a potom ju plynule roztmaviť – žiadne „pichnutie“ obrázka do hotovej obrazovky
+const bgReady = new Promise((resolve) => {
+  const img = new Image();
+  img.src = 'icons/bg-gym.jpg';
+  const done = () => resolve();
+  (img.decode ? img.decode() : Promise.resolve()).then(done, done);
+  setTimeout(done, 1500);
+}).then(() => document.body.classList.add('bg-ready'));
 if (splash) {
   render();
   const wait = reduceMotion.matches ? 0 : Math.max(0, 750 - performance.now());
@@ -2698,7 +2706,7 @@ if (splash) {
     if (document.documentElement.classList.contains('css-ready')) resolve();
     else { window.addEventListener('cssready', resolve, { once: true }); setTimeout(resolve, 8000); }
   });
-  Promise.all([cssReady, new Promise((r) => setTimeout(r, wait))]).then(() => {
+  Promise.all([cssReady, bgReady, new Promise((r) => setTimeout(r, wait))]).then(() => {
     splash.classList.add('hide');
     document.body.classList.add('ready');
     if (!reduceMotion.matches) animateEnter();
