@@ -168,19 +168,30 @@ function viewDashboard() {
   const hour = new Date().getHours();
   const greet = hour < 10 ? 'Dobré ráno' : hour < 18 ? 'Dobrý deň' : 'Dobrý večer';
 
-  return `
-  <div class="page-head">
-    <div><h1>${greet}</h1><p class="muted" style="margin:0">${DAYS_LONG[weekday(t)]}, ${fmtShort(t)} ${parseDate(t).getFullYear()}</p></div>
-    <button class="btn primary" data-action="new-session" data-date="${t}">+ Tréning</button>
-  </div>
+  const now = `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
+  const next = todays.find((s) => s.status === 'planned' && (s.time || '99') >= now) || upcoming[0];
+  const doneWeek = week.filter((s) => s.status === 'done').length;
 
-  ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať teraz</button></div>` : ''}
+  return `
+  <section class="hero">
+    <div class="hero-top">
+      <span class="eyebrow">${DAYS_LONG[weekday(t)]} · ${fmtShort(t)} ${parseDate(t).getFullYear()}</span>
+      <button class="btn primary" data-action="new-session" data-date="${t}">+ Tréning</button>
+    </div>
+    <h1 class="hero-title">${greet}</h1>
+    <div class="hero-big"><b>${todays.length}</b><span>${todays.length === 1 ? 'tréning' : todays.length >= 2 && todays.length <= 4 ? 'tréningy' : 'tréningov'}<br>dnes</span></div>
+    ${next ? `<button class="hero-next" data-action="edit-session" data-id="${next.id}">
+      <span class="eyebrow">Najbližší</span>
+      <strong>${next.date === t ? '' : fmtDate(next.date) + ' · '}${esc(next.time || '')} ${esc(clientName(next.clientId))}</strong>
+    </button>` : ''}
+  </section>
+
+  ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať</button></div>` : ''}
 
   <div class="stats">
-    <div class="stat"><b>${todays.length}</b><span>tréningov dnes</span></div>
-    <div class="stat"><b>${week.length}</b><span>tréningov tento týždeň</span></div>
-    <div class="stat"><b>${week.filter((s) => s.status === 'done').length}</b><span>odtrénovaných tento týždeň</span></div>
-    <div class="stat"><b>${active.length}</b><span>aktívnych klientov</span></div>
+    <div class="stat"><b>${week.length}</b><span>tento týždeň</span></div>
+    <div class="stat"><b>${doneWeek}</b><span>odtrénované</span></div>
+    <div class="stat"><b>${active.length}</b><span>klientov</span></div>
   </div>
 
   ${overdue.length ? `<section class="card">
