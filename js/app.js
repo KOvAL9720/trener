@@ -91,6 +91,12 @@ const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 8640000
 
 const STATUS = { planned: 'Naplánovaný', done: 'Odtrénovaný', cancelled: 'Zrušený' };
 
+// Slovenské tvary podľa počtu: 1 tréning, 2–4 tréningy, 0 / 5+ tréningov
+const pl = (n, one, few, many) => (n === 1 ? one : n >= 2 && n <= 4 ? few : many);
+const cnt = (n, one, few, many) => `${n} ${pl(n, one, few, many)}`;
+const nTr = (n) => cnt(n, 'tréning', 'tréningy', 'tréningov');
+const nEx = (n) => cnt(n, 'cvik', 'cviky', 'cvikov');
+
 /* Indexy pre rýchle vyhľadávanie – vytvoria sa raz a zahodia pri každom uložení dát */
 function idx() {
   if (_idx) return _idx;
@@ -221,7 +227,7 @@ function viewDashboard() {
       <button class="btn primary" data-action="new-session" data-date="${t}">+ Tréning</button>
     </div>
     <h1 class="hero-title">${greet}</h1>
-    <div class="hero-big"><b>${todays.length}</b><span>${todays.length === 1 ? 'tréning' : todays.length >= 2 && todays.length <= 4 ? 'tréningy' : 'tréningov'}<br>dnes</span></div>
+    <div class="hero-big"><b>${todays.length}</b><span>${pl(todays.length, 'tréning', 'tréningy', 'tréningov')}<br>dnes</span></div>
     ${next ? `<button class="hero-next" data-action="edit-session" data-id="${next.id}">
       <span class="eyebrow">Najbližší</span>
       <strong>${next.date === t ? '' : fmtDate(next.date) + ' · '}${esc(next.time || '')} ${esc(clientName(next.clientId))}</strong>
@@ -233,7 +239,7 @@ function viewDashboard() {
   <div class="stats">
     <div class="stat"><b>${week.length}</b><span>tento týždeň</span></div>
     <div class="stat"><b>${doneWeek}</b><span>odtrénované</span></div>
-    <div class="stat"><b>${active.length}</b><span>klientov</span></div>
+    <div class="stat"><b>${active.length}</b><span>${pl(active.length, 'klient', 'klienti', 'klientov')}</span></div>
   </div>
 
   ${overdue.length ? `<section class="card">
@@ -284,7 +290,7 @@ function viewClients() {
           <span class="info"><strong>${esc(c.name)}</strong><small>${meta}</small></span>
           ${c.archived ? '<span class="badge">Archív</span>' : cr.bought ? `<span class="badge ${cr.left <= 0 ? 'cancelled' : cr.left <= 1 ? 'warn' : 'planned'}">${cr.left} tr.</span>` : ''}
         </a></li>`;
-    }).join('')}</ul>` : '<p class="empty">Zatiaľ nemáš žiadnych klientov.</p>'}
+    }).join('')}</ul><p class="empty" id="client-empty" hidden>Nikto nezodpovedá hľadaniu.</p>` : '<p class="empty">Zatiaľ nemáš žiadnych klientov.</p>'}
     <label class="check" style="margin-top:12px"><input type="checkbox" data-toggle="showArchived" ${showArchived ? 'checked' : ''}> Zobraziť archivovaných</label>
   </section>`;
 }
@@ -313,6 +319,7 @@ function viewClient(id) {
   };
 
   return `
+  <a href="#/clients" class="back-link">‹ Klienti</a>
   <div class="page-head">
     <div class="profile">
       <span class="avatar lg">${esc(initials(c.name))}</span>
@@ -339,7 +346,7 @@ function viewClient(id) {
         <dt>Cieľ</dt><dd>${esc(c.goal) || '<span class="muted">–</span>'}</dd>
         <dt>Poznámky</dt><dd>${esc(c.notes) || '<span class="muted">–</span>'}</dd>
         <dt>Klientom od</dt><dd>${c.createdAt ? fmtDate(c.createdAt) : '–'}</dd>
-        <dt>Odtrénované</dt><dd>${sessions.filter((s) => s.status === 'done').length} tréningov</dd>
+        <dt>Odtrénované</dt><dd>${nTr(sessions.filter((s) => s.status === 'done').length)}</dd>
       </dl>
     </section>
 
@@ -348,7 +355,7 @@ function viewClient(id) {
       ${cr.bought ? `<div class="credits"><b>${cr.left}</b><span class="muted">zostávajúcich z ${cr.bought} zakúpených</span></div>
         <p class="muted" style="margin:4px 0 8px">Spolu zaplatené: ${fmtMoney(paid)}</p>
         <ul class="list">${packages.map((p) => `<li><button class="list-item" data-action="edit-package" data-id="${p.id}">
-          <span class="info"><strong>${p.count} tréningov${p.price ? ` · ${fmtMoney(p.price)}` : ''}</strong><small>${fmtDate(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</small></span>
+          <span class="info"><strong>${nTr(Number(p.count) || 0)}${p.price ? ` · ${fmtMoney(p.price)}` : ''}</strong><small>${fmtDate(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</small></span>
         </button></li>`).join('')}</ul>`
         : '<p class="empty">Klient nemá zakúpený žiadny balík tréningov.</p>'}
     </section>
@@ -362,7 +369,7 @@ function viewClient(id) {
   <section class="card">
     <div class="card-head"><h2>Tréningové plány</h2><button class="btn small" data-action="new-plan" data-client="${c.id}">+ Plán</button></div>
     ${plans.length ? `<ul class="list">${plans.map((p) => `<li><a class="list-item" href="#/plan/${p.id}">
-      <span class="info"><strong>${esc(p.name)}</strong><small>${p.items.length} cvikov${p.notes ? ' · ' + esc(p.notes) : ''}</small></span><span aria-hidden="true">›</span>
+      <span class="info"><strong>${esc(p.name)}</strong><small>${nEx(p.items.length)}${p.notes ? ' · ' + esc(p.notes) : ''}</small></span><span aria-hidden="true">›</span>
     </a></li>`).join('')}</ul>` : '<p class="empty">Klient zatiaľ nemá žiadny plán. Vytvor nový alebo skopíruj šablónu v sekcii Plány.</p>'}
   </section>
 
@@ -404,7 +411,7 @@ function viewCalendar(weekParam) {
 
   return `
   <div class="page-head">
-    <div><h1>Kalendár</h1><p class="muted" style="margin:0">${count} ${count === 1 ? 'tréning' : count >= 2 && count <= 4 ? 'tréningy' : 'tréningov'} v týždni</p></div>
+    <div><h1>Kalendár</h1><p class="muted" style="margin:0">${nTr(count)} v týždni</p></div>
     <div class="week-nav">
       <a class="icon-btn" href="#/calendar/${addDays(ws, -7)}" aria-label="Predchádzajúci týždeň">‹</a>
       <span class="label">${label}</span>
@@ -432,7 +439,7 @@ function viewPlans() {
   const templates = db.plans.filter((p) => !p.clientId).sort(byName);
   const assigned = db.plans.filter((p) => p.clientId).sort((a, b) => clientName(a.clientId).localeCompare(clientName(b.clientId), 'sk') || byName(a, b));
   const item = (p, showClient) => `<li><a class="list-item" href="#/plan/${p.id}">
-    <span class="info"><strong>${esc(p.name)}</strong><small>${showClient ? esc(clientName(p.clientId)) + ' · ' : ''}${p.items.length} cvikov</small></span><span aria-hidden="true">›</span></a></li>`;
+    <span class="info"><strong>${esc(p.name)}</strong><small>${showClient ? esc(clientName(p.clientId)) + ' · ' : ''}${nEx(p.items.length)}</small></span><span aria-hidden="true">›</span></a></li>`;
   return `
   <div class="page-head"><h1>Tréningové plány</h1><button class="btn primary" data-action="new-plan">+ Nový plán</button></div>
   ${plansTabs('plans')}
@@ -526,7 +533,7 @@ function viewSettings() {
       <button class="btn" data-action="demo">Načítať ukážkové dáta</button>
       <button class="btn danger" data-action="wipe">Vymazať všetky dáta</button>
     </div>
-    <p class="muted" style="margin-bottom:0">${db.clients.length} klientov · ${db.sessions.length} tréningov · ${db.plans.length} plánov · ${db.exercises.length} cvikov</p>
+    <p class="muted" style="margin-bottom:0">${cnt(db.clients.length, 'klient', 'klienti', 'klientov')} · ${nTr(db.sessions.length)} · ${cnt(db.plans.length, 'plán', 'plány', 'plánov')} · ${nEx(db.exercises.length)}</p>
     <p class="muted" style="margin-bottom:0">Verzia aplikácie: <b id="app-version">–</b></p>
   </section>`;
 }
@@ -548,6 +555,7 @@ const routes = [
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let flashId = null;
+let renderedDay = '';
 
 function render(animate = false) {
   const hash = location.hash || '#/';
@@ -555,6 +563,7 @@ function render(animate = false) {
     const m = hash.match(re);
     if (m) {
       main.innerHTML = view(...m.slice(1));
+      renderedDay = today();
       const section = hash.startsWith('#/client') ? 'clients'
         : hash.startsWith('#/calendar') ? 'calendar'
         : hash.startsWith('#/plan') || hash.startsWith('#/exercises') ? 'plans'
@@ -623,11 +632,21 @@ function burst(x, y) {
   }
 }
 
-// Prepínanie obrazoviek: jemné prelínanie (bez zmiznutia obsahu); staršie zariadenia prepnú okamžite
+// Prepínanie obrazoviek ako v natívnej aplikácii: záložky v menu okamžite (bez blikania),
+// otvorenie detailu (klient, plán) jemne vkĺzne sprava – animuje sa len posun, nie jas
+let prevHash = location.hash || '#/';
 window.addEventListener('hashchange', () => {
-  const swap = () => { render(); window.scrollTo(0, 0); };
-  if (document.startViewTransition && !reduceMotion.matches) document.startViewTransition(swap);
-  else swap();
+  const hash = location.hash || '#/';
+  const isDetail = (h) => /^#\/(client|plan)\//.test(h);
+  const push = isDetail(hash) && !isDetail(prevHash);
+  prevHash = hash;
+  render();
+  window.scrollTo(0, 0);
+  if (push && !reduceMotion.matches) {
+    main.classList.remove('push');
+    void main.offsetWidth;
+    main.classList.add('push');
+  }
 });
 
 /* =========================================================
@@ -654,6 +673,11 @@ function fieldHtml(fd, values) {
   } else if (fd.type === 'select') {
     input = `<select id="${id}" name="${fd.name}" ${attrs}>${fd.options.map(([ov, ol]) =>
       `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`).join('')}</select>`;
+  } else if (fd.type === 'number') {
+    // iPhone so slovenčinou píše desatinnú čiarku – type="number" by ju zahodil, preto text + číselná klávesnica
+    const decimal = fd.step != null && String(fd.step).includes('.');
+    const shown = v === '' || v == null ? '' : String(v).replace('.', ',');
+    input = `<input id="${id}" name="${fd.name}" type="text" inputmode="${decimal ? 'decimal' : 'numeric'}" autocomplete="off" value="${esc(shown)}" ${fd.required ? 'required' : ''} ${fd.placeholder ? `placeholder="${esc(fd.placeholder)}"` : ''}>`;
   } else {
     input = `<input id="${id}" name="${fd.name}" type="${fd.type || 'text'}" value="${esc(v)}" ${attrs}>`;
   }
@@ -678,7 +702,15 @@ function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubm
       const el = modalForm.elements[fd.name];
       if (!el) continue;
       if (fd.type === 'checkbox') data[fd.name] = el.checked;
-      else if (fd.type === 'number') data[fd.name] = el.value === '' ? null : Number(el.value);
+      else if (fd.type === 'number') {
+        const raw = el.value.trim().replace(/\s/g, '').replace(',', '.');
+        const num = raw === '' ? null : Number(raw);
+        const bad = raw !== '' && !Number.isFinite(num) ? 'Zadaj číslo, napr. 72,5'
+          : num != null && fd.min != null && num < fd.min ? `Najmenej ${fd.min}` : '';
+        el.setCustomValidity(bad);
+        if (bad) { el.reportValidity(); el.addEventListener('input', () => el.setCustomValidity(''), { once: true }); return; }
+        data[fd.name] = num;
+      }
       else data[fd.name] = el.value.trim();
     }
     if (onSubmit(data) === false) return;
@@ -773,7 +805,7 @@ function openSessionForm(s, defaults = {}) {
         toast('Tréning uložený');
       } else {
         for (let i = 0; i < repeat; i++) db.sessions.push({ id: uid(), ...d, date: addDays(d.date, 7 * i) });
-        toast(repeat > 1 ? `Naplánovaných ${repeat} tréningov` : 'Tréning naplánovaný');
+        toast(repeat > 1 ? `Naplánované: ${nTr(repeat)}` : 'Tréning naplánovaný');
       }
     },
     onDelete: s && (() => { db.sessions = db.sessions.filter((x) => x.id !== s.id); toast('Tréning vymazaný'); })
@@ -825,7 +857,7 @@ function openPlanForm(p, clientId = '', { template = false } = {}) {
     fields: [
       { name: 'name', label: template ? 'Názov šablóny' : 'Názov plánu', required: true, placeholder: 'napr. Celé telo A, Nohy + core…' },
       ...(template ? [] : [{ name: 'clientId', label: 'Klient', type: 'select', options: clientOptions('— šablóna (bez klienta) —') }]),
-      ...(!p && !template && templates.length ? [{ name: 'fromTemplate', label: 'Začať zo šablóny', type: 'select', options: [['', '— prázdny plán —'], ...templates.map((t) => [t.id, `${t.name} (${t.items.length} cvikov)`])], hint: 'Cviky zo šablóny sa skopírujú a môžeš ich potom upraviť' }] : []),
+      ...(!p && !template && templates.length ? [{ name: 'fromTemplate', label: 'Začať zo šablóny', type: 'select', options: [['', '— prázdny plán —'], ...templates.map((t) => [t.id, `${t.name} (${nEx(t.items.length)})`])], hint: 'Cviky zo šablóny sa skopírujú a môžeš ich potom upraviť' }] : []),
       { name: 'notes', label: 'Popis / poznámky', type: 'textarea' }
     ],
     onSubmit: (d) => {
@@ -1143,7 +1175,7 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     const parsed = JSON.parse(await file.text());
     const data = parsed.data || parsed;
     if (!Array.isArray(data.clients) || !Array.isArray(data.sessions)) throw new Error('format');
-    if (!confirm(`Obnoviť zálohu? Aktuálne dáta budú nahradené (${data.clients.length} klientov, ${data.sessions.length} tréningov).`)) return;
+    if (!confirm(`Obnoviť zálohu? Aktuálne dáta budú nahradené (${cnt(data.clients.length, 'klient', 'klienti', 'klientov')}, ${nTr(data.sessions.length)}).`)) return;
     db = normalize(data);
     save();
     go('#/');
@@ -1336,11 +1368,47 @@ document.addEventListener('click', (e) => {
 document.addEventListener('input', (e) => {
   if (e.target.id === 'client-search') {
     const q = e.target.value.trim().toLowerCase().replace(/\s/g, '');
+    let visible = 0;
     document.querySelectorAll('#client-list > li').forEach((li) => {
-      li.hidden = q && !li.dataset.name.replace(/\s/g, '').includes(q);
+      li.hidden = !!q && !li.dataset.name.replace(/\s/g, '').includes(q);
+      if (!li.hidden) visible++;
     });
+    const empty = document.getElementById('client-empty');
+    if (empty) empty.hidden = visible > 0;
   }
 });
+
+// Kalendár: potiahnutím prstom doľava/doprava ďalší/predchádzajúci týždeň
+let swipe = null;
+main.addEventListener('touchstart', (e) => {
+  if (!e.target.closest('.days') || e.touches.length !== 1) { swipe = null; return; }
+  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+}, { passive: true });
+main.addEventListener('touchend', (e) => {
+  if (!swipe) return;
+  const dx = e.changedTouches[0].clientX - swipe.x;
+  const dy = e.changedTouches[0].clientY - swipe.y;
+  const fast = Date.now() - swipe.t < 600;
+  swipe = null;
+  if (!fast || Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+  const link = document.querySelector(dx < 0 ? '[aria-label="Nasledujúci týždeň"]' : '[aria-label="Predchádzajúci týždeň"]');
+  if (link) location.hash = link.getAttribute('href');
+}, { passive: true });
+
+// Ak aplikácia ostala otvorená cez polnoc, po návrate ukáže aktuálny deň
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && today() !== renderedDay && !modal.open) render();
+});
+
+// Klávesnica na iPhone: vysúvací panel formulára sa posunie nad ňu
+if (window.visualViewport) {
+  const kb = () => {
+    const h = Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop);
+    document.documentElement.style.setProperty('--kb', `${Math.round(h)}px`);
+  };
+  visualViewport.addEventListener('resize', kb);
+  visualViewport.addEventListener('scroll', kb);
+}
 
 document.addEventListener('change', (e) => {
   const key = e.target.dataset?.toggle;
