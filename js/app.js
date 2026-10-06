@@ -391,7 +391,7 @@ function viewPlans() {
   <div class="page-head"><h1>Tréningové plány</h1><button class="btn primary" data-action="new-plan">+ Nový plán</button></div>
   ${plansTabs('plans')}
   <section class="card">
-    <div class="card-head"><h2>Šablóny</h2></div>
+    <div class="card-head"><h2>Šablóny</h2><button class="btn small primary" data-action="new-plan" data-template="1">+ Šablóna</button></div>
     <p class="muted" style="margin-top:-6px">Univerzálne plány, ktoré môžeš skopírovať ľubovoľnému klientovi.</p>
     ${templates.length ? `<ul class="list">${templates.map((p) => item(p, false)).join('')}</ul>` : '<p class="empty">Žiadne šablóny.</p>'}
   </section>
@@ -413,7 +413,7 @@ function viewPlan(id) {
     </div>
     <div class="row no-print">
       <button class="btn" data-action="edit-plan" data-id="${p.id}">Upraviť</button>
-      <button class="btn" data-action="dup-plan" data-id="${p.id}">Kopírovať</button>
+      ${p.clientId ? `<button class="btn" data-action="dup-plan" data-id="${p.id}">Kopírovať</button>` : `<button class="btn primary" data-action="dup-plan" data-id="${p.id}" data-assign="1">Priradiť klientovi</button>`}
       <button class="btn" data-action="share-plan" data-id="${p.id}">Zdieľať</button>
       <button class="btn" data-action="print">Tlačiť</button>
     </div>
@@ -762,17 +762,25 @@ function clientOptions(emptyLabel) {
   return [['', emptyLabel], ...db.clients.filter((c) => !c.archived).sort(byName).map((c) => [c.id, c.name])];
 }
 
-function openPlanForm(p, clientId = '') {
+function openPlanForm(p, clientId = '', { template = false } = {}) {
+  const templates = db.plans.filter((x) => !x.clientId).sort(byName);
+  const isTemplate = template || (p && !p.clientId);
   openForm({
-    title: p ? 'Upraviť plán' : 'Nový tréningový plán',
+    title: p ? (isTemplate ? 'Upraviť šablónu' : 'Upraviť plán') : (template ? 'Nová šablóna' : 'Nový tréningový plán'),
     values: p || { clientId },
     fields: [
-      { name: 'name', label: 'Názov plánu', required: true, placeholder: 'napr. Celé telo A, Nohy + core…' },
-      { name: 'clientId', label: 'Klient', type: 'select', options: clientOptions('— šablóna (bez klienta) —') },
+      { name: 'name', label: template ? 'Názov šablóny' : 'Názov plánu', required: true, placeholder: 'napr. Celé telo A, Nohy + core…' },
+      ...(template ? [] : [{ name: 'clientId', label: 'Klient', type: 'select', options: clientOptions('— šablóna (bez klienta) —') }]),
+      ...(!p && !template && templates.length ? [{ name: 'fromTemplate', label: 'Začať zo šablóny', type: 'select', options: [['', '— prázdny plán —'], ...templates.map((t) => [t.id, `${t.name} (${t.items.length} cvikov)`])], hint: 'Cviky zo šablóny sa skopírujú a môžeš ich potom upraviť' }] : []),
       { name: 'notes', label: 'Popis / poznámky', type: 'textarea' }
     ],
     onSubmit: (d) => {
-      const saved = upsert('plans', p, p ? d : { ...d, items: [] });
+      if (template) d.clientId = '';
+      const src = d.fromTemplate ? getPlan(d.fromTemplate) : null;
+      delete d.fromTemplate;
+      const items = src ? structuredClone(src.items).map((i) => ({ ...i, id: uid() })) : [];
+      if (src && !d.notes) d.notes = src.notes || '';
+      const saved = upsert('plans', p, p ? d : { ...d, items });
       if (!p) { save(); go(`#/plan/${saved.id}`); }
       toast('Plán uložený');
     },
@@ -1180,16 +1188,20 @@ const actions = {
   'edit-package': (d) => openPackageForm(db.packages.find((p) => p.id === d.id)),
   'new-measurement': (d) => openMeasurementForm(null, d.client),
   'edit-measurement': (d) => openMeasurementForm(db.measurements.find((m) => m.id === d.id)),
-  'new-plan': (d) => openPlanForm(null, d.client || ''),
+  'new-plan': (d) => openPlanForm(null, d.client || '', { template: !!d.template }),
   'edit-plan': (d) => openPlanForm(getPlan(d.id)),
   'dup-plan': (d) => {
     const p = getPlan(d.id);
+    const assign = !!d.assign;
+    if (assign && !db.clients.some((c) => !c.archived)) { toast('Najprv pridaj klienta'); return; }
     openForm({
-      title: 'Kopírovať plán',
-      submitLabel: 'Vytvoriť kópiu',
+      title: assign ? 'Priradiť šablónu klientovi' : 'Kopírovať plán',
+      submitLabel: assign ? 'Priradiť' : 'Vytvoriť kópiu',
       values: { name: p.clientId ? `${p.name} (kópia)` : p.name, clientId: '' },
       fields: [
-        { name: 'clientId', label: 'Pre klienta', type: 'select', options: clientOptions('— ako šablónu —') },
+        assign
+          ? { name: 'clientId', label: 'Klient', type: 'select', required: true, options: clientOptions('— vyber klienta —') }
+          : { name: 'clientId', label: 'Pre klienta', type: 'select', options: clientOptions('— uložiť ako šablónu —') },
         { name: 'name', label: 'Názov nového plánu', required: true }
       ],
       onSubmit: (v) => {
@@ -1198,7 +1210,7 @@ const actions = {
         db.plans.push(copy);
         save();
         go(`#/plan/${copy.id}`);
-        toast('Plán skopírovaný');
+        toast(assign ? `Plán priradený: ${clientName(v.clientId)}` : v.clientId ? 'Plán skopírovaný' : 'Uložené ako šablóna');
       }
     });
   },
