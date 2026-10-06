@@ -40,15 +40,34 @@ function load() {
   return freshDb();
 }
 
+let _idx = null;
 let db = load();
 
+// Uloženie: obrazovka sa prekreslí hneď, zápis do úložiska prebehne tesne po vykreslení.
+// Pri zatvorení/skrytí aplikácie sa čakajúci zápis vždy dokončí.
+let savePending = false;
+let saveRaf = 0;
+let saveTimeout = 0;
 function save() {
+  _idx = null;
+  if (savePending) return;
+  savePending = true;
+  saveRaf = requestAnimationFrame(() => { saveTimeout = setTimeout(flushSave, 0); });
+}
+
+function flushSave() {
+  if (!savePending) return;
+  savePending = false;
+  cancelAnimationFrame(saveRaf);
+  clearTimeout(saveTimeout);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   } catch (e) {
     toast('Dáta sa nepodarilo uložiť – skontroluj úložisko prehliadača.');
   }
 }
+window.addEventListener('pagehide', flushSave);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
 
 /* =========================================================
    Pomocné funkcie
@@ -72,17 +91,40 @@ const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 8640000
 
 const STATUS = { planned: 'Naplánovaný', done: 'Odtrénovaný', cancelled: 'Zrušený' };
 
-const getClient = (id) => db.clients.find((c) => c.id === id);
-const getPlan = (id) => db.plans.find((p) => p.id === id);
-const getSession = (id) => db.sessions.find((s) => s.id === id);
-const getExercise = (id) => db.exercises.find((e) => e.id === id);
+/* Indexy pre rýchle vyhľadávanie – vytvoria sa raz a zahodia pri každom uložení dát */
+function idx() {
+  if (_idx) return _idx;
+  const byId = (arr) => new Map(arr.map((x) => [x.id, x]));
+  const push = (map, key, val) => { const a = map.get(key); if (a) a.push(val); else map.set(key, [val]); };
+  const sessionsByClient = new Map();
+  const sessionsByDate = new Map();
+  const done = new Map();
+  const bought = new Map();
+  for (const s of db.sessions) {
+    push(sessionsByClient, s.clientId, s);
+    push(sessionsByDate, s.date, s);
+    if (s.status === 'done') done.set(s.clientId, (done.get(s.clientId) || 0) + 1);
+  }
+  for (const p of db.packages) bought.set(p.clientId, (bought.get(p.clientId) || 0) + (Number(p.count) || 0));
+  _idx = {
+    clients: byId(db.clients), plans: byId(db.plans), sessions: byId(db.sessions), exercises: byId(db.exercises),
+    sessionsByClient, sessionsByDate, done, bought
+  };
+  return _idx;
+}
+const clientSessions = (id) => idx().sessionsByClient.get(id) || [];
+
+const getClient = (id) => idx().clients.get(id);
+const getPlan = (id) => idx().plans.get(id);
+const getSession = (id) => idx().sessions.get(id);
+const getExercise = (id) => idx().exercises.get(id);
 const clientName = (id) => getClient(id)?.name || 'Bez klienta';
 const bySessionTime = (a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''));
 const byName = (a, b) => a.name.localeCompare(b.name, 'sk');
 
 function credits(clientId) {
-  const bought = db.packages.filter((p) => p.clientId === clientId).reduce((sum, p) => sum + (Number(p.count) || 0), 0);
-  const used = db.sessions.filter((s) => s.clientId === clientId && s.status === 'done').length;
+  const bought = idx().bought.get(clientId) || 0;
+  const used = idx().done.get(clientId) || 0;
   return { bought, used, left: bought - used };
 }
 
@@ -156,7 +198,7 @@ function viewDashboard() {
   const ws = startOfWeek(t);
   const we = addDays(ws, 6);
   const active = db.clients.filter((c) => !c.archived);
-  const todays = db.sessions.filter((s) => s.date === t && s.status !== 'cancelled').sort(bySessionTime);
+  const todays = (idx().sessionsByDate.get(t) || []).filter((s) => s.status !== 'cancelled').sort(bySessionTime);
   const week = db.sessions.filter((s) => s.date >= ws && s.date <= we && s.status !== 'cancelled');
   const upcoming = db.sessions.filter((s) => s.status === 'planned' && s.date > t).sort(bySessionTime).slice(0, 6);
   const overdue = db.sessions.filter((s) => s.status === 'planned' && s.date < t).sort(bySessionTime);
@@ -234,7 +276,7 @@ function viewClients() {
     <input type="search" class="search" id="client-search" placeholder="Hľadať klienta…" aria-label="Hľadať klienta">
     ${list.length ? `<ul class="list" id="client-list">${list.map((c) => {
       const cr = credits(c.id);
-      const next = db.sessions.filter((s) => s.clientId === c.id && s.status === 'planned' && s.date >= t).sort(bySessionTime)[0];
+      const next = clientSessions(c.id).filter((s) => s.status === 'planned' && s.date >= t).sort(bySessionTime)[0];
       const meta = [next ? `Ďalší tréning ${fmtDate(next.date)} ${next.time || ''}` : 'Bez naplánovaného tréningu', c.goal].filter(Boolean).map(esc).join(' · ');
       return `<li data-name="${esc(c.name.toLowerCase())} ${esc((c.phone || '').replace(/\s/g, ''))} ${esc((c.email || '').toLowerCase())}">
         <a class="list-item" href="#/client/${c.id}">
@@ -254,7 +296,7 @@ function viewClient(id) {
   const c = getClient(id);
   if (!c) return `<p class="empty">Klient neexistuje.</p><a class="btn" href="#/clients">Späť na klientov</a>`;
   const t = today();
-  const sessions = db.sessions.filter((s) => s.clientId === id);
+  const sessions = clientSessions(id);
   const upcoming = sessions.filter((s) => s.date >= t && s.status === 'planned').sort(bySessionTime);
   const history = sessions.filter((s) => !(s.date >= t && s.status === 'planned')).sort(bySessionTime).reverse();
   const cr = credits(id);
@@ -357,7 +399,7 @@ function viewCalendar(weekParam) {
   const we = addDays(ws, 6);
   const label = `${fmtShort(ws)} – ${fmtShort(we)} ${parseDate(we).getFullYear()}`;
   const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
-  const inWeek = db.sessions.filter((s) => s.date >= ws && s.date <= we).sort(bySessionTime);
+  const inWeek = days.flatMap((d) => idx().sessionsByDate.get(d) || []).sort(bySessionTime);
   const count = inWeek.filter((s) => s.status !== 'cancelled').length;
 
   return `
@@ -882,7 +924,7 @@ function intlPhone(phone) {
 // Panel „Kontaktovať klienta“ – WhatsApp, SMS, hovor, e-mail s pripravenou správou
 function openContact(c, session) {
   const t = today();
-  const next = session || db.sessions.filter((x) => x.clientId === c.id && x.status === 'planned' && x.date >= t).sort(bySessionTime)[0];
+  const next = session || clientSessions(c.id).filter((x) => x.status === 'planned' && x.date >= t).sort(bySessionTime)[0];
   const cr = credits(c.id);
   const templates = [
     next && ['Pripomienka', reminderText(c, next)],

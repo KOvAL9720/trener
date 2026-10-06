@@ -27,6 +27,8 @@
   <style>
     /* Úvodná obrazovka – inline, aby sa ukázala okamžite */
     html, body { background: #09090b; }
+    /* obsah aplikácie skrytý, kým sa nenačítajú jej štýly – žiadne preskakovanie rozloženia */
+    .topbar, .nav, main { visibility: hidden; }
     #splash { position: fixed; inset: 0; z-index: 1000; background: #09090b; display: grid; place-items: center; transition: opacity .35s ease, visibility .35s; }
     #splash.hide { opacity: 0; visibility: hidden; }
     #splash .line { position: relative; width: 100vw; height: 3px; background: rgba(255, 168, 213, .12); overflow: hidden; }

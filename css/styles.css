@@ -25,6 +25,7 @@
 }
 
 * { box-sizing: border-box; }
+.topbar, .nav, main { visibility: visible; }
 html, body { margin: 0; }
 
 body {
