@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 const CACHE = 'trener-v53';
-=======
-const CACHE = 'trener-v53';
->>>>>>> origin/main
 const ASSETS = [
   './',
   'index.html',
