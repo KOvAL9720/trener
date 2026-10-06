@@ -1309,7 +1309,7 @@ document.addEventListener('change', (e) => {
 const splash = document.getElementById('splash');
 if (splash) {
   render();
-  const wait = reduceMotion.matches ? 0 : Math.max(0, 1150 - performance.now());
+  const wait = reduceMotion.matches ? 0 : Math.max(0, 3200 - performance.now());
   setTimeout(() => {
     splash.classList.add('hide');
     document.body.classList.add('ready');
