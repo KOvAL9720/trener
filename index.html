@@ -22,6 +22,9 @@
   <meta name="twitter:image" content="https://koval9720.github.io/trainer-app/icons/icon-512.png?v=2">
   <!-- fotka pozadia sa sťahuje hneď, aby bola pri skrytí úvodnej obrazovky už pripravená -->
   <link rel="preload" as="image" href="icons/bg-gym.jpg">
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+  <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -103,8 +106,10 @@
   <script src="js/exercise-icons.js" defer></script>
   <!-- cloud (klientska zóna) – samostatný modul, pri výpadku siete appka beží ďalej -->
   <script type="module">
-    // ak sa modul (alebo Firebase z internetu) nenačíta, appka ukáže dôvod v Nastaveniach
-    import('./js/cloud.js').catch((e) => { window.cloudError = (e && (e.message || String(e))) || 'neznáma chyba'; window.dispatchEvent(new Event('cloud-ready')); });
+    // cloud (Firebase z internetu) sa načíta až po vykreslení obsahu, aby nebrzdil štart;
+    // ak sa nenačíta, appka ukáže dôvod v Nastaveniach
+    const loadCloud = () => import('./js/cloud.js').catch((e) => { window.cloudError = (e && (e.message || String(e))) || 'neznáma chyba'; window.dispatchEvent(new Event('cloud-ready')); });
+    if (document.readyState === 'complete') loadCloud(); else window.addEventListener('load', loadCloud, { once: true });
   </script>
   <script src="js/app.js" defer></script>
 </body>

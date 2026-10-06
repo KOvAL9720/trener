@@ -2861,9 +2861,23 @@ const bgReady = new Promise((resolve) => {
   (img.decode ? img.decode() : Promise.resolve()).then(done, done);
   setTimeout(done, 1500);
 }).then(() => document.body.classList.add('bg-ready'));
-if (splash) {
+// Teplý štart (appka bola otvorená pred menej než 10 min, napr. iPhone ju len obnovil): obsah hneď,
+// bez úvodnej čiary a animácií – inak by sa ukázal posledný stav, potom tma a znova obsah (blikanie)
+const LAST_SHOWN_KEY = 'trener-last-shown';
+let warmStart = false;
+try { warmStart = Date.now() - Number(localStorage.getItem(LAST_SHOWN_KEY) || 0) < 10 * 60 * 1000; } catch (e) { /* ok */ }
+const markShown = () => { try { localStorage.setItem(LAST_SHOWN_KEY, String(Date.now())); } catch (e) { /* ok */ } };
+markShown();
+window.addEventListener('pagehide', markShown);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') markShown(); });
+
+if (splash && warmStart) {
+  document.body.classList.add('no-anim', 'bg-ready', 'ready');
+  splash.remove();
   render();
-  const wait = reduceMotion.matches ? 0 : Math.max(0, 750 - performance.now());
+} else if (splash) {
+  render();
+  const wait = reduceMotion.matches ? 0 : Math.max(0, 500 - performance.now());
   // skryť až keď sú načítané štýly aplikácie (najneskôr po 8 s)
   const cssReady = new Promise((resolve) => {
     if (document.documentElement.classList.contains('css-ready')) resolve();
