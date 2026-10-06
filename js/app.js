@@ -1327,11 +1327,12 @@ document.getElementById('gallery-file').addEventListener('change', async (e) => 
   toast(ok === files.length ? `Pridané: ${nPh(ok)}` : `Pridané: ${nPh(ok)}, ${files.length - ok} sa nepodarilo načítať`);
 });
 
-// Prehliadač fotiek na celú obrazovku – potiahnutie / šípky, zmena dátumu, zdieľanie, vymazanie
+// Prehliadač fotiek na celú obrazovku – fotka ide za prstom (ako galéria v iPhone),
+// po pustení plynule dokĺzne; potiahnutie nadol zavrie; susedné fotky sú pripravené vopred
 async function openViewer(cid, startId) {
   const photos = (await photoDB.byClient(cid)).sort(byPhotoDate);
-  let i = Math.max(0, photos.findIndex((p) => p.id === startId));
   if (!photos.length) return;
+  let i = Math.max(0, photos.findIndex((p) => p.id === startId));
   const c = getClient(cid);
   const el = document.createElement('div');
   el.className = 'viewer';
@@ -1342,7 +1343,9 @@ async function openViewer(cid, startId) {
       <div class="viewer-info"><b>${esc(c?.name || '')}</b><label><input type="date" class="viewer-date" aria-label="Dátum fotky"> · <span class="viewer-count"></span></label></div>
       <button type="button" class="icon-btn viewer-close" aria-label="Zavrieť">✕</button>
     </div>
-    <div class="viewer-stage"><img alt=""></div>
+    <div class="viewer-stage"><div class="viewer-track">
+      <div class="viewer-slide"><img alt=""></div><div class="viewer-slide"><img alt=""></div><div class="viewer-slide"><img alt=""></div>
+    </div></div>
     <div class="viewer-bar">
       <button type="button" class="icon-btn viewer-prev" aria-label="Predchádzajúca">‹</button>
       <button type="button" class="btn small viewer-share">Zdieľať</button>
@@ -1350,22 +1353,57 @@ async function openViewer(cid, startId) {
       <button type="button" class="icon-btn viewer-next" aria-label="Ďalšia">›</button>
     </div>`;
   document.body.appendChild(el);
-  const img = el.querySelector('.viewer-stage img');
-  let fullUrl = null;
+  const stage = el.querySelector('.viewer-stage');
+  const track = el.querySelector('.viewer-track');
+  const imgs = [...el.querySelectorAll('.viewer-slide img')];
+
+  // URL plných fotiek len pre aktuálnu a susedné (šetrí pamäť)
+  const urls = new Map();
+  const urlOf = (p) => { if (!urls.has(p.id)) urls.set(p.id, URL.createObjectURL(p.full)); return urls.get(p.id); };
+  const prune = () => {
+    const keep = new Set([photos[i - 1], photos[i], photos[i + 1]].filter(Boolean).map((p) => p.id));
+    urls.forEach((u, id) => { if (!keep.has(id)) { URL.revokeObjectURL(u); urls.delete(id); } });
+  };
+
+  const W = () => stage.clientWidth;
+  const setX = (x, animate) => {
+    track.style.transition = animate ? 'transform .32s cubic-bezier(.2, .8, .2, 1)' : 'none';
+    track.style.transform = `translate3d(${x - W()}px, 0, 0)`;
+  };
   const show = () => {
+    [-1, 0, 1].forEach((k, idx) => {
+      const p = photos[i + k];
+      imgs[idx].style.visibility = p ? 'visible' : 'hidden';
+      if (p) { const u = urlOf(p); if (imgs[idx].getAttribute('src') !== u) imgs[idx].src = u; }
+    });
+    prune();
     const p = photos[i];
-    if (fullUrl) URL.revokeObjectURL(fullUrl);
-    fullUrl = URL.createObjectURL(p.full);
-    img.src = fullUrl;
     el.querySelector('.viewer-date').value = p.date;
     el.querySelector('.viewer-count').textContent = `${i + 1} / ${photos.length}`;
     el.querySelector('.viewer-prev').disabled = i === 0;
     el.querySelector('.viewer-next').disabled = i === photos.length - 1;
+    setX(0, false);
   };
-  const close = () => { if (fullUrl) URL.revokeObjectURL(fullUrl); el.remove(); document.removeEventListener('keydown', onKey); fillPhotoGrid(cid); };
-  const go = (d) => { const j = i + d; if (j >= 0 && j < photos.length) { i = j; show(); } };
+  let busy = false;
+  const go = (d) => {
+    const j = i + d;
+    if (busy || j < 0 || j >= photos.length) { setX(0, true); return; }
+    busy = true;
+    setX(-d * W(), true);
+    setTimeout(() => { i = j; show(); busy = false; }, reduceMotion.matches ? 0 : 320);
+  };
+
+  const close = () => {
+    urls.forEach((u) => URL.revokeObjectURL(u));
+    el.remove();
+    document.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', onResize);
+    fillPhotoGrid(cid);
+  };
   const onKey = (e) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1); };
+  const onResize = () => setX(0, false);
   document.addEventListener('keydown', onKey);
+  window.addEventListener('resize', onResize);
   el.querySelector('.viewer-close').onclick = close;
   el.querySelector('.viewer-prev').onclick = () => go(-1);
   el.querySelector('.viewer-next').onclick = () => go(1);
@@ -1380,7 +1418,7 @@ async function openViewer(cid, startId) {
     const file = new File([p.full], `${(c?.name || 'fotka').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').toLowerCase()}-${p.date}.jpg`, { type: 'image/jpeg' });
     try {
       if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] });
-      else { const a = document.createElement('a'); a.href = fullUrl; a.download = file.name; a.click(); }
+      else { const a = document.createElement('a'); a.href = urlOf(p); a.download = file.name; a.click(); }
     } catch (err) { if (err.name !== 'AbortError') toast('Zdieľanie sa nepodarilo'); }
   };
   el.querySelector('.viewer-del').onclick = async () => {
@@ -1394,14 +1432,45 @@ async function openViewer(cid, startId) {
     i = Math.min(i, photos.length - 1);
     show();
   };
-  // potiahnutie prstom doľava/doprava
-  let sx = null;
-  el.querySelector('.viewer-stage').addEventListener('touchstart', (e) => { sx = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
-  el.querySelector('.viewer-stage').addEventListener('touchend', (e) => {
-    if (sx == null) return;
-    const dx = e.changedTouches[0].clientX - sx;
-    sx = null;
-    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+
+  // Dotyk: os sa určí podľa prvého pohybu – vodorovne listovanie, zvislo nadol zatvorenie
+  let t0 = null;
+  stage.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1 || busy) { t0 = null; return; }
+    t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, axis: null, dx: 0, dy: 0, samples: [{ dx: 0, dy: 0, t: performance.now() }] };
+  }, { passive: true });
+  stage.addEventListener('touchmove', (e) => {
+    if (!t0 || e.touches.length !== 1) return;
+    t0.dx = e.touches[0].clientX - t0.x;
+    t0.dy = e.touches[0].clientY - t0.y;
+    t0.samples.push({ dx: t0.dx, dy: t0.dy, t: performance.now() });
+    if (t0.samples.length > 12) t0.samples.shift();
+    if (!t0.axis && Math.hypot(t0.dx, t0.dy) > 8) t0.axis = Math.abs(t0.dx) > Math.abs(t0.dy) ? 'x' : 'y';
+    if (t0.axis === 'x') {
+      const edge = (t0.dx > 0 && i === 0) || (t0.dx < 0 && i === photos.length - 1);
+      setX(edge ? t0.dx / 3 : t0.dx, false);              // na kraji odpor ako v iOS
+    } else if (t0.axis === 'y' && t0.dy > 0) {
+      track.style.transition = 'none';
+      track.style.transform = `translate3d(${-W()}px, ${t0.dy}px, 0) scale(${1 - Math.min(t0.dy / 1500, 0.15)})`;
+      el.style.backgroundColor = `rgba(0, 0, 0, ${Math.max(0.35, 1 - t0.dy / 400)})`;
+    }
+  }, { passive: true });
+  stage.addEventListener('touchend', () => {
+    if (!t0) return;
+    const { dx, dy, axis, samples } = t0;
+    // rýchlosť len z posledných ~100 ms (ako iOS) – zastavenie pred pustením = pomalé
+    const now = performance.now();
+    const ref = samples.find((sm) => now - sm.t <= 100) || samples[samples.length - 1];
+    const dist = axis === 'x' ? dx - ref.dx : dy - ref.dy;
+    const v = Math.abs(dist) / Math.max(16, now - ref.t); // px/ms
+    t0 = null;
+    if (axis === 'x') {
+      if (Math.abs(dx) > W() * 0.4 || (v > 0.45 && Math.abs(dx) > 20)) go(dx < 0 ? 1 : -1);
+      else setX(0, true);
+    } else if (axis === 'y') {
+      if (dy > 140 || (v > 0.6 && dy > 40)) { el.classList.add('closing'); setTimeout(close, 180); }
+      else { el.style.backgroundColor = ''; track.style.transition = 'transform .3s cubic-bezier(.2, .8, .2, 1)'; track.style.transform = `translate3d(${-W()}px, 0, 0)`; }
+    }
   }, { passive: true });
   show();
 }
