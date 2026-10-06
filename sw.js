@@ -1,4 +1,4 @@
-const CACHE = 'trener-v14';
+const CACHE = 'trener-v15';
 const ASSETS = [
   './',
   'index.html',
@@ -22,19 +22,39 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Network-first: vždy najnovšia verzia (obíde aj HTTP cache prehliadača), bez internetu sa použije cache.
+const fromNetwork = (req) =>
+  fetch(req, { cache: 'no-cache' }).then((res) => {
+    if (res.ok) {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(req.mode === 'navigate' ? 'index.html' : req, copy));
+    }
+    return res;
+  });
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  e.respondWith(
-    fetch(req, { cache: 'no-cache' })
-      .then((res) => {
-        if (res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
-        }
-        return res;
+
+  // Stránka (HTML): okamžite z pamäte → čierna úvodná obrazovka hneď, bez bieleho záblesku.
+  // Najnovšia verzia sa stiahne na pozadí a použije sa pri ďalšom spustení.
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      caches.match('index.html').then((cached) => {
+        const net = fromNetwork(req);
+        if (cached) { e.waitUntil(net.catch(() => {})); return cached; }
+        return net.catch(() => caches.match('index.html'));
       })
-      .catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match('index.html')))
+    );
+    return;
+  }
+
+  // Ostatné súbory: najnovšie zo siete; pri pomalom alebo žiadnom internete (2,5 s) z pamäte.
+  e.respondWith(
+    caches.match(req, { ignoreSearch: true }).then((cached) => {
+      const net = fromNetwork(req);
+      if (!cached) return net;
+      const timeout = new Promise((resolve) => setTimeout(() => resolve(cached), 2500));
+      return Promise.race([net.catch(() => cached), timeout]);
+    })
   );
 });
