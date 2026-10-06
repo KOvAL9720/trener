@@ -648,7 +648,11 @@ tfoot td { font-weight: 900; border-top: 1px solid var(--surface-3); border-bott
 .viewer-info b { font-size: 1rem; }
 .viewer-info label { color: #aaa; font-size: .85rem; display: flex; align-items: center; gap: 4px; }
 .viewer-date { width: auto; min-height: 0; padding: 2px 6px; border: 0; background: transparent; color: #ddd; font-size: .85rem; }
-.viewer-stage { flex: 1; min-height: 0; display: grid; place-items: center; touch-action: pan-y; }
-.viewer-stage img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+.viewer-stage { flex: 1; min-height: 0; overflow: hidden; touch-action: none; position: relative; }
+.viewer-track { display: flex; width: 300%; height: 100%; will-change: transform; transform: translate3d(-33.333%, 0, 0); }
+.viewer-slide { flex: 0 0 33.3333%; height: 100%; display: grid; place-items: center; padding: 0 2px; }
+.viewer-slide img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.viewer { transition: background-color .2s, opacity .18s; }
+.viewer.closing { opacity: 0; }
 .viewer .icon-btn { background: rgba(255, 255, 255, .1); border-color: transparent; color: #fff; }
 .viewer .icon-btn:disabled { opacity: .3; }
