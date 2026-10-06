@@ -197,7 +197,7 @@ function credits(clientId) {
 function askConfirm(msg, { ok = 'OK', cancel = 'Zrušiť', danger = false } = {}) {
   const dlg = document.getElementById('confirm');
   dlg.querySelector('#confirm-text').textContent = msg;
-  dlg.querySelector('.confirm-btns').innerHTML = `${cancel ? `<button type="button" class="btn" data-v="0">${esc(cancel)}</button>` : ''}<button type="button" class="btn ${danger ? 'danger-fill' : 'primary'}" data-v="1" autofocus>${esc(ok)}</button>`;
+  dlg.querySelector('.confirm-btns').innerHTML = `${cancel ? `<button type="button" class="btn" data-v="0">${esc(cancel)}</button>` : ''}<button type="button" class="btn ${danger ? 'danger danger-fill' : 'primary'}" data-v="1" autofocus>${esc(ok)}</button>`;
   return new Promise((resolve) => {
     const done = (v) => { dlg.onclose = null; dlg.close(); resolve(v); };
     dlg.querySelectorAll('[data-v]').forEach((b) => { b.onclick = () => done(b.dataset.v === '1'); });

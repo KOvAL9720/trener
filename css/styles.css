@@ -1077,6 +1077,6 @@ dialog.confirm form { max-height: none; }
 dialog.confirm p { margin: 0; padding: 24px 22px 18px; font-size: 1rem; line-height: 1.5; text-align: center; }
 .confirm-btns { display: flex; gap: 8px; padding: 0 16px 16px; }
 .confirm-btns .btn { flex: 1; }
-dialog.confirm .btn.danger-fill { background: var(--danger); border-color: var(--danger); color: #2a0b0b; box-shadow: 0 10px 24px -14px rgba(236, 143, 143, .7); }
+dialog.confirm .btn.danger.danger-fill { background: var(--danger); border-color: var(--danger); color: #2a0b0b; box-shadow: 0 10px 24px -14px rgba(236, 143, 143, .7); }
 @keyframes pop-in { from { opacity: 0; transform: scale(.94); } }
 @media (prefers-reduced-motion: reduce) { dialog.confirm { animation: none; } }
