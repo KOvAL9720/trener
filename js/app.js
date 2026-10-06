@@ -417,6 +417,11 @@ function viewClient(id) {
   </section>
 
   <section class="card">
+    <div class="card-head"><h2>Fotky</h2><span class="spacer"></span><span class="badge" id="photo-count" hidden></span><button class="btn small" data-action="add-photos" data-client="${c.id}">+ Fotky</button></div>
+    <div class="photo-grid" id="photo-grid" data-client="${c.id}"></div>
+  </section>
+
+  <section class="card">
     <div class="card-head"><h2>Merania a progres</h2><button class="btn small" data-action="new-measurement" data-client="${c.id}">+ Meranie</button></div>
     ${ms.length ? `<div class="table-wrap"><table>
       <thead><tr><th>Dátum</th><th class="num">Váha (kg)</th><th class="num">Tuk (%)</th><th class="num">Pás (cm)</th><th class="num">Boky (cm)</th><th>Poznámka</th></tr></thead>
@@ -736,6 +741,8 @@ function render(animate = false) {
         flashId = null;
       }
       if (animate && !reduceMotion.matches) animateEnter();
+      const grid = main.querySelector('#photo-grid');
+      if (grid) fillPhotoGrid(grid.dataset.client);
       const ver = main.querySelector('#app-version');
       if (ver && 'caches' in window) caches.keys().then((k) => { const v = k.find((x) => x.startsWith('trener-v')); if (v) ver.textContent = v.replace('trener-v', ''); }).catch(() => {});
       return;
@@ -925,6 +932,7 @@ function openClientForm(c) {
     },
     onDelete: c && (() => {
       db.clients = db.clients.filter((x) => x.id !== c.id);
+      photoDB.delClients(new Set([c.id])).catch(() => {});
       db.sessions = db.sessions.filter((x) => x.clientId !== c.id);
       db.packages = db.packages.filter((x) => x.clientId !== c.id);
       db.measurements = db.measurements.filter((x) => x.clientId !== c.id);
@@ -1218,6 +1226,206 @@ document.getElementById('photo-file').addEventListener('change', async (e) => {
   }
 });
 
+/* =========================================================
+   Galéria fotiek klienta (IndexedDB – na rozdiel od localStorage zvládne stovky fotiek)
+   ========================================================= */
+const photoDB = (() => {
+  let conn;
+  const open = () => (conn ||= new Promise((resolve, reject) => {
+    const r = indexedDB.open('trener-photos', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('photos', { keyPath: 'id' }).createIndex('clientId', 'clientId');
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  }));
+  const tx = async (mode, fn) => {
+    const d = await open();
+    return new Promise((resolve, reject) => {
+      const t = d.transaction('photos', mode);
+      const req = fn(t.objectStore('photos'));
+      t.oncomplete = () => resolve(req && 'result' in req ? req.result : undefined);
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error);
+    });
+  };
+  return {
+    byClient: (cid) => tx('readonly', (st) => st.index('clientId').getAll(cid)),
+    all: () => tx('readonly', (st) => st.getAll()),
+    get: (id) => tx('readonly', (st) => st.get(id)),
+    put: (rec) => tx('readwrite', (st) => st.put(rec)),
+    del: (id) => tx('readwrite', (st) => st.delete(id)),
+    clear: () => tx('readwrite', (st) => st.clear()),
+    delClients: async (ids) => {
+      const all = await tx('readonly', (st) => st.getAll());
+      const ids2 = all.filter((p) => ids.has(p.clientId)).map((p) => p.id);
+      if (ids2.length) await tx('readwrite', (st) => { ids2.forEach((id) => st.delete(id)); return null; });
+    }
+  };
+})();
+
+const nPh = (n) => cnt(n, 'fotka', 'fotky', 'fotiek');
+const byPhotoDate = (a, b) => b.date.localeCompare(a.date) || b.created - a.created;
+const thumbUrls = new Map();
+const thumbUrl = (p) => { if (!thumbUrls.has(p.id)) thumbUrls.set(p.id, URL.createObjectURL(p.thumb)); return thumbUrls.get(p.id); };
+const dropThumb = (id) => { const u = thumbUrls.get(id); if (u) { URL.revokeObjectURL(u); thumbUrls.delete(id); } };
+
+// Zmenší obrázok: max. strana `max` px, alebo štvorcový výrez `max`×`max` (náhľad)
+async function resizeImage(file, max, square) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    if (square) {
+      const side = Math.min(iw, ih);
+      canvas.width = canvas.height = Math.min(max, side);
+      ctx.drawImage(img, (iw - side) / 2, (ih - side) / 2, side, side, 0, 0, canvas.width, canvas.height);
+    } else {
+      const k = Math.min(1, max / Math.max(iw, ih));
+      canvas.width = Math.round(iw * k);
+      canvas.height = Math.round(ih * k);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }
+    return await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob'))), 'image/jpeg', square ? 0.8 : 0.86));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function fillPhotoGrid(cid) {
+  const grid = main.querySelector(`#photo-grid[data-client="${cid}"]`);
+  if (!grid) return;
+  let photos = [];
+  try { photos = (await photoDB.byClient(cid)).sort(byPhotoDate); } catch (e) { grid.innerHTML = '<p class="empty">Fotky sa nepodarilo načítať.</p>'; return; }
+  if (!grid.isConnected) return;
+  const badge = main.querySelector('#photo-count');
+  if (badge) { badge.hidden = !photos.length; badge.textContent = photos.length; }
+  grid.innerHTML = photos.length
+    ? photos.map((p) => `<button class="ph" data-action="view-photo" data-id="${p.id}" data-client="${cid}" aria-label="Fotka ${fmtDate(p.date)}"><img src="${thumbUrl(p)}" alt=""><span>${fmtShort(p.date)}</span></button>`).join('')
+    : '<p class="empty">Zatiaľ žiadne fotky – napríklad fotky progresu pred a po.</p>';
+}
+
+let galleryClientId = null;
+document.getElementById('gallery-file').addEventListener('change', async (e) => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  const cid = galleryClientId;
+  if (!files.length || !getClient(cid)) return;
+  toast(`Spracúvam ${nPh(files.length)}…`);
+  let ok = 0;
+  for (const file of files) {
+    try {
+      const [full, thumb] = await Promise.all([resizeImage(file, 1600, false), resizeImage(file, 360, true)]);
+      await photoDB.put({ id: uid(), clientId: cid, date: today(), created: Date.now(), full, thumb });
+      ok++;
+    } catch (err) { /* nepodporovaný formát – preskočiť */ }
+  }
+  fillPhotoGrid(cid);
+  toast(ok === files.length ? `Pridané: ${nPh(ok)}` : `Pridané: ${nPh(ok)}, ${files.length - ok} sa nepodarilo načítať`);
+});
+
+// Prehliadač fotiek na celú obrazovku – potiahnutie / šípky, zmena dátumu, zdieľanie, vymazanie
+async function openViewer(cid, startId) {
+  const photos = (await photoDB.byClient(cid)).sort(byPhotoDate);
+  let i = Math.max(0, photos.findIndex((p) => p.id === startId));
+  if (!photos.length) return;
+  const c = getClient(cid);
+  const el = document.createElement('div');
+  el.className = 'viewer';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `
+    <div class="viewer-top">
+      <div class="viewer-info"><b>${esc(c?.name || '')}</b><label><input type="date" class="viewer-date" aria-label="Dátum fotky"> · <span class="viewer-count"></span></label></div>
+      <button type="button" class="icon-btn viewer-close" aria-label="Zavrieť">✕</button>
+    </div>
+    <div class="viewer-stage"><img alt=""></div>
+    <div class="viewer-bar">
+      <button type="button" class="icon-btn viewer-prev" aria-label="Predchádzajúca">‹</button>
+      <button type="button" class="btn small viewer-share">Zdieľať</button>
+      <button type="button" class="btn small danger viewer-del">Vymazať</button>
+      <button type="button" class="icon-btn viewer-next" aria-label="Ďalšia">›</button>
+    </div>`;
+  document.body.appendChild(el);
+  const img = el.querySelector('.viewer-stage img');
+  let fullUrl = null;
+  const show = () => {
+    const p = photos[i];
+    if (fullUrl) URL.revokeObjectURL(fullUrl);
+    fullUrl = URL.createObjectURL(p.full);
+    img.src = fullUrl;
+    el.querySelector('.viewer-date').value = p.date;
+    el.querySelector('.viewer-count').textContent = `${i + 1} / ${photos.length}`;
+    el.querySelector('.viewer-prev').disabled = i === 0;
+    el.querySelector('.viewer-next').disabled = i === photos.length - 1;
+  };
+  const close = () => { if (fullUrl) URL.revokeObjectURL(fullUrl); el.remove(); document.removeEventListener('keydown', onKey); fillPhotoGrid(cid); };
+  const go = (d) => { const j = i + d; if (j >= 0 && j < photos.length) { i = j; show(); } };
+  const onKey = (e) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1); };
+  document.addEventListener('keydown', onKey);
+  el.querySelector('.viewer-close').onclick = close;
+  el.querySelector('.viewer-prev').onclick = () => go(-1);
+  el.querySelector('.viewer-next').onclick = () => go(1);
+  el.querySelector('.viewer-date').onchange = async (e) => {
+    if (!e.target.value) return;
+    photos[i].date = e.target.value;
+    await photoDB.put(photos[i]);
+    toast('Dátum fotky uložený');
+  };
+  el.querySelector('.viewer-share').onclick = async () => {
+    const p = photos[i];
+    const file = new File([p.full], `${(c?.name || 'fotka').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').toLowerCase()}-${p.date}.jpg`, { type: 'image/jpeg' });
+    try {
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] });
+      else { const a = document.createElement('a'); a.href = fullUrl; a.download = file.name; a.click(); }
+    } catch (err) { if (err.name !== 'AbortError') toast('Zdieľanie sa nepodarilo'); }
+  };
+  el.querySelector('.viewer-del').onclick = async () => {
+    if (!confirm('Vymazať túto fotku?')) return;
+    const p = photos[i];
+    await photoDB.del(p.id);
+    dropThumb(p.id);
+    photos.splice(i, 1);
+    toast('Fotka vymazaná');
+    if (!photos.length) { close(); return; }
+    i = Math.min(i, photos.length - 1);
+    show();
+  };
+  // potiahnutie prstom doľava/doprava
+  let sx = null;
+  el.querySelector('.viewer-stage').addEventListener('touchstart', (e) => { sx = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+  el.querySelector('.viewer-stage').addEventListener('touchend', (e) => {
+    if (sx == null) return;
+    const dx = e.changedTouches[0].clientX - sx;
+    sx = null;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  show();
+}
+
+// Záloha: fotky ako data URL (base64), aby záloha obsahovala všetko
+const blobToDataUrl = (blob) => new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(r.error); r.readAsDataURL(blob); });
+const isImageDataUrl = (v) => typeof v === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v);
+async function exportPhotos() {
+  try {
+    const all = await photoDB.all();
+    return Promise.all(all.map(async (p) => ({ id: p.id, clientId: p.clientId, date: p.date, created: p.created, full: await blobToDataUrl(p.full), thumb: await blobToDataUrl(p.thumb) })));
+  } catch (e) { return []; }
+}
+async function importPhotos(list) {
+  await photoDB.clear();
+  thumbUrls.forEach((u) => URL.revokeObjectURL(u));
+  thumbUrls.clear();
+  for (const p of Array.isArray(list) ? list : []) {
+    if (!p || typeof p.id !== 'string' || !isImageDataUrl(p.full) || !isImageDataUrl(p.thumb)) continue;
+    const [full, thumb] = await Promise.all([fetch(p.full).then((r) => r.blob()), fetch(p.thumb).then((r) => r.blob())]);
+    await photoDB.put({ id: p.id, clientId: String(p.clientId), date: /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : today(), created: Number(p.created) || Date.now(), full, thumb });
+  }
+}
+
 function reminderTemplate() {
   return db.settings.reminderText || 'Ahoj {meno}, pripomínam tréning {datum} o {cas}. Teším sa!';
 }
@@ -1446,11 +1654,12 @@ function planImageFile(p) {
   return new File([bytes], `${slug}.png`, { type: 'image/png' });
 }
 
-function exportData() {
+async function exportData() {
   const t = today();
   db.settings.lastBackup = t;
   save();
-  const blob = new Blob([JSON.stringify({ app: 'trener', version: 1, exportedAt: new Date().toISOString(), data: db }, null, 2)], { type: 'application/json' });
+  const photos = await exportPhotos();
+  const blob = new Blob([JSON.stringify({ app: 'trener', version: 2, exportedAt: new Date().toISOString(), data: db, photos })], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `trener-zaloha-${t}.json`;
@@ -1459,7 +1668,7 @@ function exportData() {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   render();
-  toast('Záloha stiahnutá');
+  toast(photos.length ? `Záloha stiahnutá (vrátane ${cnt(photos.length, 'fotky', 'fotiek', 'fotiek')})` : 'Záloha stiahnutá');
 }
 
 document.getElementById('import-file').addEventListener('change', async (e) => {
@@ -1473,6 +1682,7 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     if (!confirm(`Obnoviť zálohu? Aktuálne dáta budú nahradené (${cnt(data.clients.length, 'klient', 'klienti', 'klientov')}, ${nTr(data.sessions.length)}).`)) return;
     db = normalize(data);
     save();
+    if (Array.isArray(parsed.photos)) await importPhotos(parsed.photos);
     go('#/');
     toast('Dáta obnovené zo zálohy');
   } catch (err) {
@@ -1545,6 +1755,7 @@ function removeTestClients() {
   const ids = new Set(db.clients.filter((c) => c.test).map((c) => c.id));
   if (!ids.size || !confirm(`Odstrániť ${cnt(ids.size, 'testovacieho klienta', 'testovacích klientov', 'testovacích klientov')} vrátane ich tréningov a meraní? Tvoji klienti ostanú.`)) return;
   db.clients = db.clients.filter((c) => !ids.has(c.id));
+  photoDB.delClients(ids).catch(() => {});
   db.sessions = db.sessions.filter((x) => !ids.has(x.clientId));
   db.measurements = db.measurements.filter((x) => !ids.has(x.clientId));
   db.plans = db.plans.filter((x) => !ids.has(x.clientId));
@@ -1657,6 +1868,8 @@ const actions = {
     if (c) openContact(c, null, 'Platba');
   },
   'photo': (d) => { const c = getClient(d.id); if (c) openPhotoSheet(c); },
+  'add-photos': (d) => { galleryClientId = d.client; document.getElementById('gallery-file').click(); },
+  'view-photo': (d) => { openViewer(d.client, d.id); },
   'contact': (d) => {
     const c = getClient(d.id);
     if (c) openContact(c);
@@ -1745,6 +1958,7 @@ const actions = {
   'wipe': () => {
     if (!confirm('Naozaj vymazať VŠETKY dáta? Túto akciu nie je možné vrátiť späť.')) return;
     db = freshDb();
+    photoDB.clear().catch(() => {});
     save();
     go('#/');
     toast('Všetky dáta vymazané');
