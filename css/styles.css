@@ -577,3 +577,14 @@ tfoot td { font-weight: 900; border-top: 1px solid var(--surface-3); border-bott
 @media (max-width: 360px) { .week-nav .label { min-width: 0; } .fin-split { font-size: .64rem; letter-spacing: .03em; } }
 .fin-split span { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 360px) { .stats { gap: 8px; } .stat { padding: 12px 10px; } .stat span { font-size: .6rem; letter-spacing: .02em; } }
+
+/* Platby – hotovosť / na účet */
+.pay-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pay-summary div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pay-summary span { color: var(--muted); font-size: .66rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.pay-summary b { font-size: 1.25rem; font-weight: 900; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pay-summary div:first-child b { color: var(--primary); }
+.btn.pay-cash { background: var(--ok-soft); border-color: rgba(110, 231, 160, .35); color: var(--ok); }
+.badge.pay-cash { background: var(--ok-soft); color: var(--ok); }
+.badge.pay-bank { background: var(--primary-soft); color: var(--primary); }
+.due-client .quick { flex-wrap: wrap; justify-content: flex-end; }

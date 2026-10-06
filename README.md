@@ -7,12 +7,11 @@ Nepotrebuje server ani účet – dáta sa ukladajú v zariadení (s možnosťou
 ## Funkcie
 - **Prehľad** – dnešné a najbližšie tréningy, tréningy na vyhodnotenie, klienti, ktorým dochádza permanentka, pripomienka zálohy
 - **Klienti** – kontakt, cieľ, poznámky (zranenia…), archivácia, vyhľadávanie
-- **Permanentky** – balíky tréningov a platby, automatický odpočet odtrénovaných tréningov
 - **Kalendár** – týždenný prehľad, opakované tréningy (každý týždeň), stav naplánovaný / odtrénovaný / zrušený, SMS pripomienka klientovi
 - **Tréningové plány** – šablóny a plány pre klientov, série/opakovania/záťaž/pauza, kopírovanie, zdieľanie, tlač
 - **Knižnica cvikov** – vlastné cviky podľa partií
 - **Merania** – váha, % tuku, obvody, zmena od predchádzajúceho merania
-- **Financie** – príjem po mesiacoch (permanentky + jednotlivé tréningy), nezaplatené tréningy nad rámec permanentky s pripomienkou platby, platby, prehľad podľa klientov a posledných 6 mesiacov; cena tréningu (predvolene 20 €) v Nastaveniach
+- **Financie** – každý tréning sa platí zvlášť (predvolene 20 €, nastaviteľné); príjem po mesiacoch rozdelený na hotovosť a na účet, nezaplatené tréningy s pripomienkou a tlačidlami Hotovosť / Na účet, platby, prehľad podľa klientov a posledných 6 mesiacov. Permanentky sú zatiaľ vypnuté (`PACKAGES` v `js/app.js`)
 
 ## Spustenie
 Stačí servírovať priečinok ako statický web, napr.:
