@@ -1070,3 +1070,11 @@ h1 { font-weight: 800; }
 
 /* Avatar s fotkou – bez tyrkysového podkladu, aby pri prekreslení nepreblikol kým sa fotka vykreslí */
 .avatar:has(img) { background: var(--surface-3); }
+
+/* Tabuľka meraní – hodnota a zmena pod sebou, nič sa nezalamuje */
+#measure-card td, #measure-card th { white-space: nowrap; vertical-align: top; }
+#measure-card td.date { font-variant-numeric: tabular-nums; }
+#measure-card th small { display: block; font-size: .62rem; font-weight: 500; color: var(--muted); letter-spacing: 0; text-transform: none; }
+#measure-card td.num { line-height: 1.2; padding-top: 10px; }
+#measure-card .delta { display: block; font-size: .72rem; font-weight: 700; min-height: 1em; }
+#measure-card td:last-child { white-space: normal; min-width: 120px; color: var(--muted); font-size: .85rem; }

@@ -618,7 +618,7 @@ function measureCard(c) {
     if (cur == null || prev == null) return '';
     const d = Math.round((cur - prev) * 10) / 10;
     if (!d) return '';
-    return ` <small class="${d < 0 ? 'delta-down' : 'delta-up'}">${d > 0 ? '+' : ''}${fmtNum(d)}</small>`;
+    return `<small class="delta ${d < 0 ? 'delta-down' : 'delta-up'}">${d > 0 ? '+' : ''}${fmtNum(d)}</small>`;
   };
   const avail = METRICS.map(([key, label, unit]) => ({ key, label, unit, points: ms.filter((m) => m[key] != null && m[key] !== '').map((m) => ({ date: m.date, value: Number(m[key]) })) }))
     .filter((m) => m.points.length >= 2);
@@ -629,11 +629,11 @@ function measureCard(c) {
       ${chartSummary(sel.points, sel.unit, sel.label)}
       ${chartHtml(sel.points, sel.unit)}` : ms.length === 1 ? '<p class="hint" style="margin-top:0">Graf sa ukáže po druhom meraní.</p>' : ''}
     ${ms.length ? `<div class="table-wrap"><table>
-      <thead><tr><th>Dátum</th><th class="num">Váha (kg)</th><th class="num">Tuk (%)</th><th class="num">Pás (cm)</th><th class="num">Boky (cm)</th><th>Poznámka</th></tr></thead>
+      <thead><tr><th>Dátum</th><th class="num">Váha<small>kg</small></th><th class="num">Tuk<small>%</small></th><th class="num">Pás<small>cm</small></th><th class="num">Boky<small>cm</small></th><th>Poznámka</th></tr></thead>
       <tbody>${ms.map((m, i) => {
         const p = ms[i - 1] || {};
         return `<tr data-action="edit-measurement" data-id="${m.id}" style="cursor:pointer">
-          <td>${fmtShort(m.date)} ${parseDate(m.date).getFullYear()}</td>
+          <td class="date">${fmtShort(m.date)} ${parseDate(m.date).getFullYear()}</td>
           <td class="num">${fmtNum(m.weight)}${delta(m.weight, p.weight)}</td>
           <td class="num">${fmtNum(m.bodyFat)}${delta(m.bodyFat, p.bodyFat)}</td>
           <td class="num">${fmtNum(m.waist)}${delta(m.waist, p.waist)}</td>
