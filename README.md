@@ -12,6 +12,7 @@ Nepotrebuje server ani účet – dáta sa ukladajú v zariadení (s možnosťou
 - **Tréningové plány** – šablóny a plány pre klientov, série/opakovania/záťaž/pauza, kopírovanie, zdieľanie, tlač
 - **Knižnica cvikov** – vlastné cviky podľa partií
 - **Merania** – váha, % tuku, obvody, zmena od predchádzajúceho merania
+- **Financie** – príjem po mesiacoch (permanentky + jednotlivé tréningy), nezaplatené tréningy nad rámec permanentky s pripomienkou platby, platby, prehľad podľa klientov a posledných 6 mesiacov; cena tréningu (predvolene 20 €) v Nastaveniach
 
 ## Spustenie
 Stačí servírovať priečinok ako statický web, napr.:

@@ -84,7 +84,10 @@ const DAYS_LONG = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota
 const weekday = (s) => (parseDate(s).getDay() + 6) % 7;
 const fmtShort = (s) => { const d = parseDate(s); return `${d.getDate()}. ${d.getMonth() + 1}.`; };
 const fmtDate = (s) => (s ? `${DAYS[weekday(s)]} ${fmtShort(s)} ${parseDate(s).getFullYear()}` : '');
-const fmtMoney = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('sk-SK', { style: 'currency', currency: 'EUR' }));
+const fmtMoney = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('sk-SK', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 }));
+const MONTHS = ['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl', 'august', 'september', 'október', 'november', 'december'];
+const monthKey = (y, m) => { const d = new Date(y, m - 1, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+const monthLabel = (key) => { const [y, m] = key.split('-').map(Number); const n = MONTHS[m - 1]; return `${n[0].toUpperCase()}${n.slice(1)} ${y}`; };
 const fmtNum = (n, digits = 1) => (n == null || n === '' ? '–' : Number(n).toLocaleString('sk-SK', { maximumFractionDigits: digits }));
 const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';
 const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 86400000);
@@ -109,12 +112,19 @@ function idx() {
   for (const s of db.sessions) {
     push(sessionsByClient, s.clientId, s);
     push(sessionsByDate, s.date, s);
-    if (s.status === 'done') done.set(s.clientId, (done.get(s.clientId) || 0) + 1);
+    // individuálne zaplatený tréning nečerpá permanentku
+    if (s.status === 'done' && !s.paid) done.set(s.clientId, (done.get(s.clientId) || 0) + 1);
   }
   for (const p of db.packages) bought.set(p.clientId, (bought.get(p.clientId) || 0) + (Number(p.count) || 0));
+  // Na zaplatenie: odtrénované, nezaplatené tréningy nad rámec permanentky (najnovšie)
+  const due = new Set();
+  for (const [cid, list] of sessionsByClient) {
+    const open = list.filter((s) => s.status === 'done' && !s.paid).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+    open.slice(bought.get(cid) || 0).forEach((s) => due.add(s.id));
+  }
   _idx = {
     clients: byId(db.clients), plans: byId(db.plans), sessions: byId(db.sessions), exercises: byId(db.exercises),
-    sessionsByClient, sessionsByDate, done, bought
+    sessionsByClient, sessionsByDate, done, bought, due
   };
   return _idx;
 }
@@ -127,6 +137,12 @@ const getExercise = (id) => idx().exercises.get(id);
 const clientName = (id) => getClient(id)?.name || 'Bez klienta';
 const bySessionTime = (a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''));
 const byName = (a, b) => a.name.localeCompare(b.name, 'sk');
+
+const sessionPrice = () => Number(db.settings.sessionPrice ?? 20);
+const priceOf = (s) => (s.price != null && s.price !== '' ? Number(s.price) : sessionPrice());
+const isDue = (s) => idx().due.has(s.id);
+const clientDue = (id) => clientSessions(id).filter(isDue).sort(bySessionTime);
+const sumPrice = (list) => list.reduce((a, s) => a + priceOf(s), 0);
 
 function credits(clientId) {
   const bought = idx().bought.get(clientId) || 0;
@@ -163,7 +179,9 @@ function sessionRow(s, { showClient = true, showDate = true } = {}) {
     <button class="session-main" data-action="edit-session" data-id="${s.id}">
       <span class="time">${esc(s.time || '–')}</span>
       <span class="info"><strong>${title}</strong><small>${meta}</small></span>
-      <span class="badge ${s.status}">${STATUS[s.status]}</span>
+      ${s.status === 'done' && isDue(s) ? `<span class="badge warn">Nezaplatený · ${fmtMoney(priceOf(s))}</span>`
+        : s.status === 'done' && s.paid ? `<span class="badge done">Zaplatený · ${fmtMoney(priceOf(s))}</span>`
+        : `<span class="badge ${s.status}">${STATUS[s.status]}</span>`}
     </button>
     ${s.status === 'planned' ? `<div class="quick">
       ${canRemind ? `<button class="icon-btn" title="Poslať pripomienku" aria-label="Poslať pripomienku" data-action="remind" data-id="${s.id}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3 9.2 10.1M22 3H2l7.2 7.1 2.5 10.2z"/></svg></button>` : ''}
@@ -233,6 +251,8 @@ function viewDashboard() {
       <strong>${next.date === t ? '' : fmtDate(next.date) + ' · '}${esc(next.time || '')} ${esc(clientName(next.clientId))}</strong>
     </button>` : ''}
   </section>
+
+  ${(() => { const due = db.sessions.filter(isDue); return due.length ? `<a class="notice notice-money" href="#/finance"><span>Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span><span class="btn small">Financie ›</span></a>` : ''; })()}
 
   ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať</button></div>` : ''}
 
@@ -351,13 +371,17 @@ function viewClient(id) {
     </section>
 
     <section class="card">
-      <div class="card-head"><h2>Permanentka</h2><button class="btn small" data-action="new-package" data-client="${c.id}">+ Balík</button></div>
+      <div class="card-head"><h2>Permanentka a platby</h2><button class="btn small" data-action="new-package" data-client="${c.id}">+ Balík</button></div>
       ${cr.bought ? `<div class="credits"><b>${cr.left}</b><span class="muted">zostávajúcich z ${cr.bought} zakúpených</span></div>
         <p class="muted" style="margin:4px 0 8px">Spolu zaplatené: ${fmtMoney(paid)}</p>
         <ul class="list">${packages.map((p) => `<li><button class="list-item" data-action="edit-package" data-id="${p.id}">
           <span class="info"><strong>${nTr(Number(p.count) || 0)}${p.price ? ` · ${fmtMoney(p.price)}` : ''}</strong><small>${fmtDate(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</small></span>
         </button></li>`).join('')}</ul>`
-        : '<p class="empty">Klient nemá zakúpený žiadny balík tréningov.</p>'}
+        : '<p class="empty">Klient nemá zakúpený žiadny balík – platí za jednotlivé tréningy.</p>'}
+      ${(() => { const due = clientDue(id); return due.length ? `<div class="due-row">
+        <span>Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span>
+        <button class="btn small primary" data-action="pay-client" data-id="${id}">Zaplatené</button>
+      </div>` : ''; })()}
     </section>
   </div>
 
@@ -503,6 +527,112 @@ function viewExercises() {
   </section>`;
 }
 
+function viewFinance(monthParam) {
+  const t = today();
+  const month = monthParam || t.slice(0, 7);
+  const [y, m] = month.split('-').map(Number);
+  const inMonth = (d) => !!d && d.startsWith(month);
+  const pkgs = db.packages.filter((p) => inMonth(p.date));
+  const paidSessions = db.sessions.filter((s) => s.paid && inMonth(s.paidDate));
+  const pkgIncome = pkgs.reduce((a, p) => a + (Number(p.price) || 0), 0);
+  const singleIncome = sumPrice(paidSessions);
+  const doneInMonth = db.sessions.filter((s) => s.status === 'done' && inMonth(s.date));
+  const fromPass = doneInMonth.filter((s) => !s.paid && !isDue(s)).length;
+  const allDue = db.sessions.filter(isDue);
+
+  // nezaplatené podľa klienta
+  const dueByClient = new Map();
+  allDue.forEach((s) => { const a = dueByClient.get(s.clientId) || []; a.push(s); dueByClient.set(s.clientId, a); });
+  const dueRows = [...dueByClient.entries()].sort((a, b) => sumPrice(b[1]) - sumPrice(a[1]));
+
+  // platby v mesiaci
+  const payments = [
+    ...pkgs.map((p) => ({ date: p.date, clientId: p.clientId, label: `Permanentka · ${nTr(Number(p.count) || 0)}`, amount: Number(p.price) || 0 })),
+    ...paidSessions.map((s) => ({ date: s.paidDate, clientId: s.clientId, label: `Tréning ${fmtShort(s.date)}`, amount: priceOf(s) }))
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
+  // podľa klientov
+  const byClient = new Map();
+  payments.forEach((p) => byClient.set(p.clientId, (byClient.get(p.clientId) || 0) + p.amount));
+  const doneByClient = new Map();
+  doneInMonth.forEach((s) => doneByClient.set(s.clientId, (doneByClient.get(s.clientId) || 0) + 1));
+  const clientIds = [...new Set([...byClient.keys(), ...doneByClient.keys()])].sort((a, b) => (byClient.get(b) || 0) - (byClient.get(a) || 0) || clientName(a).localeCompare(clientName(b), 'sk'));
+
+  // posledných 6 mesiacov
+  const last6 = Array.from({ length: 6 }, (_, i) => monthKey(y, m - i)).map((k) => {
+    const inc = db.packages.filter((p) => p.date?.startsWith(k)).reduce((a, p) => a + (Number(p.price) || 0), 0)
+      + sumPrice(db.sessions.filter((s) => s.paid && s.paidDate?.startsWith(k)));
+    const done = db.sessions.filter((s) => s.status === 'done' && s.date.startsWith(k)).length;
+    return { k, inc, done };
+  });
+
+  return `
+  <div class="page-head">
+    <div><h1>Financie</h1><p class="muted" style="margin:0">Cena tréningu ${fmtMoney(sessionPrice())} · <a href="#/settings">zmeniť</a></p></div>
+    <div class="week-nav">
+      <a class="icon-btn" href="#/finance/${monthKey(y, m - 1)}" aria-label="Predchádzajúci mesiac">‹</a>
+      <span class="label">${monthLabel(month)}</span>
+      <a class="icon-btn" href="#/finance/${monthKey(y, m + 1)}" aria-label="Nasledujúci mesiac">›</a>
+      ${month !== t.slice(0, 7) ? '<a class="btn small" href="#/finance">Teraz</a>' : ''}
+    </div>
+  </div>
+
+  <section class="hero hero-finance">
+    <span class="eyebrow">Príjem · ${monthLabel(month)}</span>
+    <div class="fin-big">${fmtMoney(pkgIncome + singleIncome)}</div>
+    <div class="fin-split">
+      <span>Permanentky <b>${fmtMoney(pkgIncome)}</b></span>
+      <span>Jednotlivé tréningy <b>${fmtMoney(singleIncome)}</b></span>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="stat"><b>${doneInMonth.length}</b><span>odtrénované</span></div>
+    <div class="stat"><b>${fromPass}</b><span>z permanentky</span></div>
+    <div class="stat ${allDue.length ? 'stat-warn' : ''}"><b>${fmtMoney(sumPrice(allDue))}</b><span>nezaplatené</span></div>
+  </div>
+
+  <section class="card">
+    <div class="card-head"><h2>Nezaplatené</h2>${allDue.length ? `<span class="badge warn">${nTr(allDue.length)}</span>` : ''}</div>
+    ${dueRows.length ? `<ul class="list">${dueRows.map(([cid, list]) => `<li class="due-client">
+      <a class="list-item" href="#/client/${cid}">
+        <span class="avatar">${esc(initials(clientName(cid)))}</span>
+        <span class="info"><strong>${esc(clientName(cid))}</strong><small>${nTr(list.length)} · ${list.map((s) => fmtShort(s.date)).join(', ')}</small></span>
+        <b class="amount">${fmtMoney(sumPrice(list))}</b>
+      </a>
+      <div class="quick">
+        ${getClient(cid)?.phone || getClient(cid)?.email ? `<button class="icon-btn" title="Pripomenúť platbu" aria-label="Pripomenúť platbu" data-action="remind-pay" data-id="${cid}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3 9.2 10.1M22 3H2l7.2 7.1 2.5 10.2z"/></svg></button>` : ''}
+        <button class="btn small primary" data-action="pay-client" data-id="${cid}">Zaplatené</button>
+      </div>
+    </li>`).join('')}</ul>` : '<p class="empty">Všetko je zaplatené. 👌</p>'}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Platby v mesiaci</h2></div>
+    ${payments.length ? `<ul class="list">${payments.map((p) => `<li><a class="list-item" href="#/client/${p.clientId}">
+      <span class="info"><strong>${esc(clientName(p.clientId))}</strong><small>${fmtDate(p.date)} · ${esc(p.label)}</small></span>
+      <b class="amount pos">+${fmtMoney(p.amount)}</b>
+    </a></li>`).join('')}</ul>` : '<p class="empty">V tomto mesiaci zatiaľ žiadne platby.</p>'}
+  </section>
+
+  ${clientIds.length ? `<section class="card">
+    <div class="card-head"><h2>Podľa klientov</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Klient</th><th class="num">Tréningy</th><th class="num">Príjem</th></tr></thead>
+      <tbody>${clientIds.map((cid) => `<tr><td>${esc(clientName(cid))}</td><td class="num">${doneByClient.get(cid) || 0}</td><td class="num">${fmtMoney(byClient.get(cid) || 0)}</td></tr>`).join('')}</tbody>
+    </table></div>
+  </section>` : ''}
+
+  <section class="card">
+    <div class="card-head"><h2>Posledných 6 mesiacov</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Mesiac</th><th class="num">Tréningy</th><th class="num">Príjem</th></tr></thead>
+      <tbody>${last6.map((r) => `<tr class="${r.k === month ? 'current' : ''}" data-href="#/finance/${r.k}"><td>${monthLabel(r.k)}</td><td class="num">${r.done}</td><td class="num">${fmtMoney(r.inc)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Spolu</td><td class="num">${last6.reduce((a, r) => a + r.done, 0)}</td><td class="num">${fmtMoney(last6.reduce((a, r) => a + r.inc, 0))}</td></tr></tfoot>
+    </table></div>
+  </section>`;
+}
+
 function viewSettings() {
   const lb = db.settings.lastBackup;
   return `
@@ -510,6 +640,7 @@ function viewSettings() {
   <section class="card">
     <div class="card-head"><h2>Predvolené hodnoty tréningu</h2><button class="btn small" data-action="edit-defaults">Upraviť</button></div>
     <dl class="kv">
+      <dt>Cena tréningu</dt><dd>${fmtMoney(sessionPrice())}</dd>
       <dt>Dĺžka tréningu</dt><dd>${db.settings.defaultDuration || 60} min</dd>
       <dt>Text pripomienky</dt><dd>${esc(reminderTemplate())}</dd>
     </dl>
@@ -550,7 +681,8 @@ const routes = [
   [/^#\/plans$/, viewPlans],
   [/^#\/plan\/([\w-]+)$/, viewPlan],
   [/^#\/exercises$/, viewExercises],
-  [/^#\/settings$/, viewSettings]
+  [/^#\/settings$/, viewSettings],
+  [/^#\/finance(?:\/(\d{4}-\d{2}))?$/, viewFinance]
 ];
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -567,7 +699,8 @@ function render(animate = false) {
       const section = hash.startsWith('#/client') ? 'clients'
         : hash.startsWith('#/calendar') ? 'calendar'
         : hash.startsWith('#/plan') || hash.startsWith('#/exercises') ? 'plans'
-        : hash.startsWith('#/settings') ? 'settings' : 'home';
+        : hash.startsWith('#/settings') ? 'settings'
+        : hash.startsWith('#/finance') ? 'finance' : 'home';
       document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === section));
       if (flashId) {
         main.querySelectorAll(`[data-id="${flashId}"]`).forEach((el) => el.closest('.session')?.classList.add('flash'));
@@ -782,7 +915,7 @@ function openSessionForm(s, defaults = {}) {
     openClientForm();
     return;
   }
-  const values = s || { date: today(), time: '', duration: db.settings.defaultDuration || 60, status: 'planned', ...defaults };
+  const values = s ? { ...s, price: priceOf(s) } : { date: today(), time: '', duration: db.settings.defaultDuration || 60, status: 'planned', price: sessionPrice(), ...defaults };
   const plans = [...db.plans].sort((a, b) => (a.clientId ? 1 : 0) - (b.clientId ? 1 : 0) || byName(a, b));
   openForm({
     title: s ? 'Upraviť tréning' : 'Nový tréning',
@@ -793,6 +926,8 @@ function openSessionForm(s, defaults = {}) {
       { name: 'time', label: 'Čas', type: 'time', half: true },
       { name: 'duration', label: 'Dĺžka (min)', type: 'number', min: 5, step: 5, half: true },
       { name: 'status', label: 'Stav', type: 'select', half: true, options: Object.entries(STATUS) },
+      { name: 'price', label: 'Cena (€)', type: 'number', min: 0, step: 0.5, half: true, hint: 'Ak tréning nie je z permanentky' },
+      ...(s ? [{ name: 'paid', label: 'Zaplatený samostatne (nečerpá permanentku)', type: 'checkbox' }] : []),
       { name: 'planId', label: 'Tréningový plán', type: 'select', options: [['', '— bez plánu —'], ...plans.map((p) => [p.id, p.clientId ? `${p.name} (${clientName(p.clientId)})` : `${p.name} (šablóna)`])] },
       { name: 'notes', label: 'Poznámky z tréningu', type: 'textarea', placeholder: 'čo sa odcvičilo, ako sa klient cítil…' },
       ...(s ? [] : [{ name: 'repeat', label: 'Opakovať každý týždeň', type: 'number', min: 1, default: 1, hint: 'Počet týždňov (1 = len tento jeden tréning)' }])
@@ -801,6 +936,8 @@ function openSessionForm(s, defaults = {}) {
       const repeat = Math.min(Math.max(Number(d.repeat) || 1, 1), 52);
       delete d.repeat;
       if (s) {
+        if (d.paid && !s.paid) d.paidDate = today();
+        if (!d.paid) delete s.paidDate;
         Object.assign(s, d);
         toast('Tréning uložený');
       } else {
@@ -815,10 +952,10 @@ function openSessionForm(s, defaults = {}) {
 function openPackageForm(p, clientId) {
   openForm({
     title: p ? 'Upraviť balík' : 'Nový balík tréningov',
-    values: p || { date: today(), count: 10 },
+    values: p || { date: today(), count: 10, price: 10 * sessionPrice() },
     fields: [
       { name: 'count', label: 'Počet tréningov', type: 'number', min: 1, required: true, half: true },
-      { name: 'price', label: 'Cena (€)', type: 'number', min: 0, step: 0.01, half: true },
+      { name: 'price', label: 'Cena (€)', type: 'number', min: 0, step: 0.01, half: true, hint: `Bežne počet × ${fmtMoney(sessionPrice())}` },
       { name: 'date', label: 'Dátum zakúpenia', type: 'date', required: true },
       { name: 'note', label: 'Poznámka', placeholder: 'napr. zaplatené prevodom' }
     ],
@@ -954,7 +1091,7 @@ function intlPhone(phone) {
 }
 
 // Panel „Kontaktovať klienta“ – WhatsApp, SMS, hovor, e-mail s pripravenou správou
-function openContact(c, session) {
+function openContact(c, session, preferred) {
   const t = today();
   const next = session || clientSessions(c.id).filter((x) => x.status === 'planned' && x.date >= t).sort(bySessionTime)[0];
   const cr = credits(c.id);
@@ -964,16 +1101,18 @@ function openContact(c, session) {
     cr.bought && ['Permanentka', cr.left > 0
       ? `Ahoj ${firstName(c)}, na permanentke ti ${cr.left === 1 ? 'zostáva posledný tréning' : `${cr.left <= 4 ? 'zostávajú' : 'zostáva'} ${cr.left} ${cr.left <= 4 ? 'tréningy' : 'tréningov'}`}. Chceš si objednať ďalší balík?`
       : `Ahoj ${firstName(c)}, tvoja permanentka je vyčerpaná. Chceš si objednať ďalší balík?`],
+    (() => { const due = clientDue(c.id); return due.length && ['Platba', `Ahoj ${firstName(c)}, posielam prehľad: ${due.length === 1 ? 'nezaplatený je 1 tréning' : `nezaplatené sú ${nTr(due.length)}`} (${due.map((x) => fmtShort(x.date)).join(', ')}), spolu ${fmtMoney(sumPrice(due))}. Ďakujem!`]; })(),
     ['Vlastná', `Ahoj ${firstName(c)}, `]
   ].filter(Boolean);
+  const start = Math.max(0, templates.findIndex(([label]) => label === preferred));
   const phone = (c.phone || '').replace(/\s/g, '');
   const wa = intlPhone(c.phone);
 
   modalForm.innerHTML = `
     <header class="modal-head"><h2>Kontaktovať · ${esc(firstName(c))}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
     <div class="modal-body">
-      <div class="chips" role="tablist">${templates.map(([label], i) => `<button type="button" class="chip ${i === 0 ? 'active' : ''}" data-tpl="${i}">${esc(label)}</button>`).join('')}</div>
-      <div class="field"><label for="contact-text">Správa</label><textarea id="contact-text" rows="4">${esc(templates[0][1])}</textarea></div>
+      <div class="chips" role="tablist">${templates.map(([label], i) => `<button type="button" class="chip ${i === start ? 'active' : ''}" data-tpl="${i}">${esc(label)}</button>`).join('')}</div>
+      <div class="field"><label for="contact-text">Správa</label><textarea id="contact-text" rows="4">${esc(templates[start][1])}</textarea></div>
       <div class="contact-actions">
         ${phone ? `<a class="contact-btn whatsapp" data-channel="wa" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.4.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>
@@ -1025,7 +1164,7 @@ function setStatus(id, status) {
   render();
   if (status === 'done') {
     const cr = credits(s.clientId);
-    toast(cr.bought ? `Odtrénované · zostáva ${cr.left} z permanentky` : 'Tréning odtrénovaný');
+    toast(isDue(s) ? `Odtrénované · na zaplatenie ${fmtMoney(priceOf(s))}` : cr.bought ? `Odtrénované · zostáva ${cr.left} z permanentky` : 'Tréning odtrénovaný');
   } else {
     toast('Tréning zrušený');
   }
@@ -1196,7 +1335,8 @@ function loadDemo() {
     { id: uid(), name: 'Peter Horváth', phone: '+421 911 987 654', email: '', goal: 'Silový tréning, drep 120 kg', notes: '', createdAt: addDays(t, -40), archived: false },
     { id: uid(), name: 'Lucia Kováčová', phone: '', email: 'lucia@example.com', goal: 'Zlepšiť kondíciu a držanie tela', notes: 'Sedavé zamestnanie, bolesti krčnej chrbtice.', createdAt: addDays(t, -20), archived: false }
   ];
-  const [jana, peter, lucia] = clients;
+  clients.push({ id: uid(), name: 'Martin Kráľ', phone: '0903 456 789', email: '', goal: 'Bolesti chrbta, mobilita', notes: 'Platí za jednotlivé tréningy.', createdAt: addDays(t, -45), archived: false });
+  const [jana, peter, lucia, martin] = clients;
   d.clients = clients;
   const template = {
     id: uid(), clientId: '', name: 'Celé telo – začiatočník', notes: '2–3× týždenne',
@@ -1219,10 +1359,10 @@ function loadDemo() {
   const janaPlan = { ...structuredClone(template), id: uid(), clientId: jana.id, name: 'Jana – celé telo' };
   d.plans = [template, peterPlan, janaPlan];
   d.packages = [
-    { id: uid(), clientId: jana.id, date: addDays(t, -60), count: 10, price: 250, note: 'hotovosť' },
-    { id: uid(), clientId: jana.id, date: addDays(t, -10), count: 10, price: 250, note: 'prevod' },
-    { id: uid(), clientId: peter.id, date: addDays(t, -35), count: 10, price: 250, note: '' },
-    { id: uid(), clientId: lucia.id, date: addDays(t, -20), count: 5, price: 135, note: '' }
+    { id: uid(), clientId: jana.id, date: addDays(t, -60), count: 10, price: 200, note: 'hotovosť' },
+    { id: uid(), clientId: jana.id, date: addDays(t, -10), count: 10, price: 200, note: 'prevod' },
+    { id: uid(), clientId: peter.id, date: addDays(t, -35), count: 10, price: 200, note: '' },
+    { id: uid(), clientId: lucia.id, date: addDays(t, -20), count: 5, price: 100, note: '' }
   ];
   const s = (c, offset, time, status, planId = '') => ({ id: uid(), clientId: c.id, date: addDays(ws, offset), time, duration: 60, status, planId, notes: '' });
   d.sessions = [];
@@ -1231,9 +1371,15 @@ function loadDemo() {
     if (w >= -4) d.sessions.push(s(peter, w * 7 + 1, '18:00', 'done', peterPlan.id));
   }
   d.sessions.push(s(lucia, -14 + 2, '17:00', 'done'), s(lucia, -7 + 2, '17:00', 'done'));
+  // Martin platí za každý tréning zvlášť – staršie zaplatené, posledné dva ešte nie
+  for (let w = -6; w <= -1; w++) {
+    const x = s(martin, w * 7 + 2, '19:00', 'done');
+    if (w <= -3) { x.paid = true; x.paidDate = x.date; }
+    d.sessions.push(x);
+  }
   // Aktuálny týždeň: všetko, čo je dnes a neskôr, je naplánované
   d.sessions = d.sessions.filter((x) => x.date < t);
-  [[jana, 0, '07:00', janaPlan.id], [peter, 1, '18:00', peterPlan.id], [lucia, 2, '17:00', template.id], [jana, 3, '07:00', janaPlan.id], [peter, 4, '18:00', peterPlan.id], [lucia, 9, '17:00', template.id], [jana, 7, '07:00', janaPlan.id], [jana, 10, '07:00', janaPlan.id]]
+  [[martin, 2, '19:00', ''], [martin, 9, '19:00', ''], [jana, 0, '07:00', janaPlan.id], [peter, 1, '18:00', peterPlan.id], [lucia, 2, '17:00', template.id], [jana, 3, '07:00', janaPlan.id], [peter, 4, '18:00', peterPlan.id], [lucia, 9, '17:00', template.id], [jana, 7, '07:00', janaPlan.id], [jana, 10, '07:00', janaPlan.id]]
     .forEach(([c, off, time, plan]) => { if (addDays(ws, off) >= t) d.sessions.push(s(c, off, time, 'planned', plan)); });
   d.sessions.push({ id: uid(), clientId: jana.id, date: t, time: '19:00', duration: 45, status: 'planned', planId: janaPlan.id, notes: '' });
   d.measurements = [
@@ -1242,7 +1388,7 @@ function loadDemo() {
     { id: uid(), clientId: jana.id, date: addDays(t, -14), weight: 71.2, bodyFat: 28.4, waist: 80.5, hips: 100, note: '' },
     { id: uid(), clientId: peter.id, date: addDays(t, -40), weight: 86, bodyFat: 18, waist: 90, hips: null, note: '' }
   ];
-  d.settings = { lastBackup: t };
+  d.settings = { lastBackup: t, sessionPrice: 20 };
   db = d;
   save();
   go('#/');
@@ -1267,6 +1413,21 @@ const actions = {
     if (c) openContact(c, s);
   },
   'show-history': (d) => { showAllHistory = d.id; render(); },
+  'pay-client': (d, el) => {
+    const due = clientDue(d.id);
+    if (!due.length) return;
+    const total = sumPrice(due);
+    due.forEach((s) => { s.paid = true; s.paidDate = today(); });
+    const r = el.getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top + r.height / 2);
+    save();
+    render();
+    toast(`Zaplatené: ${fmtMoney(total)}`);
+  },
+  'remind-pay': (d) => {
+    const c = getClient(d.id);
+    if (c) openContact(c, null, 'Platba');
+  },
   'contact': (d) => {
     const c = getClient(d.id);
     if (c) openContact(c);
@@ -1339,8 +1500,9 @@ const actions = {
   'edit-exercise': (d) => openExerciseForm(getExercise(d.id)),
   'edit-defaults': () => openForm({
     title: 'Predvolené hodnoty',
-    values: { defaultDuration: db.settings.defaultDuration || 60, reminderText: reminderTemplate() },
+    values: { sessionPrice: sessionPrice(), defaultDuration: db.settings.defaultDuration || 60, reminderText: reminderTemplate() },
     fields: [
+      { name: 'sessionPrice', label: 'Cena tréningu (€)', type: 'number', min: 0, step: 0.5, hint: 'Platí pre nové tréningy a tréningy bez vlastnej ceny' },
       { name: 'defaultDuration', label: 'Dĺžka tréningu (min)', type: 'number', min: 5, step: 5 },
       { name: 'reminderText', label: 'Text SMS pripomienky', type: 'textarea', hint: 'Zástupné znaky: {meno}, {datum}, {cas}' }
     ],
@@ -1359,6 +1521,8 @@ const actions = {
 };
 
 document.addEventListener('click', (e) => {
+  const row = e.target.closest('tr[data-href]');
+  if (row) { location.hash = row.dataset.href; return; }
   const el = e.target.closest('[data-action]');
   if (!el || el.disabled) return;
   const fn = actions[el.dataset.action];

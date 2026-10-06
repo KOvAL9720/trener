@@ -528,3 +528,52 @@ a, button, .nav, .chip, .badge, .stat, .hero { -webkit-touch-callout: none; -web
   dialog { margin-bottom: var(--kb, 0px); max-height: calc(100dvh - var(--kb, 0px) - 24px); transition: margin-bottom .2s ease; }
   dialog form { max-height: calc(100dvh - var(--kb, 0px) - 26px); }
 }
+
+/* =========================================================
+   Financie
+   ========================================================= */
+.topbar { justify-content: space-between; }
+.topbar-btn {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  color: var(--muted); background: var(--surface-2); border: 1px solid var(--surface-3);
+  transition: color .2s, background .2s, transform .1s;
+}
+.topbar-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.topbar-btn:hover { color: var(--text); }
+.topbar-btn:active { transform: scale(.92); }
+.topbar-btn.active { color: var(--primary-ink); background: var(--primary); border-color: var(--primary); }
+
+.hero-finance .fin-big { font-size: 3.4rem; font-weight: 900; line-height: 1; letter-spacing: -.04em; margin: 10px 0 14px; font-variant-numeric: tabular-nums; }
+.fin-split { display: flex; flex-wrap: wrap; gap: 10px 24px; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: rgba(26, 6, 17, .7); }
+.fin-split b { display: block; font-size: 1.15rem; letter-spacing: -.01em; color: var(--primary-ink); text-transform: none; }
+
+.stat-warn b { color: var(--warn); }
+.stats .stat b { overflow-wrap: anywhere; }
+
+.notice-money { background: var(--warn-soft); color: var(--warn); text-decoration: none; }
+.notice-money:hover { color: var(--warn); filter: brightness(1.1); }
+.notice-money .btn { pointer-events: none; }
+
+.due-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; padding: 12px 14px; border-radius: 14px;
+  background: var(--warn-soft); color: var(--warn); font-size: .9rem;
+}
+.due-client { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 4px 0; }
+.due-client .list-item { flex: 1 1 220px; min-width: 0; }
+.due-client .quick { margin-left: auto; align-items: center; }
+.amount { font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.amount.pos { color: var(--ok); }
+
+tr[data-href] { cursor: pointer; }
+tr.current td { color: var(--primary); font-weight: 800; }
+tfoot td { font-weight: 900; border-top: 1px solid var(--surface-3); border-bottom: 0; }
+.stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stat-warn b { font-size: 1.6rem; line-height: 1.35; }
+/* malé displeje (iPhone SE) – nič nepreteká do strany */
+.profile, .profile > div { min-width: 0; }
+.contact a { overflow-wrap: anywhere; }
+.week-nav { flex-wrap: wrap; }
+@media (max-width: 360px) { .week-nav .label { min-width: 0; } .fin-split { font-size: .64rem; letter-spacing: .03em; } }
+.fin-split span { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 360px) { .stats { gap: 8px; } .stat { padding: 12px 10px; } .stat span { font-size: .6rem; letter-spacing: .02em; } }
