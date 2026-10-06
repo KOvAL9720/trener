@@ -26,6 +26,11 @@ jobs:
         run: |
           mkdir _site
           cp -r index.html manifest.webmanifest sw.js css js icons _site/
+      - name: Minify JS and CSS
+        run: |
+          npx --yes esbuild@0.24.2 _site/js/app.js --minify --allow-overwrite --outfile=_site/js/app.js
+          npx --yes esbuild@0.24.2 _site/sw.js --minify --allow-overwrite --outfile=_site/sw.js
+          npx --yes esbuild@0.24.2 _site/css/styles.css --minify --allow-overwrite --outfile=_site/css/styles.css
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
