@@ -965,3 +965,57 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 /* správa s tlačidlom Späť */
 #toast.has-undo { display: flex; align-items: center; gap: 14px; pointer-events: auto; padding-right: 10px; }
 .toast-undo { background: rgba(20, 20, 26, .08); border: 0; border-radius: 999px; padding: 6px 14px; color: #c2187a; font: inherit; font-weight: 800; cursor: pointer; }
+
+/* =========================================================
+   AI ASISTENT
+   ========================================================= */
+.topbar-ai { margin-left: auto; margin-right: 10px; color: var(--primary); }
+.topbar-ai.active { color: var(--primary-ink); }
+
+.ai-setup h2 { margin-bottom: 8px; }
+.ai-setup .field { margin: 6px 0 12px; }
+.ai-steps { margin: 12px 0; padding-left: 20px; color: var(--text); line-height: 1.55; }
+.ai-steps li + li { margin-top: 6px; }
+.ai-setup code { background: rgba(255, 255, 255, .08); padding: 1px 6px; border-radius: 6px; font-size: .85em; }
+
+.ai-head { align-items: center; }
+.ai-chat { display: flex; flex-direction: column; gap: 12px; padding-bottom: 12px; min-height: calc(100dvh - var(--nav-h) - 290px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+@media (min-width: 900px) { .ai-chat { min-height: calc(100dvh - 230px); } }
+.ai-msg { display: flex; }
+.ai-msg.user { justify-content: flex-end; }
+.ai-msg .bubble { max-width: min(88%, 640px); padding: 12px 16px; border-radius: 20px; line-height: 1.5; overflow-wrap: anywhere; }
+.ai-msg.user .bubble { background: var(--grad, linear-gradient(135deg, #ff9fd0, #b892ff)); color: var(--primary-ink); font-weight: 600; border-bottom-right-radius: 6px; }
+.ai-msg.bot .bubble { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .07); border-bottom-left-radius: 6px; }
+.ai-msg.error .bubble { border-color: rgba(255, 107, 107, .4); background: var(--danger-soft); }
+.ai-msg .bubble p { margin: 0; }
+.ai-msg .bubble p + p, .ai-msg .bubble ul + p, .ai-msg .bubble p + ul { margin-top: 8px; }
+.ai-msg .bubble ul { margin: 6px 0 0; padding-left: 20px; }
+.ai-actions { list-style: none; margin: 10px 0 0 !important; padding: 10px 0 0 !important; border-top: 1px solid rgba(255, 255, 255, .08); font-size: .85rem; color: var(--ok); display: flex; flex-direction: column; gap: 4px; }
+.ai-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ai-undo { margin-top: 10px; }
+.ai-examples { gap: 8px; }
+.ai-examples .chip { min-height: 36px; font-size: .82rem; text-align: left; }
+.ai-typing { display: flex; gap: 5px; padding: 6px 2px; }
+.ai-typing span { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); opacity: .4; animation: ai-dot 1.2s infinite ease-in-out; }
+.ai-typing span:nth-child(2) { animation-delay: .15s; }
+.ai-typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes ai-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
+
+.ai-input {
+  position: sticky; bottom: calc(var(--nav-h) + 22px + env(safe-area-inset-bottom)); z-index: 5;
+  display: flex; align-items: flex-end; gap: 8px; padding: 8px; border-radius: 26px;
+  background: rgba(24, 24, 30, .92); border: 1px solid rgba(255, 255, 255, .1);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .7);
+}
+.ai-input textarea { flex: 1; min-height: 44px; max-height: 160px; resize: none; border: 0; background: transparent; box-shadow: none !important; padding: 11px 12px; line-height: 1.4; }
+.ai-input .ai-send { width: 44px; min-height: 44px; padding: 0; flex: none; }
+.ai-input .ai-send svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.ai-input .ai-send:disabled { opacity: .45; }
+@media (min-width: 900px) { .ai-input { bottom: 20px; } }
+@media (prefers-reduced-motion: reduce) { .ai-typing span { animation: none; opacity: .7; } }
+/* asistent: na telefóne ikona v hornej lište, na počítači položka v bočnom menu */
+.nav .nav-ai { display: none; }
+@media (min-width: 900px) {
+  .nav .nav-ai { display: flex; order: 10; }
+  body:has(.nav-ai) .topbar-ai { display: none; }
+}
