@@ -1108,3 +1108,7 @@ body.bg-ready::before { opacity: 1; }
 
 /* Klientska zóna – prístupový kód klienta */
 .share-code { font-size: 2rem; font-weight: 800; letter-spacing: .18em; font-variant-numeric: tabular-nums; margin: 6px 0 14px; color: var(--primary); }
+
+/* Zoznam klientov – zelená gulička pri klientovi s prístupom do klientskej zóny */
+.avatar-wrap { position: relative; flex: none; display: inline-flex; }
+.share-dot { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; border-radius: 50%; background: var(--ok); border: 2px solid #15191b; box-shadow: 0 0 0 1px rgba(143, 214, 174, .35); }

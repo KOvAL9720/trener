@@ -508,7 +508,7 @@ function viewClients() {
       const meta = [c.test ? 'Test' : '', next ? `Ďalší tréning ${fmtDate(next.date)} ${next.time || ''}` : 'Bez naplánovaného tréningu', c.goal].filter(Boolean).map(esc).join(' · ');
       return `<li data-name="${esc(fold(c.name))} ${esc((c.phone || '').replace(/\s/g, ''))} ${esc(fold(c.email))}">
         <a class="list-item" href="#/client/${c.id}">
-          ${avatar(c)}
+          <span class="avatar-wrap">${avatar(c)}${c.share ? '<span class="share-dot" title="Má prístup do klientskej zóny" aria-label="Má prístup do klientskej zóny"></span>' : ''}</span>
           <span class="info"><strong>${esc(c.name)}</strong><small>${meta}</small></span>
           ${c.archived ? '<span class="badge">Archív</span>' : PACKAGES && cr.bought ? `<span class="badge ${cr.left <= 0 ? 'cancelled' : cr.left <= 1 ? 'warn' : 'planned'}">${cr.left} tr.</span>`
             : (() => { const due = clientDue(c.id); return due.length ? `<span class="badge warn">${fmtMoney(sumPrice(due))}</span>` : ''; })()}
