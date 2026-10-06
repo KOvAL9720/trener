@@ -762,7 +762,7 @@ function viewExercises() {
   <section class="card">
     ${cats.length ? cats.map((cat) => `<h3 class="section-title">${esc(cat)}</h3>
       <ul class="list">${groups[cat].map((e) => `<li><button class="list-item" data-action="edit-exercise" data-id="${e.id}">
-        <span class="info"><strong>${esc(e.name)}</strong>${e.note ? `<small>${esc(e.note)}</small>` : ''}</span><span aria-hidden="true">✎</span>
+        <span class="ex-pic">${EXERCISE_ICONS(e)}</span><span class="info"><strong>${esc(e.name)}</strong>${e.note ? `<small>${esc(e.note)}</small>` : ''}</span><span aria-hidden="true">✎</span>
       </button></li>`).join('')}</ul>`).join('') : '<p class="empty">Knižnica je prázdna.</p>'}
   </section>`;
 }

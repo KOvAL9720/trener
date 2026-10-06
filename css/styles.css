@@ -1041,3 +1041,7 @@ h1 { font-weight: 800; }
 .hero .btn.primary { background: var(--primary); color: var(--primary-ink); box-shadow: 0 10px 24px -14px rgba(63, 174, 163, .7); }
 .hero-next { background: var(--surface-2); color: var(--text); }
 .hero-next:hover { background: var(--surface-3); }
+
+/* Knižnica cvikov – miniatúra (piktogram) pri každom cviku */
+.ex-pic { width: 52px; height: 52px; flex: none; border-radius: 16px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--border); color: var(--primary); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
+.ex-pic .ex-thumb { width: 40px; height: 40px; }
