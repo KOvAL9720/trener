@@ -109,6 +109,15 @@ const DAYS_LONG = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota
 const weekday = (s) => (parseDate(s).getDay() + 6) % 7;
 const fmtShort = (s) => { const d = parseDate(s); return `${d.getDate()}. ${d.getMonth() + 1}.`; };
 const fmtDate = (s) => (s ? `${DAYS[weekday(s)]} ${fmtShort(s)} ${parseDate(s).getFullYear()}` : '');
+// „Dnes“, „Zajtra“, „Včera“, inak „St 7. 10.“ (rok len ak nie je aktuálny)
+const fmtDay = (s) => {
+  const t = isoDate(new Date());
+  if (s === t) return 'Dnes';
+  const diff = daysBetween(t, s);
+  if (diff === 1) return 'Zajtra';
+  if (diff === -1) return 'Včera';
+  return `${DAYS[weekday(s)]} ${fmtShort(s)}${parseDate(s).getFullYear() !== new Date().getFullYear() ? ' ' + parseDate(s).getFullYear() : ''}`;
+};
 const fmtMoney = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('sk-SK', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 }));
 const MONTHS = ['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl', 'august', 'september', 'október', 'november', 'december'];
 const monthKey = (y, m) => { const d = new Date(y, m - 1, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
@@ -178,12 +187,22 @@ function credits(clientId) {
   return { bought, used, left: bought - used };
 }
 
-function toast(msg) {
+// Krátka správa dole; s funkciou undo pribudne tlačidlo „Späť“ (a správa ostane dlhšie)
+function toast(msg, undo) {
   const el = document.getElementById('toast');
   el.textContent = msg;
+  if (undo) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'toast-undo';
+    b.textContent = 'Späť';
+    b.onclick = () => { el.classList.remove('show'); clearTimeout(toast.t); undo(); };
+    el.append(b);
+  }
+  el.classList.toggle('has-undo', !!undo);
   el.classList.add('show');
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => el.classList.remove('show'), 2600);
+  toast.t = setTimeout(() => el.classList.remove('show'), undo ? 5000 : 2600);
 }
 
 function go(hash) {
@@ -196,9 +215,9 @@ function go(hash) {
 function sessionRow(s, { showClient = true, showDate = true } = {}) {
   const plan = s.planId ? getPlan(s.planId) : null;
   const c = getClient(s.clientId);
-  const title = showClient ? esc(clientName(s.clientId)) : fmtDate(s.date);
+  const title = showClient ? esc(clientName(s.clientId)) : fmtDay(s.date);
   const meta = [
-    showClient && showDate ? fmtDate(s.date) : '',
+    showClient && showDate ? fmtDay(s.date) : '',
     `${s.duration || 60} min`,
     plan ? esc(plan.name) : ''
   ].filter(Boolean).join(' · ');
@@ -213,15 +232,15 @@ function sessionRow(s, { showClient = true, showDate = true } = {}) {
     </button>
     ${s.status === 'planned' ? `<div class="quick">
       ${canRemind ? `<button class="icon-btn${s.reminded ? ' sent' : ''}" title="${s.reminded ? 'Pripomienka odoslaná – poslať znova' : 'Poslať pripomienku'}" aria-label="${s.reminded ? 'Pripomienka odoslaná' : 'Poslať pripomienku'}" data-action="remind" data-id="${s.id}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3 9.2 10.1M22 3H2l7.2 7.1 2.5 10.2z"/></svg></button>` : ''}
-      <button class="icon-btn ok" title="Označiť ako odtrénovaný" aria-label="Odtrénovaný" data-action="session-done" data-id="${s.id}">✓</button>
       <button class="icon-btn cancel" title="Zrušiť tréning" aria-label="Zrušiť" data-action="session-cancel" data-id="${s.id}">✕</button>
+      <button class="btn small primary done-btn" title="Označiť ako odtrénovaný" aria-label="Odtrénovaný" data-action="session-done" data-id="${s.id}">✓ Hotovo</button>
     </div>` : s.status === 'done' ? `<div class="quick">${logButton(s)}</div>` : ''}
   </li>`;
 }
 
 // činka pri odtrénovanom tréningu – zápis váh a opakovaní
 const DUMBBELL = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>';
-const logButton = (s) => `<button class="icon-btn log${s.log ? ' logged' : ''}" title="${s.log ? 'Výkony zapísané – upraviť' : 'Zapísať výkony'}" aria-label="${s.log ? 'Upraviť výkony' : 'Zapísať výkony'}" data-action="log-session" data-id="${s.id}">${DUMBBELL}</button>`;
+const logButton = (s) => `<button class="btn small log${s.log ? ' logged' : ''}" title="${s.log ? 'Výkony zapísané – upraviť' : 'Zapísať výkony'}" aria-label="${s.log ? 'Upraviť výkony' : 'Zapísať výkony'}" data-action="log-session" data-id="${s.id}">${DUMBBELL}${s.log ? 'Výkony ✓' : 'Výkony'}</button>`;
 
 const sessionList = (list, opts, emptyText = 'Žiadne tréningy.') =>
   list.length ? `<ul class="list">${list.map((s) => sessionRow(s, opts)).join('')}</ul>` : `<p class="empty">${emptyText}</p>`;
@@ -385,17 +404,12 @@ function viewDashboard() {
     </button>` : ''}
   </section>
 
-  ${(() => { const due = db.sessions.filter(isDue); return due.length ? `<a class="notice notice-money" href="#/finance"><span>Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span><span class="btn small">Financie ›</span></a>` : ''; })()}
+  <section class="card today-card">
+    <div class="card-head"><h2>Dnes</h2><a class="btn small" href="#/calendar">Kalendár ›</a></div>
+    ${sessionList(todays, { showDate: false }, 'Dnes nemáš naplánovaný žiadny tréning. 🙌')}
+  </section>
 
-  ${remindersCard()}
-
-  ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať</button></div>` : ''}
-
-  <div class="stats">
-    <div class="stat"><b>${week.length}</b><span>tento týždeň</span></div>
-    <div class="stat"><b>${doneWeek}</b><span>odtrénované</span></div>
-    <div class="stat"><b>${active.length}</b><span>${pl(active.length, 'klient', 'klienti', 'klientov')}</span></div>
-  </div>
+  ${(() => { const due = db.sessions.filter(isDue); return due.length ? `<a class="notice notice-money" href="#/finance"><span>💰 Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span><span class="chev" aria-hidden="true">›</span></a>` : ''; })()}
 
   ${overdue.length ? `<section class="card">
     <div class="card-head"><h2>Na vyhodnotenie</h2><span class="badge warn">${overdue.length}</span></div>
@@ -403,16 +417,20 @@ function viewDashboard() {
     ${sessionList(overdue)}
   </section>` : ''}
 
-  <div class="grid" style="margin-top:16px">
-    <section class="card">
-      <div class="card-head"><h2>Dnes</h2><a class="btn small" href="#/calendar">Kalendár</a></div>
-      ${sessionList(todays, { showDate: false }, 'Dnes nemáš naplánovaný žiadny tréning.')}
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Najbližšie tréningy</h2></div>
-      ${sessionList(upcoming, {}, 'Žiadne ďalšie naplánované tréningy.')}
-    </section>
+  ${remindersCard()}
+
+  <section class="card">
+    <div class="card-head"><h2>Ďalšie tréningy</h2></div>
+    ${sessionList(upcoming, {}, 'Žiadne ďalšie naplánované tréningy.')}
+  </section>
+
+  <div class="stats">
+    <div class="stat"><b>${week.length}</b><span>tento týždeň</span></div>
+    <div class="stat"><b>${doneWeek}</b><span>odtrénované</span></div>
+    <div class="stat"><b>${active.length}</b><span>${pl(active.length, 'klient', 'klienti', 'klientov')}</span></div>
   </div>
+
+  ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať</button></div>` : ''}
 
   ${low.length ? `<section class="card" style="margin-top:16px">
     <div class="card-head"><h2>Dochádza permanentka</h2></div>
@@ -507,12 +525,17 @@ function viewClient(id) {
         </div>
       </div>
     </div>
-    <div class="row">
-      ${c.phone || c.email ? `<button class="btn" data-action="contact" data-id="${c.id}">Kontaktovať</button>` : ''}
-      <button class="btn" data-action="edit-client" data-id="${c.id}">Upraviť</button>
+    <div class="row client-actions">
+      ${c.phone || c.email ? `<button class="btn" data-action="contact" data-id="${c.id}">💬 Napísať</button>` : ''}
+      <button class="btn" data-action="edit-client" data-id="${c.id}">✏️ Upraviť</button>
       <button class="btn primary" data-action="new-session" data-client="${c.id}">+ Tréning</button>
     </div>
   </div>
+
+  <nav class="jump" aria-label="Sekcie klienta">
+    ${[['sec-sessions', 'Tréningy'], ['records-card', 'Výkony'], ['measure-card', 'Merania'], ['sec-plans', 'Plány'], ['sec-photos', 'Fotky'], ['sec-history', 'História']]
+      .map(([t, l]) => `<button class="chip" data-action="jump" data-target="${t}">${l}</button>`).join('')}
+  </nav>
 
   <div class="grid two">
     <section class="card">
@@ -553,28 +576,28 @@ function viewClient(id) {
     </section>
   </div>
 
-  <section class="card" style="margin-top:16px">
+  <section class="card" style="margin-top:16px" id="sec-sessions">
     <div class="card-head"><h2>Naplánované tréningy</h2></div>
     ${sessionList(upcoming, { showClient: false }, 'Žiadne naplánované tréningy.')}
-  </section>
-
-  <section class="card">
-    <div class="card-head"><h2>Tréningové plány</h2><button class="btn small" data-action="new-plan" data-client="${c.id}">+ Plán</button></div>
-    ${plans.length ? `<ul class="list">${plans.map((p) => `<li><a class="list-item" href="#/plan/${p.id}">
-      <span class="info"><strong>${esc(p.name)}</strong><small>${nEx(p.items.length)}${p.notes ? ' · ' + esc(p.notes) : ''}</small></span><span aria-hidden="true">›</span>
-    </a></li>`).join('')}</ul>` : '<p class="empty">Klient zatiaľ nemá žiadny plán. Vytvor nový alebo skopíruj šablónu v sekcii Plány.</p>'}
-  </section>
-
-  <section class="card">
-    <div class="card-head"><h2>Fotky</h2><span class="spacer"></span><span class="badge" id="photo-count" hidden></span><button class="btn small" data-action="add-photos" data-client="${c.id}">+ Fotky</button></div>
-    <div class="photo-grid" id="photo-grid" data-client="${c.id}"></div>
   </section>
 
   ${recordsCard(c)}
 
   ${measureCard(c)}
 
-  <section class="card">
+  <section class="card" id="sec-plans">
+    <div class="card-head"><h2>Tréningové plány</h2><button class="btn small" data-action="new-plan" data-client="${c.id}">+ Plán</button></div>
+    ${plans.length ? `<ul class="list">${plans.map((p) => `<li><a class="list-item" href="#/plan/${p.id}">
+      <span class="info"><strong>${esc(p.name)}</strong><small>${nEx(p.items.length)}${p.notes ? ' · ' + esc(p.notes) : ''}</small></span><span aria-hidden="true">›</span>
+    </a></li>`).join('')}</ul>` : '<p class="empty">Klient zatiaľ nemá žiadny plán. Vytvor nový alebo skopíruj šablónu v sekcii Plány.</p>'}
+  </section>
+
+  <section class="card" id="sec-photos">
+    <div class="card-head"><h2>Fotky</h2><span class="spacer"></span><span class="badge" id="photo-count" hidden></span><button class="btn small" data-action="add-photos" data-client="${c.id}">+ Fotky</button></div>
+    <div class="photo-grid" id="photo-grid" data-client="${c.id}"></div>
+  </section>
+
+  <section class="card" id="sec-history">
     <div class="card-head"><h2>História tréningov</h2>${history.length ? `<span class="badge">${history.length}</span>` : ''}</div>
     ${sessionList(showAllHistory === id ? history : history.slice(0, HISTORY_LIMIT), { showClient: false }, 'Zatiaľ žiadna história.')}
     ${history.length > HISTORY_LIMIT && showAllHistory !== id ? `<button class="btn small" style="margin-top:10px" data-action="show-history" data-id="${id}">Zobraziť celú históriu (${history.length})</button>` : ''}
@@ -1055,7 +1078,9 @@ function fieldHtml(fd, values) {
     input = `<input id="${id}" name="${fd.name}" type="${fd.type || 'text'}" value="${esc(v)}" ${attrs}>`;
   }
   const datalist = fd.datalist ? `<datalist id="${id}_list">${fd.datalist.map((o) => `<option value="${esc(o)}">`).join('')}</datalist>` : '';
-  return `<div class="field ${fd.half ? 'half' : ''}"><label for="${id}">${esc(fd.label)}</label>${input}${datalist}${fd.hint ? `<span class="hint">${esc(fd.hint)}</span>` : ''}</div>`;
+  // rýchla voľba hodnoty ťuknutím (napr. Dnes / Zajtra, obvyklé časy)
+  const chips = fd.chips?.length ? `<div class="mini-chips">${fd.chips.map(([l, val]) => `<button type="button" class="chip mini${String(val) === String(v) ? ' active' : ''}" data-set="${id}" data-val="${esc(val)}">${esc(l)}</button>`).join('')}</div>` : '';
+  return `<div class="field ${fd.half ? 'half' : ''}"><label for="${id}">${esc(fd.label)}</label>${input}${chips}${datalist}${fd.hint ? `<span class="hint">${esc(fd.hint)}</span>` : ''}</div>`;
 }
 
 function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubmit, onDelete, deleteLabel = 'Vymazať', deleteConfirm = 'Naozaj vymazať?' }) {
@@ -1100,6 +1125,21 @@ function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubm
     render();
   };
   modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
+  modalForm.querySelectorAll('[data-set]').forEach((b) => {
+    b.onclick = () => {
+      const el = modalForm.querySelector('#' + b.dataset.set);
+      el.value = b.dataset.val;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+  });
+  // zvýrazniť čip, ktorý zodpovedá aktuálnej hodnote poľa
+  modalForm.querySelectorAll('.mini-chips').forEach((box) => {
+    const el = modalForm.querySelector('#' + box.firstElementChild.dataset.set);
+    const sync = () => box.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c.dataset.val === el.value));
+    el.addEventListener('input', sync);
+    el.addEventListener('change', sync);
+  });
   modalForm.querySelectorAll('.time-wrap input').forEach((t) => {
     t.oninput = t.onchange = t.onblur = () => t.parentNode.classList.toggle('filled', !!t.value);
   });
@@ -1160,6 +1200,14 @@ function openClientForm(c) {
   });
 }
 
+// 3 najčastejšie časy tréningov (pre rýchlu voľbu vo formulári)
+function usualTimes() {
+  const count = new Map();
+  for (const x of db.sessions) if (/^\d{2}:\d{2}$/.test(x.time || '')) count.set(x.time, (count.get(x.time) || 0) + 1);
+  const top = [...count].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
+  return (top.length ? top : ['07:00', '17:00', '18:00']).sort();
+}
+
 function openSessionForm(s, defaults = {}) {
   const active = db.clients.filter((c) => !c.archived || c.id === s?.clientId).sort(byName);
   if (!active.length) {
@@ -1174,8 +1222,8 @@ function openSessionForm(s, defaults = {}) {
     values,
     fields: [
       { name: 'clientId', label: 'Klient', type: 'select', required: true, options: [['', '— vyber klienta —'], ...active.map((c) => [c.id, c.name])] },
-      { name: 'date', label: 'Dátum', type: 'date', required: true, half: true },
-      { name: 'time', label: 'Čas', type: 'time', half: true },
+      { name: 'date', label: 'Dátum', type: 'date', required: true, half: true, chips: [['Dnes', today()], ['Zajtra', addDays(today(), 1)]] },
+      { name: 'time', label: 'Čas', type: 'time', half: true, chips: usualTimes().map((x) => [x, x]) },
       { name: 'duration', label: 'Dĺžka (min)', type: 'number', min: 5, step: 5, half: true },
       { name: 'status', label: 'Stav', type: 'select', half: true, options: Object.entries(STATUS) },
       { name: 'price', label: 'Cena (€)', type: 'number', min: 0, step: 0.5, half: true },
@@ -1947,15 +1995,17 @@ function openContact(c, session, preferred) {
 function setStatus(id, status) {
   const s = getSession(id);
   if (!s) return;
+  const prev = s.status;
   s.status = status;
   flashId = id;
   save();
   render();
+  const undo = () => { s.status = prev; flashId = id; save(); render(); toast('Vrátené späť'); };
   if (status === 'done') {
     const cr = credits(s.clientId);
-    toast(isDue(s) ? `Odtrénované · na zaplatenie ${fmtMoney(priceOf(s))}` : PACKAGES && cr.bought ? `Odtrénované · zostáva ${cr.left} z permanentky` : 'Tréning odtrénovaný');
+    toast(isDue(s) ? `Odtrénované · na zaplatenie ${fmtMoney(priceOf(s))}` : PACKAGES && cr.bought ? `Odtrénované · zostáva ${cr.left} z permanentky` : 'Tréning odtrénovaný', undo);
   } else {
-    toast('Tréning zrušený');
+    toast('Tréning zrušený', undo);
   }
 }
 
@@ -2481,6 +2531,9 @@ const actions = {
     const c = getClient(d.client);
     const card = document.getElementById(d.kind === 'x' ? 'records-card' : 'measure-card');
     if (c && card) card.outerHTML = d.kind === 'x' ? recordsCard(c) : measureCard(c);
+  },
+  'jump': (d) => {
+    document.getElementById(d.target)?.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
   },
   'log-session': (d) => { const s = getSession(d.id); if (s) openLogSheet(s); },
   'print': () => window.print(),
