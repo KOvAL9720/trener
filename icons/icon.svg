@@ -6,11 +6,11 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="#111416"/>
-  <g fill="url(#g)" transform="rotate(-20 256 256)">
-    <rect x="88" y="196" width="40" height="120" rx="14"/>
-    <rect x="384" y="196" width="40" height="120" rx="14"/>
-    <rect x="132" y="156" width="54" height="200" rx="18"/>
-    <rect x="326" y="156" width="54" height="200" rx="18"/>
-    <rect x="186" y="236" width="140" height="40" rx="10"/>
+  <!-- kotúč činky otvorený ako kruh progresu -->
+  <path d="M326.2 445A196 196 0 1 1 403.9 390.6" fill="none" stroke="url(#g)" stroke-width="40" stroke-linecap="round"/>
+  <!-- T -->
+  <g fill="url(#g)">
+    <rect x="144" y="150" width="224" height="54" rx="27"/>
+    <rect x="228" y="180" width="56" height="200" rx="28"/>
   </g>
 </svg>
