@@ -484,7 +484,7 @@ function viewClients() {
     <button class="btn primary" data-action="new-client">+ Nový klient</button>
   </div>
   <section class="card">
-    <input type="search" class="search" id="client-search" placeholder="Hľadať klienta…" aria-label="Hľadať klienta">
+    <input type="search" class="search" id="client-search" spellcheck="false" autocorrect="off" placeholder="Hľadať klienta…" aria-label="Hľadať klienta">
     ${list.length ? `<ul class="list" id="client-list">${list.map((c) => {
       const cr = credits(c.id);
       const next = clientSessions(c.id).filter((s) => s.status === 'planned' && s.date >= t).sort(bySessionTime)[0];
@@ -1065,7 +1065,9 @@ function fieldHtml(fd, values) {
     fd.step ? `step="${fd.step}"` : '',
     fd.min != null ? `min="${fd.min}"` : '',
     fd.placeholder ? `placeholder="${esc(fd.placeholder)}"` : '',
-    fd.datalist ? `list="${id}_list"` : ''
+    fd.datalist ? `list="${id}_list"` : '',
+    // bez kontroly pravopisu a automatických opráv – iPhone podčiarkoval slovenské slová
+    'spellcheck="false" autocorrect="off"'
   ].join(' ');
   let input;
   if (fd.type === 'checkbox') {
@@ -1953,7 +1955,7 @@ function openContact(c, session, preferred) {
     <header class="modal-head"><h2>Kontaktovať · ${esc(firstName(c))}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
     <div class="modal-body">
       <div class="chips" role="tablist">${templates.map(([label], i) => `<button type="button" class="chip ${i === start ? 'active' : ''}" data-tpl="${i}">${esc(label)}</button>`).join('')}</div>
-      <div class="field"><label for="contact-text">Správa</label><textarea id="contact-text" rows="4">${esc(templates[start][1])}</textarea></div>
+      <div class="field"><label for="contact-text">Správa</label><textarea id="contact-text" rows="4" spellcheck="false" autocorrect="off">${esc(templates[start][1])}</textarea></div>
       <div class="contact-actions">
         ${phone ? `<a class="contact-btn whatsapp" data-channel="wa" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.4.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>
