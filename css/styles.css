@@ -965,3 +965,19 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 /* správa s tlačidlom Späť */
 #toast.has-undo { display: flex; align-items: center; gap: 14px; pointer-events: auto; padding-right: 10px; }
 .toast-undo { background: rgba(20, 20, 26, .08); border: 0; border-radius: 999px; padding: 6px 14px; color: #c2187a; font: inherit; font-weight: 800; cursor: pointer; }
+
+/* =========================================================
+   POZADIE – interiér posilňovne (stmavené, aby bol text čitateľný)
+   ========================================================= */
+html { background: #09090b; }
+body { background: transparent; }
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60% 40% at 100% 0%, rgba(236, 72, 153, .20), transparent 70%),
+    radial-gradient(50% 35% at 0% 30%, rgba(124, 58, 237, .14), transparent 70%),
+    linear-gradient(180deg, rgba(9, 9, 11, .42) 0%, rgba(9, 9, 11, .66) 45%, rgba(9, 9, 11, .88) 100%),
+    url(../icons/bg-gym.jpg) center 35% / cover no-repeat,
+    #09090b;
+}
+@media print { body::before { display: none; } }
