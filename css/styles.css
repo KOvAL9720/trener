@@ -522,7 +522,8 @@ main.push > * { animation: push-in .24s cubic-bezier(.2, .8, .2, 1); }
 /* =========================================================
    Vyladenie pre iPhone
    ========================================================= */
-html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+/* bez priblíženia (dvoma prstami ani dvojitým ťuknutím) – správa sa ako natívna aplikácia */
+html { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; }
 /* podržanie prsta na tlačidle/odkaze neotvorí náhľad ani výber textu */
 a, button, .nav, .chip, .badge, .stat, .hero { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .back-link { display: inline-block; margin: 6px 0 -4px; font-weight: 600; }
