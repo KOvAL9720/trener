@@ -3,6 +3,17 @@
 /* =========================================================
    Úložisko dát (localStorage v zariadení)
    ========================================================= */
+// Ak sa pri štarte použije staršia stránka z pamäte (service worker), nový kód si chýbajúce prvky doplní sám
+(function ensureDom() {
+  const add = (html) => document.body.insertAdjacentHTML('beforeend', html);
+  if (!document.getElementById('modal')) add('<dialog id="modal"><form id="modal-form" method="dialog"></form></dialog>');
+  if (!document.getElementById('import-file')) add('<input type="file" id="import-file" accept="application/json,.json" hidden>');
+  if (!document.getElementById('photo-file')) add('<input type="file" id="photo-file" accept="image/*" hidden>');
+  if (!document.getElementById('gallery-file')) add('<input type="file" id="gallery-file" accept="image/*" multiple hidden>');
+  if (!document.getElementById('toast')) add('<div id="toast" role="status" aria-live="polite"></div>');
+  if (!document.getElementById('main')) add('<main id="main" tabindex="-1"></main>');
+})();
+
 const STORAGE_KEY = 'trainer-app-v1';
 // Permanentky sú zatiaľ vypnuté – každý tréning sa platí zvlášť (dáta balíkov ostávajú uložené)
 const PACKAGES = false;
@@ -16,18 +27,21 @@ const DEFAULT_EXERCISES = [
   ['Dead bug', 'Core'], ['Kettlebell swing', 'Celé telo'], ['Burpees', 'Celé telo'], ['Veslovací trenažér', 'Kardio']
 ];
 
+const STATUS = { planned: 'Naplánovaný', done: 'Odtrénovaný', cancelled: 'Zrušený' };
+
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
 function normalize(d) {
-  return {
-    clients: d.clients || [],
-    sessions: d.sessions || [],
-    packages: d.packages || [],
-    measurements: d.measurements || [],
-    exercises: d.exercises || [],
-    plans: d.plans || [],
-    settings: d.settings || {}
-  };
+  const arr = (x) => (Array.isArray(x) ? x.filter((v) => v && typeof v === 'object') : []);
+  const str = (v, fallback = '') => (v == null ? fallback : String(v));
+  // opraviť bežné poškodenia (chýbajúce meno, dátum, zoznam cvikov…), aby žiadna obrazovka nespadla
+  const clients = arr(d.clients).map((c) => Object.assign(c, { name: str(c.name).trim() || 'Bez mena' }));
+  const sessions = arr(d.sessions).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date)).map((x) => Object.assign(x, { status: STATUS[x.status] ? x.status : 'planned', time: str(x.time) }));
+  const plans = arr(d.plans).map((p) => Object.assign(p, { name: str(p.name).trim() || 'Plán', items: arr(p.items) }));
+  const exercises = arr(d.exercises).map((e) => Object.assign(e, { name: str(e.name).trim() || 'Cvik' }));
+  const measurements = arr(d.measurements).filter((m) => /^\d{4}-\d{2}-\d{2}$/.test(m.date));
+  const packages = arr(d.packages).filter((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date));
+  return { clients, sessions, packages, measurements, exercises, plans, settings: d.settings && typeof d.settings === 'object' ? d.settings : {} };
 }
 
 function freshDb() {
@@ -91,10 +105,10 @@ const MONTHS = ['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl'
 const monthKey = (y, m) => { const d = new Date(y, m - 1, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
 const monthLabel = (key) => { const [y, m] = key.split('-').map(Number); const n = MONTHS[m - 1]; return `${n[0].toUpperCase()}${n.slice(1)} ${y}`; };
 const fmtNum = (n, digits = 1) => (n == null || n === '' ? '–' : Number(n).toLocaleString('sk-SK', { maximumFractionDigits: digits }));
+const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';
 const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 86400000);
 
-const STATUS = { planned: 'Naplánovaný', done: 'Odtrénovaný', cancelled: 'Zrušený' };
 
 // Slovenské tvary podľa počtu: 1 tréning, 2–4 tréningy, 0 / 5+ tréningov
 const pl = (n, one, few, many) => (n === 1 ? one : n >= 2 && n <= 4 ? few : many);
@@ -312,7 +326,7 @@ function viewClients() {
       const cr = credits(c.id);
       const next = clientSessions(c.id).filter((s) => s.status === 'planned' && s.date >= t).sort(bySessionTime)[0];
       const meta = [c.test ? 'Test' : '', next ? `Ďalší tréning ${fmtDate(next.date)} ${next.time || ''}` : 'Bez naplánovaného tréningu', c.goal].filter(Boolean).map(esc).join(' · ');
-      return `<li data-name="${esc(c.name.toLowerCase())} ${esc((c.phone || '').replace(/\s/g, ''))} ${esc((c.email || '').toLowerCase())}">
+      return `<li data-name="${esc(fold(c.name))} ${esc((c.phone || '').replace(/\s/g, ''))} ${esc(fold(c.email))}">
         <a class="list-item" href="#/client/${c.id}">
           ${avatar(c)}
           <span class="info"><strong>${esc(c.name)}</strong><small>${meta}</small></span>
@@ -556,7 +570,7 @@ function viewExercises() {
 
 function viewFinance(monthParam) {
   const t = today();
-  const month = monthParam || t.slice(0, 7);
+  const month = monthParam && Number(monthParam.slice(5)) >= 1 && Number(monthParam.slice(5)) <= 12 ? monthParam : t.slice(0, 7);
   const [y, m] = month.split('-').map(Number);
   const inMonth = (d) => !!d && d.startsWith(month);
   const paidSessions = db.sessions.filter((s) => s.paid && inMonth(s.paidDate));
@@ -731,7 +745,16 @@ function render(animate = false) {
   for (const [re, view] of routes) {
     const m = hash.match(re);
     if (m) {
-      main.innerHTML = view(...m.slice(1));
+      try {
+        main.innerHTML = view(...m.slice(1));
+      } catch (err) {
+        console.error(err);
+        main.innerHTML = `<section class="card" style="margin-top:12px">
+          <h2>Niečo sa pokazilo</h2>
+          <p class="muted">Túto obrazovku sa nepodarilo zobraziť. Tvoje dáta sú v poriadku – pre istotu si stiahni zálohu a daj vedieť, čo sa stalo.</p>
+          <div class="row"><button class="btn primary" data-action="export">Stiahnuť zálohu</button><a class="btn" href="#/">Na Prehľad</a></div>
+        </section>`;
+      }
       renderedDay = today();
       const section = hash.startsWith('#/client') ? 'clients'
         : hash.startsWith('#/calendar') ? 'calendar'
@@ -772,6 +795,7 @@ function animateEnter() {
 
 // Číslo „nabehne“ od nuly po svoju hodnotu
 function countUp(el) {
+  if (!/^\d+$/.test(el.textContent.trim())) return;   // „880 €“ a pod. nechať tak
   const target = parseInt(el.textContent, 10);
   if (!Number.isFinite(target) || target === 0) return;
   const start = performance.now();
@@ -808,6 +832,8 @@ function burst(x, y) {
 // otvorenie detailu (klient, plán) jemne vkĺzne sprava – animuje sa len posun, nie jas
 let prevHash = location.hash || '#/';
 window.addEventListener('hashchange', () => {
+  if (modal.open) modal.close();
+  document.querySelector('.viewer')?.dispatchEvent(new Event('viewer-close'));
   const hash = location.hash || '#/';
   const isDetail = (h) => /^#\/(client|plan)\//.test(h);
   const push = isDetail(hash) && !isDetail(prevHash);
@@ -883,7 +909,15 @@ function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubm
         if (bad) { el.reportValidity(); el.addEventListener('input', () => el.setCustomValidity(''), { once: true }); return; }
         data[fd.name] = num;
       }
-      else data[fd.name] = el.value.trim();
+      else {
+        if (fd.required && !el.value.trim()) {
+          el.setCustomValidity('Vyplň toto pole');
+          el.reportValidity();
+          el.addEventListener('input', () => el.setCustomValidity(''), { once: true });
+          return;
+        }
+        data[fd.name] = el.value.trim();
+      }
     }
     if (onSubmit(data) === false) return;
     modal.close();
@@ -974,6 +1008,11 @@ function openSessionForm(s, defaults = {}) {
     ],
     onSubmit: (d) => {
       const repeat = Math.min(Math.max(Number(d.repeat) || 1, 1), 52);
+      if (d.time && d.status !== 'cancelled') {
+        const dates = Array.from({ length: s ? 1 : repeat }, (_, i) => addDays(d.date, 7 * i));
+        const clash = db.sessions.find((x) => x !== s && x.status !== 'cancelled' && x.time === d.time && dates.includes(x.date));
+        if (clash && !confirm(`V tom čase (${fmtDate(clash.date)} ${clash.time}) už máš tréning s klientom ${clientName(clash.clientId)}. Uložiť aj tak?`)) return false;
+      }
       delete d.repeat;
       if (s) {
         d.paid = !!d.payMethod;
@@ -1271,13 +1310,24 @@ const thumbUrls = new Map();
 const thumbUrl = (p) => { if (!thumbUrls.has(p.id)) thumbUrls.set(p.id, URL.createObjectURL(p.thumb)); return thumbUrls.get(p.id); };
 const dropThumb = (id) => { const u = thumbUrls.get(id); if (u) { URL.revokeObjectURL(u); thumbUrls.delete(id); } };
 
-// Zmenší obrázok: max. strana `max` px, alebo štvorcový výrez `max`×`max` (náhľad)
-async function resizeImage(file, max, square) {
+// Načíta fotku raz a vyrobí z nej plnú verziu aj náhľad (šetrí pamäť pri veľkých fotkách z iPhonu)
+async function processPhoto(file) {
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
     img.src = url;
     await img.decode();
+    const full = await resizeImage(img, 1600, false);
+    const thumb = await resizeImage(img, 360, true);
+    return { full, thumb };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Zmenší obrázok: max. strana `max` px, alebo štvorcový výrez `max`×`max` (náhľad)
+async function resizeImage(img, max, square) {
+  {
     const iw = img.naturalWidth, ih = img.naturalHeight;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -1292,9 +1342,9 @@ async function resizeImage(file, max, square) {
       canvas.height = Math.round(ih * k);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     }
-    return await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob'))), 'image/jpeg', square ? 0.8 : 0.86));
-  } finally {
-    URL.revokeObjectURL(url);
+    const blob = await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob'))), 'image/jpeg', square ? 0.8 : 0.86));
+    canvas.width = canvas.height = 0;   // uvoľniť pamäť plátna hneď
+    return blob;
   }
 }
 
@@ -1321,7 +1371,7 @@ document.getElementById('gallery-file').addEventListener('change', async (e) => 
   let ok = 0;
   for (const file of files) {
     try {
-      const [full, thumb] = await Promise.all([resizeImage(file, 1600, false), resizeImage(file, 360, true)]);
+      const { full, thumb } = await processPhoto(file);
       await photoDB.put({ id: uid(), clientId: cid, date: today(), created: Date.now(), full, thumb });
       ok++;
     } catch (err) { /* nepodporovaný formát – preskočiť */ }
@@ -1332,8 +1382,12 @@ document.getElementById('gallery-file').addEventListener('change', async (e) => 
 
 // Prehliadač fotiek na celú obrazovku – fotka ide za prstom (ako galéria v iPhone),
 // po pustení plynule dokĺzne; potiahnutie nadol zavrie; susedné fotky sú pripravené vopred
+let viewerOpening = false;
 async function openViewer(cid, startId) {
-  const photos = (await photoDB.byClient(cid)).sort(byPhotoDate);
+  if (viewerOpening || document.querySelector('.viewer')) return;
+  viewerOpening = true;
+  let photos;
+  try { photos = (await photoDB.byClient(cid)).sort(byPhotoDate); } finally { viewerOpening = false; }
   if (!photos.length) return;
   let i = Math.max(0, photos.findIndex((p) => p.id === startId));
   const c = getClient(cid);
@@ -1408,6 +1462,7 @@ async function openViewer(cid, startId) {
   document.addEventListener('keydown', onKey);
   window.addEventListener('resize', onResize);
   el.querySelector('.viewer-close').onclick = close;
+  el.addEventListener('viewer-close', close);
   el.querySelector('.viewer-prev').onclick = () => go(-1);
   el.querySelector('.viewer-next').onclick = () => go(1);
   el.querySelector('.viewer-date').onchange = async (e) => {
@@ -1523,6 +1578,7 @@ function intlPhone(phone) {
   if (p.startsWith('+')) return p.slice(1).replace(/\D/g, '');
   if (p.startsWith('00')) return p.slice(2);
   if (p.startsWith('0')) return '421' + p.slice(1);
+  if (/^9\d{8}$/.test(p)) return '421' + p;   // slovenské číslo bez úvodnej nuly
   return p;
 }
 
@@ -1732,6 +1788,19 @@ async function exportData() {
   save();
   const photos = await exportPhotos();
   const blob = new Blob([JSON.stringify({ app: 'trener', version: 2, exportedAt: new Date().toISOString(), data: db, photos })], { type: 'application/json' });
+  const file = new File([blob], `trener-zaloha-${t}.json`, { type: 'application/json' });
+  // iPhone (aplikácia z plochy): zdieľanie → „Uložiť do Súborov“ funguje spoľahlivejšie ako stiahnutie
+  if (/iP(hone|ad|od)/.test(navigator.userAgent) && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      render();
+      toast('Záloha pripravená');
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      // inak skúsiť klasické stiahnutie nižšie
+    }
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `trener-zaloha-${t}.json`;
@@ -1751,6 +1820,10 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     const parsed = JSON.parse(await file.text());
     const data = parsed.data || parsed;
     if (!Array.isArray(data.clients) || !Array.isArray(data.sessions)) throw new Error('format');
+    // ID sa vkladajú do stránky a adries – povoliť len bezpečné znaky
+    const okId = (x) => x && typeof x.id === 'string' && /^[\w-]{1,64}$/.test(x.id);
+    const lists = ['clients', 'sessions', 'packages', 'measurements', 'exercises', 'plans'].map((k) => data[k] || []);
+    if (!lists.every((l) => Array.isArray(l) && l.every(okId)) || !(data.plans || []).every((p) => Array.isArray(p.items) && p.items.every(okId))) throw new Error('ids');
     if (!confirm(`Obnoviť zálohu? Aktuálne dáta budú nahradené (${cnt(data.clients.length, 'klient', 'klienti', 'klientov')}, ${nTr(data.sessions.length)}).`)) return;
     db = normalize(data);
     save();
@@ -2048,7 +2121,7 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('input', (e) => {
   if (e.target.id === 'client-search') {
-    const q = e.target.value.trim().toLowerCase().replace(/\s/g, '');
+    const q = fold(e.target.value.trim()).replace(/\s/g, '');
     let visible = 0;
     document.querySelectorAll('#client-list > li').forEach((li) => {
       li.hidden = !!q && !li.dataset.name.replace(/\s/g, '').includes(q);
