@@ -300,7 +300,10 @@ function viewClients() {
   const t = today();
   return `
   <div class="page-head">
-    <h1>Klienti</h1>
+    <div class="title-count">
+      <h1>Klienti</h1>
+      <span class="count-pill" aria-label="${cnt(db.clients.filter((c) => !c.archived).length, 'klient', 'klienti', 'klientov')}">${db.clients.filter((c) => !c.archived).length}</span>
+    </div>
     <button class="btn primary" data-action="new-client">+ Nový klient</button>
   </div>
   <section class="card">
