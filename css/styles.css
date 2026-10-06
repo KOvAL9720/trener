@@ -459,3 +459,33 @@ dialog[open]::backdrop { animation: fade-in .3s ease-out; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* =========================================================
+   Kontaktovať klienta
+   ========================================================= */
+.chips { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+.chip {
+  padding: 8px 14px; border-radius: 999px; border: 1px solid var(--surface-3);
+  background: var(--surface-2); color: var(--muted); cursor: pointer;
+  font: inherit; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  transition: background .2s, color .2s, transform .1s;
+}
+.chip:active { transform: scale(.95); }
+.chip.active { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+
+.contact-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.contact-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 56px; padding: 12px; border-radius: 18px;
+  font-weight: 800; font-size: .85rem; letter-spacing: .05em; text-transform: uppercase;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--surface-3);
+  transition: transform .1s, filter .15s;
+}
+.contact-btn:hover { color: var(--text); filter: brightness(1.1); }
+.contact-btn:active { transform: scale(.96); }
+.contact-btn svg { width: 22px; height: 22px; flex: none; fill: currentColor; }
+.contact-btn.whatsapp { background: #25d366; border-color: #25d366; color: #06280f; grid-column: 1 / -1; min-height: 60px; font-size: .95rem; }
+.contact-btn.whatsapp:hover { color: #06280f; }
+.contact-btn.sms { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+.contact-btn.sms:hover { color: var(--primary-ink); }
+.modal-body > .hint { color: var(--muted); font-size: .8rem; }

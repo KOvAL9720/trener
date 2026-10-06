@@ -110,7 +110,7 @@ function sessionRow(s, { showClient = true, showDate = true } = {}) {
     `${s.duration || 60} min`,
     plan ? esc(plan.name) : ''
   ].filter(Boolean).join(' · ');
-  const canRemind = s.status === 'planned' && c?.phone && s.date >= today();
+  const canRemind = s.status === 'planned' && (c?.phone || c?.email) && s.date >= today();
   return `<li class="session ${s.status}">
     <button class="session-main" data-action="edit-session" data-id="${s.id}">
       <span class="time">${esc(s.time || '–')}</span>
@@ -118,7 +118,7 @@ function sessionRow(s, { showClient = true, showDate = true } = {}) {
       <span class="badge ${s.status}">${STATUS[s.status]}</span>
     </button>
     ${s.status === 'planned' ? `<div class="quick">
-      ${canRemind ? `<button class="icon-btn" title="Poslať pripomienku SMS" aria-label="Pripomienka" data-action="remind" data-id="${s.id}">✉</button>` : ''}
+      ${canRemind ? `<button class="icon-btn" title="Poslať pripomienku" aria-label="Poslať pripomienku" data-action="remind" data-id="${s.id}">✉</button>` : ''}
       <button class="icon-btn ok" title="Označiť ako odtrénovaný" aria-label="Odtrénovaný" data-action="session-done" data-id="${s.id}">✓</button>
       <button class="icon-btn" title="Zrušiť tréning" aria-label="Zrušiť" data-action="session-cancel" data-id="${s.id}">✕</button>
     </div>` : ''}
@@ -281,6 +281,7 @@ function viewClient(id) {
       </div>
     </div>
     <div class="row">
+      ${c.phone || c.email ? `<button class="btn" data-action="contact" data-id="${c.id}">Kontaktovať</button>` : ''}
       <button class="btn" data-action="edit-client" data-id="${c.id}">Upraviť</button>
       <button class="btn primary" data-action="new-session" data-client="${c.id}">+ Tréning</button>
     </div>
@@ -834,6 +835,90 @@ function reminderTemplate() {
   return db.settings.reminderText || 'Ahoj {meno}, pripomínam tréning {datum} o {cas}. Teším sa!';
 }
 
+const firstName = (c) => c.name.split(' ')[0];
+
+function friendlyDate(date) {
+  if (date === today()) return 'dnes';
+  if (date === addDays(today(), 1)) return 'zajtra';
+  return `${DAYS_LONG[weekday(date)].toLowerCase()} ${fmtShort(date)}`;
+}
+
+function reminderText(c, s) {
+  return reminderTemplate()
+    .replaceAll('{meno}', firstName(c))
+    .replaceAll('{datum}', friendlyDate(s.date))
+    .replaceAll('{cas}', s.time || '');
+}
+
+// Telefón v medzinárodnom tvare bez „+“ (pre WhatsApp); slovenské čísla 09xx → 4219xx
+function intlPhone(phone) {
+  const p = String(phone || '').replace(/[^\d+]/g, '');
+  if (p.startsWith('+')) return p.slice(1).replace(/\D/g, '');
+  if (p.startsWith('00')) return p.slice(2);
+  if (p.startsWith('0')) return '421' + p.slice(1);
+  return p;
+}
+
+// Panel „Kontaktovať klienta“ – WhatsApp, SMS, hovor, e-mail s pripravenou správou
+function openContact(c, session) {
+  const t = today();
+  const next = session || db.sessions.filter((x) => x.clientId === c.id && x.status === 'planned' && x.date >= t).sort(bySessionTime)[0];
+  const cr = credits(c.id);
+  const templates = [
+    next && ['Pripomienka', reminderText(c, next)],
+    next && ['Zrušenie', `Ahoj ${firstName(c)}, žiaľ musím zrušiť tréning ${friendlyDate(next.date)}${next.time ? ' o ' + next.time : ''}. Dohodneme náhradný termín?`],
+    cr.bought && ['Permanentka', cr.left > 0
+      ? `Ahoj ${firstName(c)}, na permanentke ti ${cr.left === 1 ? 'zostáva posledný tréning' : `${cr.left <= 4 ? 'zostávajú' : 'zostáva'} ${cr.left} ${cr.left <= 4 ? 'tréningy' : 'tréningov'}`}. Chceš si objednať ďalší balík?`
+      : `Ahoj ${firstName(c)}, tvoja permanentka je vyčerpaná. Chceš si objednať ďalší balík?`],
+    ['Vlastná', `Ahoj ${firstName(c)}, `]
+  ].filter(Boolean);
+  const phone = (c.phone || '').replace(/\s/g, '');
+  const wa = intlPhone(c.phone);
+
+  modalForm.innerHTML = `
+    <header class="modal-head"><h2>Kontaktovať · ${esc(firstName(c))}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
+    <div class="modal-body">
+      <div class="chips" role="tablist">${templates.map(([label], i) => `<button type="button" class="chip ${i === 0 ? 'active' : ''}" data-tpl="${i}">${esc(label)}</button>`).join('')}</div>
+      <div class="field"><label for="contact-text">Správa</label><textarea id="contact-text" rows="4">${esc(templates[0][1])}</textarea></div>
+      <div class="contact-actions">
+        ${phone ? `<a class="contact-btn whatsapp" data-channel="wa" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.4.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>
+          WhatsApp</a>
+        <a class="contact-btn sms" data-channel="sms">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          SMS</a>
+        <a class="contact-btn call" href="tel:${esc(phone)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          Zavolať</a>` : ''}
+        ${c.email ? `<a class="contact-btn mail" data-channel="mail">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z M3 6l9 7 9-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          E-mail</a>` : ''}
+      </div>
+      ${phone ? `<p class="hint" style="margin:0">${esc(c.phone)}${c.email ? ' · ' + esc(c.email) : ''}</p>` : `<p class="hint" style="margin:0">${esc(c.email)} · pre WhatsApp a SMS doplň klientovi telefón</p>`}
+    </div>`;
+
+  const ta = modalForm.querySelector('#contact-text');
+  const update = () => {
+    const text = encodeURIComponent(ta.value);
+    const set = (ch, href) => { const a = modalForm.querySelector(`[data-channel="${ch}"]`); if (a) a.href = href; };
+    set('wa', `https://wa.me/${wa}?text=${text}`);
+    set('sms', `sms:${phone}?&body=${text}`);
+    set('mail', `mailto:${c.email}?body=${text}`);
+  };
+  ta.addEventListener('input', update);
+  modalForm.querySelectorAll('[data-tpl]').forEach((chip) => {
+    chip.onclick = () => {
+      modalForm.querySelectorAll('.chip').forEach((x) => x.classList.toggle('active', x === chip));
+      ta.value = templates[Number(chip.dataset.tpl)][1];
+      update();
+    };
+  });
+  modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
+  modalForm.onsubmit = (e) => e.preventDefault();
+  update();
+  modal.showModal();
+}
+
 /* =========================================================
    Akcie
    ========================================================= */
@@ -1085,12 +1170,11 @@ const actions = {
   'remind': (d) => {
     const s = getSession(d.id);
     const c = getClient(s?.clientId);
-    if (!c?.phone) return;
-    const text = reminderTemplate()
-      .replaceAll('{meno}', c.name.split(' ')[0])
-      .replaceAll('{datum}', `${DAYS_LONG[weekday(s.date)].toLowerCase()} ${fmtShort(s.date)}`)
-      .replaceAll('{cas}', s.time || '');
-    location.href = `sms:${c.phone.replace(/\s/g, '')}?&body=${encodeURIComponent(text)}`;
+    if (c) openContact(c, s);
+  },
+  'contact': (d) => {
+    const c = getClient(d.id);
+    if (c) openContact(c);
   },
   'new-package': (d) => openPackageForm(null, d.client),
   'edit-package': (d) => openPackageForm(db.packages.find((p) => p.id === d.id)),
