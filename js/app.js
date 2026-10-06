@@ -1059,6 +1059,8 @@ function burst(x, y) {
 let prevHash = location.hash || '#/';
 window.addEventListener('hashchange', () => {
   if (modal.open) modal.close();
+  const cf = document.getElementById('confirm');
+  if (cf?.open) cf.close();
   document.querySelector('.viewer')?.dispatchEvent(new Event('viewer-close'));
   const hash = location.hash || '#/';
   const isDetail = (h) => /^#\/(client|plan)\//.test(h);
