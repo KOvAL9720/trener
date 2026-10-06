@@ -6,11 +6,13 @@ Nepotrebuje server ani účet – dáta sa ukladajú v zariadení (s možnosťou
 
 ## Funkcie
 - **Prehľad** – dnešné a najbližšie tréningy, tréningy na vyhodnotenie, klienti, ktorým dochádza permanentka, pripomienka zálohy
+- **Pripomienky na zajtra** – na Prehľade zoznam klientov so zajtrajším tréningom, jedným ťuknutím WhatsApp / SMS / e-mail s pripravenou správou, odoslané sa odškrtnú (pri zmene času sa pripomienka vynuluje)
 - **Klienti** – kontakt, cieľ, poznámky (zranenia…), archivácia, vyhľadávanie
 - **Kalendár** – týždenný prehľad, opakované tréningy (každý týždeň), stav naplánovaný / odtrénovaný / zrušený, SMS pripomienka klientovi
 - **Tréningové plány** – šablóny a plány pre klientov, série/opakovania/záťaž/pauza, kopírovanie, zdieľanie, tlač
 - **Knižnica cvikov** – vlastné cviky podľa partií
-- **Merania** – váha, % tuku, obvody, zmena od predchádzajúceho merania
+- **Merania a progres** – váha, % tuku, obvody, zmena od predchádzajúceho merania, graf vybranej metriky a zdieľanie progresu ako obrázok (1080 × 1350)
+- **Výkony a rekordy** – pri odtrénovanom tréningu (ikona činky) zápis sérií kg × opakovania, porovnanie s minulým tréningom, „Ako minule“, osobné rekordy s oslavou a graf progresu každého cviku
 - **Financie** – každý tréning sa platí zvlášť (predvolene 20 €, nastaviteľné); príjem po mesiacoch rozdelený na hotovosť a na účet, nezaplatené tréningy s pripomienkou a tlačidlami Hotovosť / Na účet, platby, prehľad podľa klientov a posledných 6 mesiacov. Permanentky sú zatiaľ vypnuté (`PACKAGES` v `js/app.js`)
 
 ## Spustenie

@@ -851,3 +851,69 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 @supports (-webkit-touch-callout: none) {
   .time-wrap:not(.filled) .time-ph { display: block; }
 }
+
+/* =========================================================
+   PROGRES, VÝKONY, PRIPOMIENKY
+   ========================================================= */
+/* Graf */
+.chart-chips { margin-bottom: 14px; }
+.chart-sum { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 6px; }
+.chart-sum div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.chart-sum span { color: var(--muted); font-size: .78rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-sum b { font-size: 1.6rem; font-weight: 900; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.chart-sum b small { font-size: .9rem; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+.chart-sum b.chg { background: var(--grad, linear-gradient(90deg, #ffa8d5, #b98cff)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.chart-sum b.chg small { -webkit-text-fill-color: var(--muted); }
+.chart { position: relative; height: 170px; margin: 26px 6px 0; }
+.chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.chart-dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #ffa8d5; box-shadow: 0 0 0 3px rgba(9, 9, 11, .9); }
+.chart-dot.last { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; background: #fff; box-shadow: 0 0 0 4px rgba(255, 126, 191, .35), 0 0 16px rgba(255, 126, 191, .8); }
+.chart-val { position: absolute; transform: translate(-50%, calc(-100% - 10px)); font-size: .8rem; font-weight: 800; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; }
+.chart-val.first { transform: translate(-6px, calc(-100% - 10px)); }
+.chart-val.last { transform: translate(calc(-100% + 6px), calc(-100% - 10px)); color: var(--primary); }
+.chart-axis { display: flex; justify-content: space-between; margin: 8px 0 14px; color: var(--muted); font-size: .72rem; font-weight: 600; }
+
+/* Rekordy */
+.records .list-item { width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.records .list-item:disabled { cursor: default; opacity: 1; }
+.records .list-item.sel { background: rgba(255, 168, 213, .08); }
+.pr-icon { font-size: 1.2rem; flex: none; }
+.pr-val { font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--primary); }
+
+/* Tlačidlá v riadku tréningu */
+.icon-btn.sent { color: var(--ok); border-color: rgba(110, 231, 160, .35); background: var(--ok-soft); }
+.icon-btn.log { color: var(--text); }
+.icon-btn.logged { color: var(--primary-ink, #1a0611); background: var(--grad, linear-gradient(135deg, #ffa8d5, #b98cff)); border-color: transparent; }
+.icon-btn.small { width: 32px; height: 32px; font-size: .8rem; }
+
+/* Pripomienky na zajtra */
+.remind-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.remind-row .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.remind-row .info strong { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.remind-row .info small { color: var(--muted); }
+.remind-row .row { flex-wrap: nowrap; gap: 6px; }
+.remind-row.sent .info small { color: var(--ok); }
+.wa-btn.primary { background: #25d366; border-color: #25d366; color: #062b14; box-shadow: none; }
+.reminders.all-sent .list { display: none; }
+.reminders.all-sent .card-head { margin-bottom: 0; }
+.reminders.all-sent h2 { color: var(--ok); font-size: 1rem; }
+
+/* Zápis výkonov */
+.log-body { display: block; }
+.log-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+.log-ex { padding: 14px; border-radius: 18px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); }
+.log-ex-head { display: flex; align-items: center; gap: 8px; }
+.log-ex-head strong { flex: 1; min-width: 0; font-size: 1.02rem; }
+.link-btn { background: none; border: 0; padding: 6px 4px; color: var(--primary); font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.log-prev { margin: 4px 0 10px; color: var(--muted); font-size: .8rem; line-height: 1.45; }
+.log-set { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.log-set .set-n { width: 22px; flex: none; color: var(--muted); font-weight: 800; font-size: .85rem; text-align: center; }
+.log-set input { flex: 1; min-width: 0; min-height: 42px; padding: 8px 12px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.log-set .x { color: var(--muted); font-weight: 700; }
+.add-set { margin-top: 2px; }
+.head-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.card-head h2 { min-width: 0; }
+@media (max-width: 440px) {
+  .remind-row .avatar { display: none; }
+}
+.remind-row .info strong { white-space: normal; line-height: 1.2; }
