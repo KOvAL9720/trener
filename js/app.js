@@ -1559,7 +1559,7 @@ function openLogSheet(s) {
 
 // Profilová fotka klienta – fotka, inak iniciály
 const photoOf = (c) => (typeof c.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(c.photo) ? c.photo : '');
-const avatar = (c, cls = '') => `<span class="avatar ${cls}">${photoOf(c) ? `<img src="${photoOf(c)}" alt="" loading="lazy">` : esc(initials(c.name))}</span>`;
+const avatar = (c, cls = '') => `<span class="avatar ${cls}">${photoOf(c) ? `<img src="${photoOf(c)}" alt="" decoding="sync">` : esc(initials(c.name))}</span>`;
 
 let photoClientId = null;
 function openPhotoSheet(c) {
