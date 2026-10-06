@@ -1202,7 +1202,22 @@ document.addEventListener('change', (e) => {
 render(true);
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      reg.update().catch(() => {});
+      // Po návrate do aplikácie (iPhone ju často len uspí) skontrolovať novú verziu
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+    }).catch(() => {});
+  });
+  // Nová verzia sa nainštalovala → obnoviť stránku (nie uprostred vypĺňania formulára)
+  let hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) { hadController = true; return; }
+    if (modal.open) modal.addEventListener('close', () => location.reload(), { once: true });
+    else location.reload();
+  });
 }
 // Požiadať prehliadač, aby dáta nemazal pri nedostatku miesta
 navigator.storage?.persist?.().catch(() => {});
