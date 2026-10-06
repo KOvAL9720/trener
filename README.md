@@ -14,10 +14,6 @@ Nepotrebuje server ani účet – dáta sa ukladajú v zariadení (s možnosťou
 - **Merania a progres** – váha, % tuku, obvody, zmena od predchádzajúceho merania, graf vybranej metriky a zdieľanie progresu ako obrázok (1080 × 1350)
 - **Výkony a rekordy** – pri odtrénovanom tréningu (ikona činky) zápis sérií kg × opakovania, porovnanie s minulým tréningom, „Ako minule“, osobné rekordy s oslavou a graf progresu každého cviku
 - **Financie** – každý tréning sa platí zvlášť (predvolene 20 €, nastaviteľné); príjem po mesiacoch rozdelený na hotovosť a na účet, nezaplatené tréningy s pripomienkou a tlačidlami Hotovosť / Na účet, platby, prehľad podľa klientov a posledných 6 mesiacov. Permanentky sú zatiaľ vypnuté (`PACKAGES` v `js/app.js`)
-- **AI asistent** – chat (ikona ✨), ktorému tréner napíše bežnou rečou, čo treba („naplánuj Jane tréning v piatok o 7“, „Peter zaplatil na účet“, „kto mi dlhuje?“). Beží na Claude (`claude-opus-5-5`) priamo z prehliadača cez oficiálne SDK s vlastným API kľúčom trénera (uložený len v zariadení, nie je v zálohe). Asistent pracuje s dátami cez nástroje (klienti, tréningy, platby, merania, výkony, plány, financie, príprava WhatsApp/SMS správ), nič nemaže a všetky zmeny z jednej odpovede sa dajú vrátiť tlačidlom „Vrátiť zmeny“
-
-### Anthropic SDK
-Aplikácia nemá build – SDK je zbalené do `js/vendor/anthropic-sdk.mjs` (načíta sa až pri prvom použití asistenta). Aktualizácia: `sh tools/build-sdk.sh`.
 
 ## Spustenie
 Stačí servírovať priečinok ako statický web, napr.:
