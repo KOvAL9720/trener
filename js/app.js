@@ -287,7 +287,7 @@ function viewDashboard() {
   ${low.length ? `<section class="card" style="margin-top:16px">
     <div class="card-head"><h2>Dochádza permanentka</h2></div>
     <ul class="list">${low.map(({ c, cr }) => `<li><a class="list-item" href="#/client/${c.id}">
-      <span class="avatar">${esc(initials(c.name))}</span>
+      ${avatar(c)}
       <span class="info"><strong>${esc(c.name)}</strong><small>Zostáva ${cr.left} z ${cr.bought} tréningov</small></span>
       <span class="badge ${cr.left <= 0 ? 'cancelled' : 'warn'}">${cr.left <= 0 ? 'Minuté' : 'Posledný'}</span>
     </a></li>`).join('')}</ul>
@@ -311,7 +311,7 @@ function viewClients() {
       const meta = [c.test ? 'Test' : '', next ? `Ďalší tréning ${fmtDate(next.date)} ${next.time || ''}` : 'Bez naplánovaného tréningu', c.goal].filter(Boolean).map(esc).join(' · ');
       return `<li data-name="${esc(c.name.toLowerCase())} ${esc((c.phone || '').replace(/\s/g, ''))} ${esc((c.email || '').toLowerCase())}">
         <a class="list-item" href="#/client/${c.id}">
-          <span class="avatar">${esc(initials(c.name))}</span>
+          ${avatar(c)}
           <span class="info"><strong>${esc(c.name)}</strong><small>${meta}</small></span>
           ${c.archived ? '<span class="badge">Archív</span>' : PACKAGES && cr.bought ? `<span class="badge ${cr.left <= 0 ? 'cancelled' : cr.left <= 1 ? 'warn' : 'planned'}">${cr.left} tr.</span>`
             : (() => { const due = clientDue(c.id); return due.length ? `<span class="badge warn">${fmtMoney(sumPrice(due))}</span>` : ''; })()}
@@ -348,7 +348,7 @@ function viewClient(id) {
   <a href="#/clients" class="back-link">‹ Klienti</a>
   <div class="page-head">
     <div class="profile">
-      <span class="avatar lg">${esc(initials(c.name))}</span>
+      <button class="avatar lg avatar-edit" data-action="photo" data-id="${c.id}" aria-label="${c.photo ? 'Zmeniť fotku' : 'Pridať fotku'}">${photoOf(c) ? `<img src="${photoOf(c)}" alt="">` : esc(initials(c.name))}<span class="cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span></button>
       <div>
         <h1>${esc(c.name)} ${c.archived ? '<span class="badge">Archív</span>' : ''}${c.test ? ' <span class="badge">Test</span>' : ''}</h1>
         <div class="contact">
@@ -616,7 +616,7 @@ function viewFinance(monthParam) {
     <div class="card-head"><h2>Nezaplatené</h2>${allDue.length ? `<span class="badge warn">${nTr(allDue.length)}</span>` : ''}</div>
     ${dueRows.length ? `<ul class="list">${dueRows.map(([cid, list]) => `<li class="due-client">
       <a class="list-item" href="#/client/${cid}">
-        <span class="avatar">${esc(initials(clientName(cid)))}</span>
+        ${avatar(getClient(cid) || { name: clientName(cid) })}
         <span class="info"><strong>${esc(clientName(cid))}</strong><small>${nTr(list.length)} · ${list.map((s) => fmtShort(s.date)).join(', ')}</small></span>
         <b class="amount">${fmtMoney(sumPrice(list))}</b>
       </a>
@@ -1160,6 +1160,64 @@ function openPaySheet(clientId, method) {
   modal.showModal();
 }
 
+// Profilová fotka klienta – fotka, inak iniciály
+const photoOf = (c) => (typeof c.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(c.photo) ? c.photo : '');
+const avatar = (c, cls = '') => `<span class="avatar ${cls}">${photoOf(c) ? `<img src="${photoOf(c)}" alt="" loading="lazy">` : esc(initials(c.name))}</span>`;
+
+let photoClientId = null;
+function openPhotoSheet(c) {
+  modalForm.innerHTML = `
+    <header class="modal-head"><h2>Fotka · ${esc(firstName(c))}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
+    <div class="modal-body">
+      <div class="photo-preview">${avatar(c, 'xl')}</div>
+      <button type="button" class="btn primary photo-pick">${c.photo ? 'Zmeniť fotku' : 'Vybrať fotku'}</button>
+      ${c.photo ? '<button type="button" class="btn danger photo-del">Odstrániť fotku</button>' : ''}
+      <p class="hint" style="margin:0">Fotka z WhatsAppu: otvor chat s klientom → ťukni na jeho meno hore → ťukni na profilovú fotku → <b>Zdieľať</b> → <b>Uložiť obrázok</b>. Potom ju tu vyber z galérie.</p>
+    </div>`;
+  modalForm.onsubmit = (e) => e.preventDefault();
+  modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
+  modalForm.querySelector('.photo-pick').onclick = () => { photoClientId = c.id; document.getElementById('photo-file').click(); };
+  const del = modalForm.querySelector('.photo-del');
+  if (del) del.onclick = () => { delete c.photo; modal.close(); save(); render(); toast('Fotka odstránená'); };
+  modal.showModal();
+}
+
+// Zmenší fotku na štvorec 192 px (JPEG) – zaberie len pár kB v úložisku
+async function photoToDataUrl(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const size = 192;
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+document.getElementById('photo-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  const c = getClient(photoClientId);
+  if (!file || !c) return;
+  try {
+    c.photo = await photoToDataUrl(file);
+    modal.close();
+    save();
+    render();
+    toast('Fotka uložená');
+  } catch (err) {
+    toast('Túto fotku sa nepodarilo načítať');
+  }
+});
+
 function reminderTemplate() {
   return db.settings.reminderText || 'Ahoj {meno}, pripomínam tréning {datum} o {cas}. Teším sa!';
 }
@@ -1598,6 +1656,7 @@ const actions = {
     const c = getClient(d.id);
     if (c) openContact(c, null, 'Platba');
   },
+  'photo': (d) => { const c = getClient(d.id); if (c) openPhotoSheet(c); },
   'contact': (d) => {
     const c = getClient(d.id);
     if (c) openContact(c);

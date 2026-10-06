@@ -613,3 +613,18 @@ tfoot td { font-weight: 900; border-top: 1px solid var(--surface-3); border-bott
 }
 .seg-btn.active[data-m="cash"] { background: var(--ok); color: #06280f; }
 .seg-btn.active[data-m="bank"] { background: var(--primary); color: var(--primary-ink); }
+
+/* Fotka klienta */
+.avatar { overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-edit { position: relative; border: 0; padding: 0; cursor: pointer; font: inherit; overflow: visible; }
+.avatar-edit img { border-radius: 50%; }
+.avatar-edit .cam {
+  position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--surface-3); border: 2px solid var(--bg); color: var(--text);
+}
+.avatar-edit .cam svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round; }
+.avatar-edit:active { transform: scale(.95); }
+.avatar.xl { width: 120px; height: 120px; font-size: 2.2rem; box-shadow: var(--glow); }
+.photo-preview { width: 100%; display: grid; place-items: center; padding: 6px 0 4px; }
+.modal-body > .btn { width: 100%; }
