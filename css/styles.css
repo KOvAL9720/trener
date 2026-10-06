@@ -831,3 +831,16 @@ dialog {
 @media (min-width: 900px) {
   .nav a { font-size: .95rem; font-weight: 600; }
 }
+
+/* iOS Safari – dátum a čas: natívne pole má vlastnú minimálnu šírku a prázdny čas sa zrúti na úzky pásik */
+input[type=date], input[type=time] {
+  -webkit-appearance: none; appearance: none;
+  display: block; min-width: 0; max-width: 100%; text-align: left; line-height: 1.4;
+}
+input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value { text-align: left; min-height: 1.4em; margin: 0; }
+
+/* Vysúvací panel nikdy nezasahuje pod stavový riadok (hodiny, batéria) – iOS tam obsah rozmazáva */
+@media (max-width: 600px) {
+  dialog { max-height: calc(100dvh - var(--kb, 0px) - env(safe-area-inset-top) - 12px); }
+  dialog form { max-height: calc(100dvh - var(--kb, 0px) - env(safe-area-inset-top) - 12px - env(safe-area-inset-bottom)); }
+}
