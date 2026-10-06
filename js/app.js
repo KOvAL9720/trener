@@ -11,6 +11,7 @@
   if (!document.getElementById('photo-file')) add('<input type="file" id="photo-file" accept="image/*" hidden>');
   if (!document.getElementById('gallery-file')) add('<input type="file" id="gallery-file" accept="image/*" multiple hidden>');
   if (!document.getElementById('toast')) add('<div id="toast" role="status" aria-live="polite"></div>');
+  if (!document.getElementById('confirm')) add('<dialog id="confirm" class="confirm" aria-labelledby="confirm-text"><form method="dialog"><p id="confirm-text"></p><div class="confirm-btns"></div></form></dialog>');
   if (!document.getElementById('main')) add('<main id="main" tabindex="-1"></main>');
 })();
 
@@ -192,6 +193,20 @@ function credits(clientId) {
 }
 
 // Krátka správa dole; s funkciou undo pribudne tlačidlo „Späť“ (a správa ostane dlhšie)
+// Potvrdenie / oznámenie v dizajne aplikácie (namiesto systémového confirm/alert)
+function askConfirm(msg, { ok = 'OK', cancel = 'Zrušiť', danger = false } = {}) {
+  const dlg = document.getElementById('confirm');
+  dlg.querySelector('#confirm-text').textContent = msg;
+  dlg.querySelector('.confirm-btns').innerHTML = `${cancel ? `<button type="button" class="btn" data-v="0">${esc(cancel)}</button>` : ''}<button type="button" class="btn ${danger ? 'danger danger-fill' : 'primary'}" data-v="1" autofocus>${esc(ok)}</button>`;
+  return new Promise((resolve) => {
+    const done = (v) => { dlg.onclose = null; dlg.close(); resolve(v); };
+    dlg.querySelectorAll('[data-v]').forEach((b) => { b.onclick = () => done(b.dataset.v === '1'); });
+    dlg.onclose = () => resolve(false);
+    dlg.showModal();
+  });
+}
+const notify = (msg) => askConfirm(msg, { ok: 'Rozumiem', cancel: '' });
+
 function toast(msg, undo) {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -1102,7 +1117,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubm
       <button type="button" class="btn" data-close>Zrušiť</button>
       <button type="submit" class="btn primary">${esc(submitLabel)}</button>
     </footer>`;
-  modalForm.onsubmit = (e) => {
+  modalForm.onsubmit = async (e) => {
     e.preventDefault();
     const data = {};
     for (const fd of fields) {
@@ -1128,7 +1143,7 @@ function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubm
         data[fd.name] = el.value.trim();
       }
     }
-    if (onSubmit(data) === false) return;
+    if ((await onSubmit(data)) === false) return;
     modal.close();
     save();
     render();
@@ -1154,9 +1169,9 @@ function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubm
   });
   const del = modalForm.querySelector('[data-delete]');
   if (del) {
-    del.onclick = () => {
-      if (!confirm(deleteConfirm)) return;
-      if (onDelete() === false) return;
+    del.onclick = async () => {
+      if (!(await askConfirm(deleteConfirm, { ok: deleteLabel, danger: true }))) return;
+      if ((await onDelete()) === false) return;
       modal.close();
       save();
       render();
@@ -1241,14 +1256,14 @@ function openSessionForm(s, defaults = {}) {
       { name: 'notes', label: 'Poznámky z tréningu', type: 'textarea', placeholder: 'čo sa odcvičilo, ako sa klient cítil…' },
       ...(s ? [] : [{ name: 'repeat', label: 'Opakovať každý týždeň', type: 'number', min: 1, default: 1, hint: 'Počet týždňov (1 = len tento jeden tréning)' }])
     ],
-    onSubmit: (d) => {
+    onSubmit: async (d) => {
       const repeat = Math.min(Math.max(Number(d.repeat) || 1, 1), 52);
       if (d.time && d.status !== 'cancelled') {
         const dates = Array.from({ length: s ? 1 : repeat }, (_, i) => addDays(d.date, 7 * i));
         const clash = db.sessions.find((x) => x !== s && x.status !== 'cancelled' && x.time === d.time && dates.includes(x.date));
-        if (clash && !confirm(`V tom čase (${fmtDate(clash.date)} ${clash.time}) už máš tréning s klientom ${clientName(clash.clientId)}. Uložiť aj tak?`)) return false;
+        if (clash && !(await askConfirm(`V tom čase (${fmtDate(clash.date)} ${clash.time}) už máš tréning s klientom ${clientName(clash.clientId)}.`, { ok: 'Uložiť aj tak' }))) return false;
       }
-      if (!s && d.status === 'planned' && d.date < today() && !confirm(`Dátum ${fmtDate(d.date)} už prešiel. Naplánovať tréning do minulosti?`)) return false;
+      if (!s && d.status === 'planned' && d.date < today() && !(await askConfirm(`Dátum ${fmtDate(d.date)} už prešiel.`, { ok: 'Naplánovať aj tak' }))) return false;
       delete d.repeat;
       if (s) {
         if (d.date !== s.date || d.time !== (s.time || '')) delete s.reminded;
@@ -1368,10 +1383,10 @@ function openExerciseForm(e) {
       { name: 'note', label: 'Popis / technika', type: 'textarea' }
     ],
     onSubmit: (d) => { upsert('exercises', e, d); toast('Cvik uložený'); },
-    onDelete: e && (() => {
+    onDelete: e && (async () => {
       const used = db.plans.filter((p) => p.items.some((i) => i.exerciseId === e.id));
       if (used.length) {
-        alert(`Cvik sa používa v plánoch: ${used.map((p) => p.name).join(', ')}.\nNajprv ho z nich odober.`);
+        await notify(`Cvik sa používa v plánoch: ${used.map((p) => p.name).join(', ')}. Najprv ho z nich odober.`);
         return false;
       }
       db.exercises = db.exercises.filter((x) => x.id !== e.id);
@@ -1827,7 +1842,7 @@ async function openViewer(cid, startId) {
     } catch (err) { if (err.name !== 'AbortError') toast('Zdieľanie sa nepodarilo'); }
   };
   el.querySelector('.viewer-del').onclick = async () => {
-    if (!confirm('Vymazať túto fotku?')) return;
+    if (!(await askConfirm('Vymazať túto fotku?', { ok: 'Vymazať', danger: true }))) return;
     const p = photos[i];
     await photoDB.del(p.id);
     dropThumb(p.id);
@@ -2276,14 +2291,14 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     const okId = (x) => x && typeof x.id === 'string' && /^[\w-]{1,64}$/.test(x.id);
     const lists = ['clients', 'sessions', 'packages', 'measurements', 'exercises', 'plans'].map((k) => data[k] || []);
     if (!lists.every((l) => Array.isArray(l) && l.every(okId)) || !(data.plans || []).every((p) => Array.isArray(p.items) && p.items.every(okId))) throw new Error('ids');
-    if (!confirm(`Obnoviť zálohu? Aktuálne dáta budú nahradené (${cnt(data.clients.length, 'klient', 'klienti', 'klientov')}, ${nTr(data.sessions.length)}).`)) return;
+    if (!(await askConfirm(`Obnoviť zálohu? Aktuálne dáta budú nahradené (${cnt(data.clients.length, 'klient', 'klienti', 'klientov')}, ${nTr(data.sessions.length)}).`, { ok: 'Obnoviť' }))) return;
     db = normalize(data);
     save();
     if (Array.isArray(parsed.photos)) await importPhotos(parsed.photos);
     go('#/');
     toast('Dáta obnovené zo zálohy');
   } catch (err) {
-    alert('Súbor sa nepodarilo načítať. Uisti sa, že ide o zálohu z aplikácie Tréner.');
+    notify('Súbor sa nepodarilo načítať. Uisti sa, že ide o zálohu z aplikácie Tréner.');
   }
 });
 
@@ -2348,9 +2363,9 @@ function addTestClients() {
   toast('Pridaných 20 testovacích klientov');
 }
 
-function removeTestClients() {
+async function removeTestClients() {
   const ids = new Set(db.clients.filter((c) => c.test).map((c) => c.id));
-  if (!ids.size || !confirm(`Odstrániť ${cnt(ids.size, 'testovacieho klienta', 'testovacích klientov', 'testovacích klientov')} vrátane ich tréningov a meraní? Tvoji klienti ostanú.`)) return;
+  if (!ids.size || !(await askConfirm(`Odstrániť ${cnt(ids.size, 'testovacieho klienta', 'testovacích klientov', 'testovacích klientov')} vrátane ich tréningov a meraní? Tvoji klienti ostanú.`, { ok: 'Odstrániť', danger: true }))) return;
   db.clients = db.clients.filter((c) => !ids.has(c.id));
   photoDB.delClients(ids).catch(() => {});
   db.sessions = db.sessions.filter((x) => !ids.has(x.clientId));
@@ -2362,8 +2377,8 @@ function removeTestClients() {
   toast('Testovací klienti odstránení');
 }
 
-function loadDemo() {
-  if (db.clients.length && !confirm('Ukážkové dáta nahradia všetky aktuálne dáta. Pokračovať?')) return;
+async function loadDemo() {
+  if (db.clients.length && !(await askConfirm('Ukážkové dáta nahradia všetky aktuálne dáta.', { ok: 'Pokračovať' }))) return;
   const d = freshDb();
   const ex = (name) => d.exercises.find((e) => e.name === name).id;
   const t = today();
@@ -2587,8 +2602,8 @@ const actions = {
   'demo': loadDemo,
   'add-test': addTestClients,
   'remove-test': removeTestClients,
-  'wipe': () => {
-    if (!confirm('Naozaj vymazať VŠETKY dáta? Túto akciu nie je možné vrátiť späť.')) return;
+  'wipe': async () => {
+    if (!(await askConfirm('Naozaj vymazať VŠETKY dáta? Túto akciu nie je možné vrátiť späť.', { ok: 'Vymazať všetko', danger: true }))) return;
     db = freshDb();
     photoDB.clear().catch(() => {});
     save();
