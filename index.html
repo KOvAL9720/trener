@@ -27,18 +27,18 @@
   <style>
     /* Úvodná obrazovka – inline, aby sa ukázala okamžite */
     html, body { background: #09090b; }
-    #splash { position: fixed; inset: 0; z-index: 1000; background: #09090b; display: grid; place-items: center; transition: opacity .55s ease, visibility .55s; }
+    #splash { position: fixed; inset: 0; z-index: 1000; background: #09090b; display: grid; place-items: center; transition: opacity .35s ease, visibility .35s; }
     #splash.hide { opacity: 0; visibility: hidden; }
-    #splash .line { position: relative; width: min(240px, 62vw); height: 3px; border-radius: 3px; background: rgba(255, 168, 213, .12); overflow: hidden; }
-    #splash .line::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #ffc2e2, #ff7ebf); box-shadow: 0 0 14px #ff7ebf; transform-origin: left; animation: splash-fill 2.6s cubic-bezier(.45, 0, .25, 1) forwards, splash-glow .6s ease-out 2.6s forwards; }
-    #splash .line::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .9), transparent); animation: splash-sheen 1.3s ease-in-out .3s infinite; }
+    #splash .line { position: relative; width: 100vw; height: 3px; background: rgba(255, 168, 213, .12); overflow: hidden; }
+    #splash .line::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #ffc2e2, #ff7ebf); box-shadow: 0 0 14px #ff7ebf; transform-origin: left; animation: splash-fill .55s cubic-bezier(.45, 0, .25, 1) forwards, splash-glow .25s ease-out .55s forwards; }
+    #splash .line::after { content: ""; position: absolute; top: 0; bottom: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .9), transparent); animation: splash-sheen .55s cubic-bezier(.45, 0, .25, 1) forwards; }
     @keyframes splash-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
     @keyframes splash-glow { 50% { box-shadow: 0 0 26px 4px #ff7ebf; } 100% { box-shadow: 0 0 16px 1px #ff7ebf; } }
     @keyframes splash-sheen { from { transform: translateX(-120%); } to { transform: translateX(280%); } }
     @media (prefers-reduced-motion: reduce) { #splash .line::before, #splash .line::after { animation: none; } }
   </style>
   <!-- Štýly aplikácie neblokujú vykreslenie – úvodná obrazovka (inline) sa ukáže okamžite -->
-  <link rel="stylesheet" href="css/styles.css" media="print" onload="this.media='all';document.documentElement.classList.add('css-ready');dispatchEvent(new Event('cssready'))">
+  <link rel="stylesheet" href="css/styles.css" media="print" onload="this.media='all';document.documentElement.classList.add('css-ready');window.dispatchEvent(new Event('cssready'))">
   <noscript><link rel="stylesheet" href="css/styles.css"></noscript>
 </head>
 <body>

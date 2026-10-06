@@ -1312,7 +1312,7 @@ document.addEventListener('change', (e) => {
 const splash = document.getElementById('splash');
 if (splash) {
   render();
-  const wait = reduceMotion.matches ? 0 : Math.max(0, 3200 - performance.now());
+  const wait = reduceMotion.matches ? 0 : Math.max(0, 750 - performance.now());
   // skryť až keď sú načítané štýly aplikácie (najneskôr po 8 s)
   const cssReady = new Promise((resolve) => {
     if (document.documentElement.classList.contains('css-ready')) resolve();
@@ -1322,7 +1322,7 @@ if (splash) {
     splash.classList.add('hide');
     document.body.classList.add('ready');
     if (!reduceMotion.matches) animateEnter();
-    setTimeout(() => splash.remove(), 700);
+    setTimeout(() => splash.remove(), 450);
   });
 } else {
   render(true);
