@@ -515,7 +515,9 @@ body.ready .brand img { animation: logo-spin 1.1s cubic-bezier(.3, .9, .3, 1) .1
 
 /* Otvorenie detailu – vkĺznutie sprava (len transform, bez zmeny jasu) */
 @keyframes push-in { from { transform: translateX(32px); } to { transform: none; } }
-main.push { animation: push-in .24s cubic-bezier(.2, .8, .2, 1); }
+/* animuje sa obsah vnútri <main>, ktorý ho oreže – stránka sa počas animácie nerozšíri do strany */
+main { overflow-x: clip; }
+main.push > * { animation: push-in .24s cubic-bezier(.2, .8, .2, 1); }
 
 /* =========================================================
    Vyladenie pre iPhone
@@ -588,3 +590,25 @@ tfoot td { font-weight: 900; border-top: 1px solid var(--surface-3); border-bott
 .badge.pay-cash { background: var(--ok-soft); color: var(--ok); }
 .badge.pay-bank { background: var(--primary-soft); color: var(--primary); }
 .due-client .quick { flex-wrap: wrap; justify-content: flex-end; }
+
+/* Panel „Koľko zaplatil?“ */
+.pay-stepper { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 6px 0; }
+.step-btn {
+  width: 60px; height: 60px; flex: none; border-radius: 50%;
+  border: 1px solid var(--surface-3); background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 2rem; font-weight: 700; line-height: 1; cursor: pointer;
+  transition: transform .1s, background .15s, opacity .15s;
+}
+.step-btn:active { transform: scale(.9); }
+.step-btn:disabled { opacity: .3; cursor: default; }
+.pay-amount { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.pay-amount b { font-size: 3rem; font-weight: 900; line-height: 1.05; letter-spacing: -.03em; color: var(--primary); font-variant-numeric: tabular-nums; }
+.pay-amount small { font-size: .8rem; }
+.pay-chips { justify-content: center; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--surface-3); }
+.seg-btn {
+  min-height: 42px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer;
+  font: inherit; font-weight: 800; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; transition: background .2s, color .2s;
+}
+.seg-btn.active[data-m="cash"] { background: var(--ok); color: #06280f; }
+.seg-btn.active[data-m="bank"] { background: var(--primary); color: var(--primary-ink); }
