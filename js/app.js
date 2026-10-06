@@ -485,6 +485,7 @@ function viewSettings() {
       <button class="btn danger" data-action="wipe">Vymazať všetky dáta</button>
     </div>
     <p class="muted" style="margin-bottom:0">${db.clients.length} klientov · ${db.sessions.length} tréningov · ${db.plans.length} plánov · ${db.exercises.length} cvikov</p>
+    <p class="muted" style="margin-bottom:0">Verzia aplikácie: <b id="app-version">–</b></p>
   </section>`;
 }
 
@@ -522,6 +523,8 @@ function render(animate = false) {
         flashId = null;
       }
       if (animate && !reduceMotion.matches) animateEnter();
+      const ver = main.querySelector('#app-version');
+      if (ver && 'caches' in window) caches.keys().then((k) => { const v = k.find((x) => x.startsWith('trener-v')); if (v) ver.textContent = v.replace('trener-v', ''); }).catch(() => {});
       return;
     }
   }
