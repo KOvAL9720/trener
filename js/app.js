@@ -12,6 +12,10 @@
   if (!document.getElementById('gallery-file')) add('<input type="file" id="gallery-file" accept="image/*" multiple hidden>');
   if (!document.getElementById('toast')) add('<div id="toast" role="status" aria-live="polite"></div>');
   if (!document.getElementById('main')) add('<main id="main" tabindex="-1"></main>');
+  const gear = document.querySelector('.topbar [data-nav="settings"]');
+  if (gear && !document.querySelector('.topbar [data-nav="assistant"]')) {
+    gear.insertAdjacentHTML('beforebegin', '<a href="#/assistant" class="topbar-btn topbar-ai" data-nav="assistant" aria-label="AI asistent"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></a>');
+  }
 })();
 
 const STORAGE_KEY = 'trainer-app-v1';
@@ -109,6 +113,15 @@ const DAYS_LONG = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota
 const weekday = (s) => (parseDate(s).getDay() + 6) % 7;
 const fmtShort = (s) => { const d = parseDate(s); return `${d.getDate()}. ${d.getMonth() + 1}.`; };
 const fmtDate = (s) => (s ? `${DAYS[weekday(s)]} ${fmtShort(s)} ${parseDate(s).getFullYear()}` : '');
+// „Dnes“, „Zajtra“, „Včera“, inak „St 7. 10.“ (rok len ak nie je aktuálny)
+const fmtDay = (s) => {
+  const t = isoDate(new Date());
+  if (s === t) return 'Dnes';
+  const diff = daysBetween(t, s);
+  if (diff === 1) return 'Zajtra';
+  if (diff === -1) return 'Včera';
+  return `${DAYS[weekday(s)]} ${fmtShort(s)}${parseDate(s).getFullYear() !== new Date().getFullYear() ? ' ' + parseDate(s).getFullYear() : ''}`;
+};
 const fmtMoney = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('sk-SK', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 }));
 const MONTHS = ['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl', 'august', 'september', 'október', 'november', 'december'];
 const monthKey = (y, m) => { const d = new Date(y, m - 1, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
@@ -178,12 +191,22 @@ function credits(clientId) {
   return { bought, used, left: bought - used };
 }
 
-function toast(msg) {
+// Krátka správa dole; s funkciou undo pribudne tlačidlo „Späť“ (a správa ostane dlhšie)
+function toast(msg, undo) {
   const el = document.getElementById('toast');
   el.textContent = msg;
+  if (undo) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'toast-undo';
+    b.textContent = 'Späť';
+    b.onclick = () => { el.classList.remove('show'); clearTimeout(toast.t); undo(); };
+    el.append(b);
+  }
+  el.classList.toggle('has-undo', !!undo);
   el.classList.add('show');
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => el.classList.remove('show'), 2600);
+  toast.t = setTimeout(() => el.classList.remove('show'), undo ? 5000 : 2600);
 }
 
 function go(hash) {
@@ -196,9 +219,9 @@ function go(hash) {
 function sessionRow(s, { showClient = true, showDate = true } = {}) {
   const plan = s.planId ? getPlan(s.planId) : null;
   const c = getClient(s.clientId);
-  const title = showClient ? esc(clientName(s.clientId)) : fmtDate(s.date);
+  const title = showClient ? esc(clientName(s.clientId)) : fmtDay(s.date);
   const meta = [
-    showClient && showDate ? fmtDate(s.date) : '',
+    showClient && showDate ? fmtDay(s.date) : '',
     `${s.duration || 60} min`,
     plan ? esc(plan.name) : ''
   ].filter(Boolean).join(' · ');
@@ -213,15 +236,15 @@ function sessionRow(s, { showClient = true, showDate = true } = {}) {
     </button>
     ${s.status === 'planned' ? `<div class="quick">
       ${canRemind ? `<button class="icon-btn${s.reminded ? ' sent' : ''}" title="${s.reminded ? 'Pripomienka odoslaná – poslať znova' : 'Poslať pripomienku'}" aria-label="${s.reminded ? 'Pripomienka odoslaná' : 'Poslať pripomienku'}" data-action="remind" data-id="${s.id}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3 9.2 10.1M22 3H2l7.2 7.1 2.5 10.2z"/></svg></button>` : ''}
-      <button class="icon-btn ok" title="Označiť ako odtrénovaný" aria-label="Odtrénovaný" data-action="session-done" data-id="${s.id}">✓</button>
       <button class="icon-btn cancel" title="Zrušiť tréning" aria-label="Zrušiť" data-action="session-cancel" data-id="${s.id}">✕</button>
+      <button class="btn small primary done-btn" title="Označiť ako odtrénovaný" aria-label="Odtrénovaný" data-action="session-done" data-id="${s.id}">✓ Hotovo</button>
     </div>` : s.status === 'done' ? `<div class="quick">${logButton(s)}</div>` : ''}
   </li>`;
 }
 
 // činka pri odtrénovanom tréningu – zápis váh a opakovaní
 const DUMBBELL = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>';
-const logButton = (s) => `<button class="icon-btn log${s.log ? ' logged' : ''}" title="${s.log ? 'Výkony zapísané – upraviť' : 'Zapísať výkony'}" aria-label="${s.log ? 'Upraviť výkony' : 'Zapísať výkony'}" data-action="log-session" data-id="${s.id}">${DUMBBELL}</button>`;
+const logButton = (s) => `<button class="btn small log${s.log ? ' logged' : ''}" title="${s.log ? 'Výkony zapísané – upraviť' : 'Zapísať výkony'}" aria-label="${s.log ? 'Upraviť výkony' : 'Zapísať výkony'}" data-action="log-session" data-id="${s.id}">${DUMBBELL}${s.log ? 'Výkony ✓' : 'Výkony'}</button>`;
 
 const sessionList = (list, opts, emptyText = 'Žiadne tréningy.') =>
   list.length ? `<ul class="list">${list.map((s) => sessionRow(s, opts)).join('')}</ul>` : `<p class="empty">${emptyText}</p>`;
@@ -385,17 +408,12 @@ function viewDashboard() {
     </button>` : ''}
   </section>
 
-  ${(() => { const due = db.sessions.filter(isDue); return due.length ? `<a class="notice notice-money" href="#/finance"><span>Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span><span class="btn small">Financie ›</span></a>` : ''; })()}
+  <section class="card today-card">
+    <div class="card-head"><h2>Dnes</h2><a class="btn small" href="#/calendar">Kalendár ›</a></div>
+    ${sessionList(todays, { showDate: false }, 'Dnes nemáš naplánovaný žiadny tréning. 🙌')}
+  </section>
 
-  ${remindersCard()}
-
-  ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať</button></div>` : ''}
-
-  <div class="stats">
-    <div class="stat"><b>${week.length}</b><span>tento týždeň</span></div>
-    <div class="stat"><b>${doneWeek}</b><span>odtrénované</span></div>
-    <div class="stat"><b>${active.length}</b><span>${pl(active.length, 'klient', 'klienti', 'klientov')}</span></div>
-  </div>
+  ${(() => { const due = db.sessions.filter(isDue); return due.length ? `<a class="notice notice-money" href="#/finance"><span>💰 Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span><span class="chev" aria-hidden="true">›</span></a>` : ''; })()}
 
   ${overdue.length ? `<section class="card">
     <div class="card-head"><h2>Na vyhodnotenie</h2><span class="badge warn">${overdue.length}</span></div>
@@ -403,16 +421,20 @@ function viewDashboard() {
     ${sessionList(overdue)}
   </section>` : ''}
 
-  <div class="grid" style="margin-top:16px">
-    <section class="card">
-      <div class="card-head"><h2>Dnes</h2><a class="btn small" href="#/calendar">Kalendár</a></div>
-      ${sessionList(todays, { showDate: false }, 'Dnes nemáš naplánovaný žiadny tréning.')}
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Najbližšie tréningy</h2></div>
-      ${sessionList(upcoming, {}, 'Žiadne ďalšie naplánované tréningy.')}
-    </section>
+  ${remindersCard()}
+
+  <section class="card">
+    <div class="card-head"><h2>Ďalšie tréningy</h2></div>
+    ${sessionList(upcoming, {}, 'Žiadne ďalšie naplánované tréningy.')}
+  </section>
+
+  <div class="stats">
+    <div class="stat"><b>${week.length}</b><span>tento týždeň</span></div>
+    <div class="stat"><b>${doneWeek}</b><span>odtrénované</span></div>
+    <div class="stat"><b>${active.length}</b><span>${pl(active.length, 'klient', 'klienti', 'klientov')}</span></div>
   </div>
+
+  ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať</button></div>` : ''}
 
   ${low.length ? `<section class="card" style="margin-top:16px">
     <div class="card-head"><h2>Dochádza permanentka</h2></div>
@@ -507,12 +529,17 @@ function viewClient(id) {
         </div>
       </div>
     </div>
-    <div class="row">
-      ${c.phone || c.email ? `<button class="btn" data-action="contact" data-id="${c.id}">Kontaktovať</button>` : ''}
-      <button class="btn" data-action="edit-client" data-id="${c.id}">Upraviť</button>
+    <div class="row client-actions">
+      ${c.phone || c.email ? `<button class="btn" data-action="contact" data-id="${c.id}">💬 Napísať</button>` : ''}
+      <button class="btn" data-action="edit-client" data-id="${c.id}">✏️ Upraviť</button>
       <button class="btn primary" data-action="new-session" data-client="${c.id}">+ Tréning</button>
     </div>
   </div>
+
+  <nav class="jump" aria-label="Sekcie klienta">
+    ${[['sec-sessions', 'Tréningy'], ['records-card', 'Výkony'], ['measure-card', 'Merania'], ['sec-plans', 'Plány'], ['sec-photos', 'Fotky'], ['sec-history', 'História']]
+      .map(([t, l]) => `<button class="chip" data-action="jump" data-target="${t}">${l}</button>`).join('')}
+  </nav>
 
   <div class="grid two">
     <section class="card">
@@ -553,28 +580,28 @@ function viewClient(id) {
     </section>
   </div>
 
-  <section class="card" style="margin-top:16px">
+  <section class="card" style="margin-top:16px" id="sec-sessions">
     <div class="card-head"><h2>Naplánované tréningy</h2></div>
     ${sessionList(upcoming, { showClient: false }, 'Žiadne naplánované tréningy.')}
-  </section>
-
-  <section class="card">
-    <div class="card-head"><h2>Tréningové plány</h2><button class="btn small" data-action="new-plan" data-client="${c.id}">+ Plán</button></div>
-    ${plans.length ? `<ul class="list">${plans.map((p) => `<li><a class="list-item" href="#/plan/${p.id}">
-      <span class="info"><strong>${esc(p.name)}</strong><small>${nEx(p.items.length)}${p.notes ? ' · ' + esc(p.notes) : ''}</small></span><span aria-hidden="true">›</span>
-    </a></li>`).join('')}</ul>` : '<p class="empty">Klient zatiaľ nemá žiadny plán. Vytvor nový alebo skopíruj šablónu v sekcii Plány.</p>'}
-  </section>
-
-  <section class="card">
-    <div class="card-head"><h2>Fotky</h2><span class="spacer"></span><span class="badge" id="photo-count" hidden></span><button class="btn small" data-action="add-photos" data-client="${c.id}">+ Fotky</button></div>
-    <div class="photo-grid" id="photo-grid" data-client="${c.id}"></div>
   </section>
 
   ${recordsCard(c)}
 
   ${measureCard(c)}
 
-  <section class="card">
+  <section class="card" id="sec-plans">
+    <div class="card-head"><h2>Tréningové plány</h2><button class="btn small" data-action="new-plan" data-client="${c.id}">+ Plán</button></div>
+    ${plans.length ? `<ul class="list">${plans.map((p) => `<li><a class="list-item" href="#/plan/${p.id}">
+      <span class="info"><strong>${esc(p.name)}</strong><small>${nEx(p.items.length)}${p.notes ? ' · ' + esc(p.notes) : ''}</small></span><span aria-hidden="true">›</span>
+    </a></li>`).join('')}</ul>` : '<p class="empty">Klient zatiaľ nemá žiadny plán. Vytvor nový alebo skopíruj šablónu v sekcii Plány.</p>'}
+  </section>
+
+  <section class="card" id="sec-photos">
+    <div class="card-head"><h2>Fotky</h2><span class="spacer"></span><span class="badge" id="photo-count" hidden></span><button class="btn small" data-action="add-photos" data-client="${c.id}">+ Fotky</button></div>
+    <div class="photo-grid" id="photo-grid" data-client="${c.id}"></div>
+  </section>
+
+  <section class="card" id="sec-history">
     <div class="card-head"><h2>História tréningov</h2>${history.length ? `<span class="badge">${history.length}</span>` : ''}</div>
     ${sessionList(showAllHistory === id ? history : history.slice(0, HISTORY_LIMIT), { showClient: false }, 'Zatiaľ žiadna história.')}
     ${history.length > HISTORY_LIMIT && showAllHistory !== id ? `<button class="btn small" style="margin-top:10px" data-action="show-history" data-id="${id}">Zobraziť celú históriu (${history.length})</button>` : ''}
@@ -861,6 +888,14 @@ function viewSettings() {
     </dl>
   </section>
   <section class="card">
+    <div class="card-head"><h2>✨ AI asistent</h2>${aiKey() ? '<span class="badge done">Zapnutý</span>' : '<span class="badge">Vypnutý</span>'}</div>
+    <p class="muted" style="margin-top:-6px">${aiKey() ? 'Asistent používa tvoj API kľúč od Anthropic, uložený len v tomto zariadení (nie je v zálohe).' : 'Asistentovi napíšeš bežnou rečou, čo treba, a on to v aplikácii urobí. Potrebuje vlastný API kľúč od Anthropic.'}</p>
+    <div class="row">
+      <a class="btn primary" href="#/assistant">${aiKey() ? 'Otvoriť asistenta' : 'Nastaviť asistenta'}</a>
+      ${aiKey() ? '<button class="btn danger" data-action="ai-remove-key">Odstrániť kľúč</button>' : ''}
+    </div>
+  </section>
+  <section class="card">
     <div class="card-head"><h2>Záloha dát</h2></div>
     <p class="muted" style="margin-top:-6px">Dáta sú uložené iba v tomto zariadení a prehliadači. Pravidelne si ich zálohuj – súbor zálohy môžeš preniesť aj do iného zariadenia.
     ${lb ? `<br>Posledná záloha: <b>${fmtDate(lb)}</b>` : ''}</p>
@@ -905,7 +940,8 @@ const routes = [
   [/^#\/plan\/([\w-]+)$/, viewPlan],
   [/^#\/exercises$/, viewExercises],
   [/^#\/settings$/, viewSettings],
-  [/^#\/finance(?:\/(\d{4}-\d{2}))?$/, viewFinance]
+  [/^#\/finance(?:\/(\d{4}-\d{2}))?$/, viewFinance],
+  [/^#\/assistant$/, viewAssistant]
 ];
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -932,6 +968,7 @@ function render(animate = false) {
         : hash.startsWith('#/calendar') ? 'calendar'
         : hash.startsWith('#/plan') || hash.startsWith('#/exercises') ? 'plans'
         : hash.startsWith('#/settings') ? 'settings'
+        : hash.startsWith('#/assistant') ? 'assistant'
         : hash.startsWith('#/finance') ? 'finance' : 'home';
       document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === section));
       if (flashId) {
@@ -1055,7 +1092,9 @@ function fieldHtml(fd, values) {
     input = `<input id="${id}" name="${fd.name}" type="${fd.type || 'text'}" value="${esc(v)}" ${attrs}>`;
   }
   const datalist = fd.datalist ? `<datalist id="${id}_list">${fd.datalist.map((o) => `<option value="${esc(o)}">`).join('')}</datalist>` : '';
-  return `<div class="field ${fd.half ? 'half' : ''}"><label for="${id}">${esc(fd.label)}</label>${input}${datalist}${fd.hint ? `<span class="hint">${esc(fd.hint)}</span>` : ''}</div>`;
+  // rýchla voľba hodnoty ťuknutím (napr. Dnes / Zajtra, obvyklé časy)
+  const chips = fd.chips?.length ? `<div class="mini-chips">${fd.chips.map(([l, val]) => `<button type="button" class="chip mini${String(val) === String(v) ? ' active' : ''}" data-set="${id}" data-val="${esc(val)}">${esc(l)}</button>`).join('')}</div>` : '';
+  return `<div class="field ${fd.half ? 'half' : ''}"><label for="${id}">${esc(fd.label)}</label>${input}${chips}${datalist}${fd.hint ? `<span class="hint">${esc(fd.hint)}</span>` : ''}</div>`;
 }
 
 function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubmit, onDelete, deleteLabel = 'Vymazať', deleteConfirm = 'Naozaj vymazať?' }) {
@@ -1100,6 +1139,21 @@ function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubm
     render();
   };
   modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
+  modalForm.querySelectorAll('[data-set]').forEach((b) => {
+    b.onclick = () => {
+      const el = modalForm.querySelector('#' + b.dataset.set);
+      el.value = b.dataset.val;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+  });
+  // zvýrazniť čip, ktorý zodpovedá aktuálnej hodnote poľa
+  modalForm.querySelectorAll('.mini-chips').forEach((box) => {
+    const el = modalForm.querySelector('#' + box.firstElementChild.dataset.set);
+    const sync = () => box.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c.dataset.val === el.value));
+    el.addEventListener('input', sync);
+    el.addEventListener('change', sync);
+  });
   modalForm.querySelectorAll('.time-wrap input').forEach((t) => {
     t.oninput = t.onchange = t.onblur = () => t.parentNode.classList.toggle('filled', !!t.value);
   });
@@ -1160,6 +1214,14 @@ function openClientForm(c) {
   });
 }
 
+// 3 najčastejšie časy tréningov (pre rýchlu voľbu vo formulári)
+function usualTimes() {
+  const count = new Map();
+  for (const x of db.sessions) if (/^\d{2}:\d{2}$/.test(x.time || '')) count.set(x.time, (count.get(x.time) || 0) + 1);
+  const top = [...count].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
+  return (top.length ? top : ['07:00', '17:00', '18:00']).sort();
+}
+
 function openSessionForm(s, defaults = {}) {
   const active = db.clients.filter((c) => !c.archived || c.id === s?.clientId).sort(byName);
   if (!active.length) {
@@ -1174,8 +1236,8 @@ function openSessionForm(s, defaults = {}) {
     values,
     fields: [
       { name: 'clientId', label: 'Klient', type: 'select', required: true, options: [['', '— vyber klienta —'], ...active.map((c) => [c.id, c.name])] },
-      { name: 'date', label: 'Dátum', type: 'date', required: true, half: true },
-      { name: 'time', label: 'Čas', type: 'time', half: true },
+      { name: 'date', label: 'Dátum', type: 'date', required: true, half: true, chips: [['Dnes', today()], ['Zajtra', addDays(today(), 1)]] },
+      { name: 'time', label: 'Čas', type: 'time', half: true, chips: usualTimes().map((x) => [x, x]) },
       { name: 'duration', label: 'Dĺžka (min)', type: 'number', min: 5, step: 5, half: true },
       { name: 'status', label: 'Stav', type: 'select', half: true, options: Object.entries(STATUS) },
       { name: 'price', label: 'Cena (€)', type: 'number', min: 0, step: 0.5, half: true },
@@ -1947,15 +2009,17 @@ function openContact(c, session, preferred) {
 function setStatus(id, status) {
   const s = getSession(id);
   if (!s) return;
+  const prev = s.status;
   s.status = status;
   flashId = id;
   save();
   render();
+  const undo = () => { s.status = prev; flashId = id; save(); render(); toast('Vrátené späť'); };
   if (status === 'done') {
     const cr = credits(s.clientId);
-    toast(isDue(s) ? `Odtrénované · na zaplatenie ${fmtMoney(priceOf(s))}` : PACKAGES && cr.bought ? `Odtrénované · zostáva ${cr.left} z permanentky` : 'Tréning odtrénovaný');
+    toast(isDue(s) ? `Odtrénované · na zaplatenie ${fmtMoney(priceOf(s))}` : PACKAGES && cr.bought ? `Odtrénované · zostáva ${cr.left} z permanentky` : 'Tréning odtrénovaný', undo);
   } else {
-    toast('Tréning zrušený');
+    toast('Tréning zrušený', undo);
   }
 }
 
@@ -2388,6 +2452,570 @@ function loadDemo() {
   toast('Ukážkové dáta načítané');
 }
 
+/* =========================================================
+   AI asistent – Claude priamo z prehliadača (vlastný API kľúč trénera)
+   ========================================================= */
+const AI_MODEL = 'claude-opus-5-5';
+const AI_KEY = 'trainer-ai-key';        // API kľúč – len v tomto zariadení, nie je súčasťou zálohy
+const AI_CHAT = 'trainer-ai-chat';      // posledná konverzácia
+const AI_SYSTEM = `Si asistent v aplikácii Tréner, ktorú používa osobný tréner na správu klientov, tréningov, platieb, meraní, výkonov a tréningových plánov.
+
+Pravidlá:
+- Píš po slovensky, stručne a priateľsky. Tykaj. Bez zbytočných úvodov.
+- Dáta aplikácie čítaš a meníš výhradne cez nástroje. Nikdy si nevymýšľaj klientov, tréningy ani čísla – najprv si ich zisti nástrojom.
+- Každá správa trénera začína aktuálnym dátumom a časom v hranatých zátvorkách. Relatívne dátumy („zajtra“, „v piatok“, „budúci týždeň“) počítaj od neho. Dátumy posielaj do nástrojov ako RRRR-MM-DD, časy ako HH:MM.
+- Klienta môžeš zadať menom alebo id. Ak nástroj vráti, že menu zodpovedá viac klientov, alebo chýba dôležitý údaj (napr. čas tréningu, keď ho tréner zjavne chce), opýtaj sa – nehádaj.
+- Nič nemažeš. Tréning môžeš zrušiť (stav cancelled), klienta archivovať.
+- Správy klientom sám neodošleš: použi prepare_message – pripraví tlačidlo WhatsApp/SMS, na ktoré tréner ťukne.
+- Keď niečo zmeníš, na konci v jednej-dvoch vetách zhrň, čo si urobil (konkrétne mená, dni, časy, sumy). Tréner môže všetky zmeny vrátiť tlačidlom „Vrátiť zmeny“.
+- Sumy uvádzaj v eurách so slovenským formátom (napr. 62,5 kg, 40 €).`;
+
+const ai = { items: [], messages: [], busy: false, undo: null };
+try {
+  const saved = JSON.parse(localStorage.getItem(AI_CHAT) || 'null');
+  if (saved && Array.isArray(saved.items) && Array.isArray(saved.messages)) Object.assign(ai, { items: saved.items.filter((x) => !x.pending), messages: saved.messages });
+} catch (e) { /* poškodená konverzácia – začne sa nová */ }
+const aiKey = () => { try { return localStorage.getItem(AI_KEY) || ''; } catch (e) { return ''; } };
+function aiPersist() {
+  try { localStorage.setItem(AI_CHAT, JSON.stringify({ items: ai.items.slice(-60), messages: ai.messages })); } catch (e) { /* plné úložisko */ }
+}
+
+/* ---------- pomocníci pre nástroje ---------- */
+const aiIsDate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && isoDate(parseDate(s)) === s;
+const aiIsTime = (s) => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+const aiNum = (v, name, { min = 0, int = false } = {}) => {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < min || (int && !Number.isInteger(n))) throw new Error(`Neplatná hodnota ${name}: ${v}`);
+  return n;
+};
+const aiStr = (v, max = 500) => (v == null ? '' : String(v).trim().slice(0, max));
+const aiOut = (x) => JSON.stringify(x);
+
+function aiClient(ref) {
+  if (!ref) throw new Error('Chýba klient.');
+  const byId = getClient(String(ref));
+  if (byId) return byId;
+  const q = fold(ref).trim();
+  const exact = db.clients.filter((c) => fold(c.name) === q);
+  if (exact.length === 1) return exact[0];
+  const words = q.split(/\s+/).filter(Boolean);
+  const part = db.clients.filter((c) => words.every((w) => fold(c.name).includes(w)));
+  if (part.length === 1) return part[0];
+  if (!part.length) throw new Error(`Klient „${ref}“ neexistuje. Použi find_clients.`);
+  const active = part.filter((c) => !c.archived);
+  if (active.length === 1) return active[0];
+  throw new Error(`Menu „${ref}“ zodpovedá viac klientov: ${part.map((c) => `${c.name} (id ${c.id})`).join(', ')}. Opýtaj sa trénera, ktorého myslí.`);
+}
+function aiExercise(name, create = true) {
+  const q = fold(name).trim();
+  if (!q) throw new Error('Chýba názov cviku.');
+  const found = getExercise(String(name)) || db.exercises.find((e) => fold(e.name) === q) || db.exercises.find((e) => fold(e.name).includes(q) || q.includes(fold(e.name)));
+  if (found) return found;
+  if (!create) throw new Error(`Cvik „${name}“ nie je v knižnici.`);
+  const e = { id: uid(), name: aiStr(name, 80), category: '' };
+  db.exercises.push(e);
+  return e;
+}
+function aiPlan(ref) {
+  if (!ref) return null;
+  const p = getPlan(String(ref)) || db.plans.find((x) => fold(x.name) === fold(ref)) || db.plans.find((x) => fold(x.name).includes(fold(ref)));
+  if (!p) throw new Error(`Plán „${ref}“ neexistuje. Použi list_plans.`);
+  return p;
+}
+const aiSession = (s) => {
+  const plan = s.planId ? getPlan(s.planId) : null;
+  return {
+    id: s.id, date: s.date, day: DAYS_LONG[weekday(s.date)], time: s.time || null, client: clientName(s.clientId), client_id: s.clientId,
+    duration_min: s.duration || 60, status: s.status, price_eur: priceOf(s),
+    paid: s.status === 'done' ? (s.paid ? PAY[payMethod(s)] : 'nezaplatený') : undefined,
+    plan: plan ? plan.name : undefined, notes: s.notes || undefined, reminded: s.reminded ? true : undefined,
+    workout: s.log ? s.log.map((e) => `${exName(e.exerciseId)}: ${e.sets.map(fmtSet).join(', ')}`) : undefined
+  };
+};
+// zaznamenať vykonanú zmenu (zobrazí sa pod odpoveďou asistenta)
+const aiDid = (text) => { ai.turn?.actions.push(text); aiPaintTurn(); };
+
+/* ---------- nástroje ---------- */
+function aiTools(betaTool) {
+  const S = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
+  const str = (description) => ({ type: 'string', description });
+  const num = (description) => ({ type: 'number', description });
+  return [
+    betaTool({
+      name: 'get_overview',
+      description: 'Prehľad dnešného dňa: dnešné a zajtrajšie tréningy, tréningy na vyhodnotenie (minulé, stále naplánované), nezaplatené tréningy, počet klientov, cena tréningu. Vhodné ako prvý krok pri otázkach typu „čo mám dnes“.',
+      inputSchema: S({}),
+      run: () => {
+        const t = today(), tm = addDays(t, 1);
+        const by = (d) => (idx().sessionsByDate.get(d) || []).filter((s) => s.status !== 'cancelled').sort(bySessionTime).map(aiSession);
+        const due = db.sessions.filter(isDue);
+        return aiOut({
+          today: t, tomorrow: tm, session_price_eur: sessionPrice(), default_duration_min: db.settings.defaultDuration || 60,
+          today_sessions: by(t), tomorrow_sessions: by(tm),
+          overdue_planned: db.sessions.filter((s) => s.status === 'planned' && s.date < t).sort(bySessionTime).map(aiSession),
+          unpaid: { sessions: due.length, total_eur: sumPrice(due) },
+          active_clients: db.clients.filter((c) => !c.archived).length
+        });
+      }
+    }),
+    betaTool({
+      name: 'find_clients',
+      description: 'Zoznam klientov (aj s id, kontaktom, cieľom, dlhom a ďalším tréningom). Bez query vráti všetkých aktívnych.',
+      inputSchema: S({ query: str('Časť mena, telefónu alebo e-mailu (nepovinné)'), include_archived: { type: 'boolean' } }),
+      run: ({ query, include_archived } = {}) => {
+        const q = fold(query || '').replace(/\s/g, '');
+        const t = today();
+        const list = db.clients.filter((c) => (include_archived || !c.archived) && (!q || `${fold(c.name)}${(c.phone || '').replace(/\s/g, '')}${fold(c.email)}`.replace(/\s/g, '').includes(q))).sort(byName);
+        return aiOut(list.map((c) => {
+          const due = clientDue(c.id);
+          const next = clientSessions(c.id).filter((s) => s.status === 'planned' && s.date >= t).sort(bySessionTime)[0];
+          return { id: c.id, name: c.name, phone: c.phone || undefined, email: c.email || undefined, goal: c.goal || undefined, archived: c.archived || undefined, unpaid_eur: due.length ? sumPrice(due) : undefined, next_session: next ? `${next.date} ${next.time || ''}`.trim() : undefined };
+        }));
+      }
+    }),
+    betaTool({
+      name: 'get_client',
+      description: 'Detail klienta: profil, poznámky, naplánované tréningy, posledná história (aj zapísané výkony), plány, merania, osobné rekordy a platby.',
+      inputSchema: S({ client: str('Meno alebo id klienta') }, ['client']),
+      run: ({ client }) => {
+        const c = aiClient(client);
+        const t = today();
+        const ss = clientSessions(c.id);
+        const paid = ss.filter((s) => s.paid);
+        return aiOut({
+          id: c.id, name: c.name, phone: c.phone, email: c.email, goal: c.goal, notes: c.notes, client_since: c.createdAt, archived: !!c.archived,
+          sessions_done: ss.filter((s) => s.status === 'done').length,
+          upcoming: ss.filter((s) => s.status === 'planned' && s.date >= t).sort(bySessionTime).slice(0, 10).map(aiSession),
+          recent: ss.filter((s) => !(s.status === 'planned' && s.date >= t)).sort(bySessionTime).reverse().slice(0, 10).map(aiSession),
+          plans: db.plans.filter((p) => p.clientId === c.id).map((p) => ({ id: p.id, name: p.name, exercises: p.items.map((it) => { const l = exerciseLine(it); return `${l.name}${l.dose ? ' – ' + l.dose : ''}`; }) })),
+          measurements: db.measurements.filter((m) => m.clientId === c.id).sort((a, b) => a.date.localeCompare(b.date)).map((m) => ({ date: m.date, weight_kg: m.weight, body_fat_pct: m.bodyFat, waist_cm: m.waist, hips_cm: m.hips, note: m.note || undefined })),
+          records: clientRecords(c.id).map((r) => ({ exercise: r.name, best: fmtSet(r.best), date: r.date, sessions: r.tops.length })),
+          payments: { paid_cash_eur: sumPrice(paid.filter((s) => payMethod(s) === 'cash')), paid_bank_eur: sumPrice(paid.filter((s) => payMethod(s) === 'bank')), unpaid_sessions: clientDue(c.id).map((s) => s.date), unpaid_eur: sumPrice(clientDue(c.id)) }
+        });
+      }
+    }),
+    betaTool({
+      name: 'list_sessions',
+      description: 'Tréningy v rozsahu dátumov (vrátane), voliteľne pre jedného klienta a s daným stavom.',
+      inputSchema: S({ date_from: str('RRRR-MM-DD'), date_to: str('RRRR-MM-DD'), client: str('Meno alebo id (nepovinné)'), status: { type: 'string', enum: ['planned', 'done', 'cancelled'] } }, ['date_from', 'date_to']),
+      run: ({ date_from, date_to, client, status }) => {
+        if (!aiIsDate(date_from) || !aiIsDate(date_to)) throw new Error('Dátumy musia byť RRRR-MM-DD.');
+        const c = client ? aiClient(client) : null;
+        const list = db.sessions.filter((s) => s.date >= date_from && s.date <= date_to && (!c || s.clientId === c.id) && (!status || s.status === status)).sort(bySessionTime);
+        return aiOut({ count: list.length, sessions: list.slice(0, 200).map(aiSession) });
+      }
+    }),
+    betaTool({
+      name: 'create_client',
+      description: 'Pridá nového klienta.',
+      inputSchema: S({ name: str('Meno a priezvisko'), phone: str('Telefón (nepovinné)'), email: str('E-mail (nepovinné)'), goal: str('Cieľ (nepovinné)'), notes: str('Poznámky, zranenia… (nepovinné)') }, ['name']),
+      run: ({ name, phone, email, goal, notes }) => {
+        const nm = aiStr(name, 80);
+        if (!nm) throw new Error('Chýba meno.');
+        const dupe = db.clients.find((c) => fold(c.name) === fold(nm));
+        if (dupe) throw new Error(`Klient s menom ${dupe.name} už existuje (id ${dupe.id}).`);
+        const c = { id: uid(), name: nm, phone: aiStr(phone, 40), email: aiStr(email, 120), goal: aiStr(goal), notes: aiStr(notes, 2000), createdAt: today(), archived: false };
+        db.clients.push(c);
+        save();
+        aiDid(`Nový klient: ${c.name}`);
+        return aiOut({ ok: true, id: c.id, name: c.name });
+      }
+    }),
+    betaTool({
+      name: 'update_client',
+      description: 'Upraví údaje klienta (len zadané polia). archived=true klienta archivuje.',
+      inputSchema: S({ client: str('Meno alebo id'), name: { type: 'string' }, phone: { type: 'string' }, email: { type: 'string' }, goal: { type: 'string' }, notes: str('Nahradí celé poznámky'), archived: { type: 'boolean' } }, ['client']),
+      run: ({ client, ...f }) => {
+        const c = aiClient(client);
+        const changed = [];
+        for (const k of ['name', 'phone', 'email', 'goal', 'notes']) if (f[k] != null) { const v = aiStr(f[k], k === 'notes' ? 2000 : 120); if (k === 'name' && !v) continue; c[k] = v; changed.push(k); }
+        if (f.archived != null) { c.archived = !!f.archived; changed.push('archived'); }
+        save();
+        aiDid(`Upravený klient: ${c.name}`);
+        return aiOut({ ok: true, changed });
+      }
+    }),
+    betaTool({
+      name: 'schedule_sessions',
+      description: 'Naplánuje tréning klientovi, voliteľne opakovaný každý týždeň. Pri kolízii s iným tréningom v rovnakom čase vráti chybu – vtedy sa opýtaj a prípadne pošli allow_overlap=true.',
+      inputSchema: S({ client: str('Meno alebo id'), date: str('RRRR-MM-DD'), time: str('HH:MM (nepovinné)'), duration_min: num('Dĺžka v minútach (predvolene z nastavení)'), repeat_weeks: num('Počet týždňov (1 = jeden tréning, max 52)'), plan: str('Názov alebo id plánu (nepovinné)'), price_eur: num('Cena (predvolene z nastavení)'), notes: { type: 'string' }, allow_overlap: { type: 'boolean' } }, ['client', 'date']),
+      run: ({ client, date, time, duration_min, repeat_weeks, plan, price_eur, notes, allow_overlap }) => {
+        const c = aiClient(client);
+        if (!aiIsDate(date)) throw new Error('Dátum musí byť RRRR-MM-DD.');
+        if (time && !aiIsTime(time)) throw new Error('Čas musí byť HH:MM.');
+        const n = Math.min(Math.max(aiNum(repeat_weeks, 'repeat_weeks', { min: 1, int: true }) || 1, 1), 52);
+        const p = aiPlan(plan);
+        const dates = Array.from({ length: n }, (_, i) => addDays(date, 7 * i));
+        if (time && !allow_overlap) {
+          const clash = db.sessions.find((x) => x.status !== 'cancelled' && x.time === time && dates.includes(x.date));
+          if (clash) throw new Error(`Kolízia: ${clash.date} o ${clash.time} už má tréning ${clientName(clash.clientId)}.`);
+        }
+        const price = aiNum(price_eur, 'price_eur');
+        const created = dates.map((d) => ({ id: uid(), clientId: c.id, date: d, time: time || '', duration: aiNum(duration_min, 'duration_min', { min: 5 }) || db.settings.defaultDuration || 60, status: 'planned', planId: p ? p.id : '', notes: aiStr(notes, 1000), ...(price != null ? { price } : {}) }));
+        db.sessions.push(...created);
+        save();
+        aiDid(`Naplánované: ${c.name} · ${fmtDay(date)}${time ? ' ' + time : ''}${n > 1 ? ` · ${n}× každý týždeň` : ''}`);
+        return aiOut({ ok: true, created: created.map(aiSession) });
+      }
+    }),
+    betaTool({
+      name: 'update_session',
+      description: 'Zmení tréning: presun (dátum/čas), stav (planned / done = odtrénovaný / cancelled = zrušený), poznámky, plán, cenu, dĺžku.',
+      inputSchema: S({ session_id: { type: 'string' }, date: str('RRRR-MM-DD'), time: str('HH:MM'), duration_min: { type: 'number' }, status: { type: 'string', enum: ['planned', 'done', 'cancelled'] }, notes: { type: 'string' }, plan: str('Názov alebo id plánu, prázdny reťazec = bez plánu'), price_eur: { type: 'number' } }, ['session_id']),
+      run: ({ session_id, date, time, duration_min, status, notes, plan, price_eur }) => {
+        const s = getSession(session_id);
+        if (!s) throw new Error('Tréning neexistuje. Použi list_sessions.');
+        if (date != null && !aiIsDate(date)) throw new Error('Dátum musí byť RRRR-MM-DD.');
+        if (time != null && time !== '' && !aiIsTime(time)) throw new Error('Čas musí byť HH:MM.');
+        if ((date != null && date !== s.date) || (time != null && time !== s.time)) delete s.reminded;
+        if (date != null) s.date = date;
+        if (time != null) s.time = time;
+        if (duration_min != null) s.duration = aiNum(duration_min, 'duration_min', { min: 5 });
+        if (status) s.status = status;
+        if (notes != null) s.notes = aiStr(notes, 1000);
+        if (plan != null) s.planId = plan === '' ? '' : aiPlan(plan).id;
+        if (price_eur != null) s.price = aiNum(price_eur, 'price_eur');
+        save();
+        aiDid(`${status === 'cancelled' ? 'Zrušený' : status === 'done' ? 'Odtrénovaný' : 'Upravený'} tréning: ${clientName(s.clientId)} · ${fmtDay(s.date)}${s.time ? ' ' + s.time : ''}`);
+        return aiOut({ ok: true, session: aiSession(s) });
+      }
+    }),
+    betaTool({
+      name: 'record_payment',
+      description: 'Zaznamená platbu klienta za odtrénované nezaplatené tréningy (od najstaršieho). Bez sessions_count zaplatí všetky.',
+      inputSchema: S({ client: str('Meno alebo id'), method: { type: 'string', enum: ['cash', 'bank'], description: 'cash = hotovosť, bank = na účet' }, sessions_count: num('Koľko tréningov zaplatil (nepovinné)') }, ['client', 'method']),
+      run: ({ client, method, sessions_count }) => {
+        const c = aiClient(client);
+        const due = clientDue(c.id);
+        if (!due.length) throw new Error(`${c.name} nemá žiadne nezaplatené tréningy.`);
+        const n = Math.min(aiNum(sessions_count, 'sessions_count', { min: 1, int: true }) || due.length, due.length);
+        const list = due.slice(0, n);
+        list.forEach((s) => { s.paid = true; s.paidDate = today(); s.payMethod = method === 'bank' ? 'bank' : 'cash'; });
+        save();
+        aiDid(`Platba: ${c.name} · ${fmtMoney(sumPrice(list))} ${method === 'bank' ? 'na účet' : 'v hotovosti'}`);
+        return aiOut({ ok: true, paid_sessions: list.map((s) => s.date), total_eur: sumPrice(list), still_unpaid: due.length - n });
+      }
+    }),
+    betaTool({
+      name: 'add_measurement',
+      description: 'Pridá meranie klienta (váha, % tuku, obvody).',
+      inputSchema: S({ client: str('Meno alebo id'), date: str('RRRR-MM-DD (predvolene dnes)'), weight_kg: { type: 'number' }, body_fat_pct: { type: 'number' }, waist_cm: { type: 'number' }, hips_cm: { type: 'number' }, note: { type: 'string' } }, ['client']),
+      run: ({ client, date, weight_kg, body_fat_pct, waist_cm, hips_cm, note }) => {
+        const c = aiClient(client);
+        const d = date || today();
+        if (!aiIsDate(d)) throw new Error('Dátum musí byť RRRR-MM-DD.');
+        const m = { id: uid(), clientId: c.id, date: d, weight: aiNum(weight_kg, 'weight_kg'), bodyFat: aiNum(body_fat_pct, 'body_fat_pct'), waist: aiNum(waist_cm, 'waist_cm'), hips: aiNum(hips_cm, 'hips_cm'), note: aiStr(note) };
+        if ([m.weight, m.bodyFat, m.waist, m.hips].every((v) => v == null)) throw new Error('Zadaj aspoň jednu hodnotu merania.');
+        db.measurements.push(m);
+        save();
+        aiDid(`Meranie: ${c.name}${m.weight != null ? ` · ${fmtNum(m.weight)} kg` : ''}`);
+        return aiOut({ ok: true });
+      }
+    }),
+    betaTool({
+      name: 'log_workout',
+      description: 'Zapíše výkony z tréningu (série kg × opakovania pre každý cvik) a vráti nové osobné rekordy. Použi session_id, alebo klienta + dátum (predvolene dnes) – nájde sa jeho tréning v ten deň, a ak žiadny nie je, vytvorí sa odtrénovaný. Naplánovaný tréning v minulosti/dnes sa označí ako odtrénovaný. Cviky, ktoré nie sú v knižnici, sa pridajú.',
+      inputSchema: S({
+        session_id: { type: 'string' }, client: str('Meno alebo id (ak nie je session_id)'), date: str('RRRR-MM-DD'),
+        exercises: { type: 'array', items: S({ exercise: str('Názov cviku'), sets: { type: 'array', items: S({ kg: num('Váha v kg (pri cvikoch s vlastnou váhou vynechaj)'), reps: num('Opakovania') }) } }, ['exercise', 'sets']) },
+        replace: { type: 'boolean', description: 'true = nahradí doterajší zápis tréningu, inak sa cviky doplnia/prepíšu' }
+      }, ['exercises']),
+      run: ({ session_id, client, date, exercises, replace }) => {
+        let s = session_id ? getSession(session_id) : null;
+        if (session_id && !s) throw new Error('Tréning neexistuje.');
+        if (!s) {
+          const c = aiClient(client);
+          const d = date || today();
+          if (!aiIsDate(d)) throw new Error('Dátum musí byť RRRR-MM-DD.');
+          s = clientSessions(c.id).filter((x) => x.date === d && x.status !== 'cancelled').sort(bySessionTime)[0];
+          if (!s) { s = { id: uid(), clientId: c.id, date: d, time: '', duration: db.settings.defaultDuration || 60, status: 'done', planId: '', notes: '' }; db.sessions.push(s); }
+        }
+        if (!Array.isArray(exercises) || !exercises.length) throw new Error('Chýbajú cviky.');
+        const log = exercises.map((e) => ({
+          exerciseId: aiExercise(e.exercise).id,
+          sets: (Array.isArray(e.sets) ? e.sets : []).map((st) => ({ w: aiNum(st.kg, 'kg'), r: aiNum(st.reps, 'reps', { int: true }) })).filter((st) => st.w != null || st.r != null)
+        })).filter((e) => e.sets.length);
+        if (!log.length) throw new Error('Žiadne platné série.');
+        _idx = null;
+        const records = log.map((e) => ({ e, top: topSet(e.sets), best: bestBefore(s, e.exerciseId) })).filter(({ top, best }) => best && betterSet(top, best.set) > 0);
+        const merged = replace || !s.log ? log : [...s.log.filter((x) => !log.some((l) => l.exerciseId === x.exerciseId)), ...log];
+        s.log = merged;
+        if (s.status === 'planned' && s.date <= today()) s.status = 'done';
+        save();
+        aiDid(`Výkony: ${clientName(s.clientId)} · ${fmtDay(s.date)} · ${nEx(log.length)}${records.length ? ` · 🔥 ${records.length} ${pl(records.length, 'rekord', 'rekordy', 'rekordov')}` : ''}`);
+        return aiOut({ ok: true, session: aiSession(s), new_records: records.map((r) => `${exName(r.e.exerciseId)} ${fmtSet(r.top)} (predtým ${fmtSet(r.best.set)})`) });
+      }
+    }),
+    betaTool({
+      name: 'list_plans',
+      description: 'Tréningové plány a šablóny s cvikmi, a knižnica cvikov.',
+      inputSchema: S({}),
+      run: () => aiOut({
+        plans: db.plans.map((p) => ({ id: p.id, name: p.name, client: p.clientId ? clientName(p.clientId) : null, template: !p.clientId, notes: p.notes || undefined, exercises: p.items.map((it) => { const l = exerciseLine(it); return `${l.name}${l.dose ? ' – ' + l.dose : ''}`; }) })),
+        exercise_library: db.exercises.map((e) => e.category ? `${e.name} (${e.category})` : e.name)
+      })
+    }),
+    betaTool({
+      name: 'create_plan',
+      description: 'Vytvorí tréningový plán pre klienta, alebo šablónu (bez klienta).',
+      inputSchema: S({ name: str('Názov plánu'), client: str('Meno alebo id (vynechaj pre šablónu)'), notes: { type: 'string' }, exercises: { type: 'array', items: S({ exercise: str('Názov cviku'), sets: { type: 'number' }, reps: str('napr. 8–12 alebo 30 s'), weight: str('napr. 40 kg'), rest: str('napr. 90 s'), note: { type: 'string' } }, ['exercise']) } }, ['name', 'exercises']),
+      run: ({ name, client, notes, exercises }) => {
+        const c = client ? aiClient(client) : null;
+        const nm = aiStr(name, 80);
+        if (!nm) throw new Error('Chýba názov.');
+        const items = (exercises || []).map((e) => ({ id: uid(), exerciseId: aiExercise(e.exercise).id, sets: aiNum(e.sets, 'sets', { min: 1, int: true }) || '', reps: aiStr(e.reps, 40), weight: aiStr(e.weight, 40), rest: aiStr(e.rest, 40), note: aiStr(e.note, 200) }));
+        const p = { id: uid(), clientId: c ? c.id : '', name: nm, notes: aiStr(notes, 1000), items };
+        db.plans.push(p);
+        save();
+        aiDid(`${c ? 'Plán' : 'Šablóna'}: ${p.name}${c ? ` · ${c.name}` : ''} · ${nEx(items.length)}`);
+        return aiOut({ ok: true, id: p.id });
+      }
+    }),
+    betaTool({
+      name: 'finance_summary',
+      description: 'Financie za mesiac: príjem (hotovosť / na účet), odtrénované a zaplatené tréningy, a všetky aktuálne nezaplatené tréningy po klientoch.',
+      inputSchema: S({ month: str('RRRR-MM (predvolene aktuálny mesiac)') }),
+      run: ({ month } = {}) => {
+        const m = month || today().slice(0, 7);
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new Error('Mesiac musí byť RRRR-MM.');
+        const paid = db.sessions.filter((s) => s.paid && (s.paidDate || s.date).startsWith(m));
+        const due = db.sessions.filter(isDue);
+        const byClient = new Map();
+        due.forEach((s) => { const a = byClient.get(s.clientId) || []; a.push(s); byClient.set(s.clientId, a); });
+        return aiOut({
+          month: m, session_price_eur: sessionPrice(),
+          income_eur: sumPrice(paid), cash_eur: sumPrice(paid.filter((s) => payMethod(s) === 'cash')), bank_eur: sumPrice(paid.filter((s) => payMethod(s) === 'bank')),
+          done_sessions: db.sessions.filter((s) => s.status === 'done' && s.date.startsWith(m)).length, paid_sessions: paid.length,
+          unpaid_now: [...byClient].map(([cid, list]) => ({ client: clientName(cid), sessions: list.map((s) => s.date), total_eur: sumPrice(list) }))
+        });
+      }
+    }),
+    betaTool({
+      name: 'prepare_message',
+      description: 'Pripraví správu klientovi ako tlačidlo WhatsApp / SMS / e-mail, na ktoré tréner ťukne a odošle ju. purpose=reminder použije nastavený text pripomienky k najbližšiemu (alebo zadanému) tréningu, payment prehľad dlhu, custom tvoj text.',
+      inputSchema: S({ client: str('Meno alebo id'), purpose: { type: 'string', enum: ['reminder', 'payment', 'custom'] }, text: str('Text správy (pre custom; inak nepovinné – nahradí predvolený)'), session_id: { type: 'string' } }, ['client', 'purpose']),
+      run: ({ client, purpose, text, session_id }) => {
+        const c = aiClient(client);
+        if (!c.phone && !c.email) throw new Error(`${c.name} nemá telefón ani e-mail.`);
+        let msg = aiStr(text, 1500);
+        let s = null;
+        if (purpose === 'reminder') {
+          s = session_id ? getSession(session_id) : clientSessions(c.id).filter((x) => x.status === 'planned' && x.date >= today()).sort(bySessionTime)[0];
+          if (!s) throw new Error(`${c.name} nemá naplánovaný tréning.`);
+          if (!msg) msg = reminderText(c, s);
+        } else if (purpose === 'payment' && !msg) {
+          const due = clientDue(c.id);
+          if (!due.length) throw new Error(`${c.name} nemá dlh.`);
+          msg = `Ahoj ${firstName(c)}, posielam prehľad: ${due.length === 1 ? 'nezaplatený je 1 tréning' : `nezaplatené sú ${nTr(due.length)}`} (${due.map((x) => fmtShort(x.date)).join(', ')}), spolu ${fmtMoney(sumPrice(due))}. Ďakujem!`;
+        }
+        if (!msg) throw new Error('Chýba text správy.');
+        const enc = encodeURIComponent(msg);
+        const phone = (c.phone || '').replace(/\s/g, '');
+        const links = phone
+          ? [{ label: `WhatsApp · ${firstName(c)}`, href: `https://wa.me/${intlPhone(c.phone)}?text=${enc}`, kind: 'wa' }, { label: 'SMS', href: `sms:${phone}?&body=${enc}`, kind: 'sms' }]
+          : [{ label: `E-mail · ${firstName(c)}`, href: `mailto:${c.email}?body=${enc}`, kind: 'mail' }];
+        if (ai.turn) ai.turn.links.push(...links.map((l) => ({ ...l, remind: purpose === 'reminder' && s ? s.id : undefined })));
+        aiPaintTurn();
+        return aiOut({ ok: true, prepared_text: msg, note: 'Tlačidlá sú pripravené v chate, tréner ich odošle ťuknutím.' });
+      }
+    }),
+    betaTool({
+      name: 'update_settings',
+      description: 'Zmení predvolené nastavenia: cena tréningu, dĺžka tréningu, text pripomienky (zástupné znaky {meno}, {datum}, {cas}).',
+      inputSchema: S({ session_price_eur: { type: 'number' }, default_duration_min: { type: 'number' }, reminder_text: { type: 'string' } }),
+      run: ({ session_price_eur, default_duration_min, reminder_text } = {}) => {
+        if (session_price_eur != null) db.settings.sessionPrice = aiNum(session_price_eur, 'session_price_eur');
+        if (default_duration_min != null) db.settings.defaultDuration = aiNum(default_duration_min, 'default_duration_min', { min: 5 });
+        if (reminder_text != null && aiStr(reminder_text)) db.settings.reminderText = aiStr(reminder_text, 500);
+        save();
+        aiDid('Nastavenia zmenené');
+        return aiOut({ ok: true, session_price_eur: sessionPrice(), default_duration_min: db.settings.defaultDuration || 60 });
+      }
+    })
+  ];
+}
+
+/* ---------- konverzácia ---------- */
+const AI_EXAMPLES = [
+  'Čo mám dnes a zajtra?',
+  'Kto mi dlhuje peniaze?',
+  'Naplánuj Jane tréning v piatok o 7:00',
+  'Peter dnes: drep 100 kg 5×5, bench 80 kg 5×5',
+  'Priprav pripomienky na zajtra',
+  'Ako sa darí Jane s váhou?'
+];
+
+// jednoduché a bezpečné formátovanie odpovede: **tučné**, odrážky, nové riadky
+function aiFormat(text) {
+  const lines = esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split('\n');
+  let html = '', list = false;
+  for (const l of lines) {
+    const m = l.match(/^\s*(?:[-•*]|\d+\.)\s+(.*)$/);
+    if (m) { if (!list) { html += '<ul>'; list = true; } html += `<li>${m[1]}</li>`; continue; }
+    if (list) { html += '</ul>'; list = false; }
+    html += l.trim() ? `<p>${l.replace(/^#+\s*/, '')}</p>` : '';
+  }
+  return html + (list ? '</ul>' : '');
+}
+
+function aiItemHtml(it, i) {
+  if (it.role === 'user') return `<div class="ai-msg user"><div class="bubble">${esc(it.text).replace(/\n/g, '<br>')}</div></div>`;
+  return `<div class="ai-msg bot${it.error ? ' error' : ''}" data-i="${i}">
+    <div class="bubble">
+      ${it.pending && !it.text ? `<div class="ai-typing" aria-label="Asistent pracuje"><span></span><span></span><span></span></div>` : aiFormat(it.text || '')}
+      ${it.actions?.length ? `<ul class="ai-actions">${it.actions.map((a) => `<li>✓ ${esc(a)}</li>`).join('')}</ul>` : ''}
+      ${it.links?.length ? `<div class="ai-links">${it.links.map((l) => `<a class="btn small${l.kind === 'wa' ? ' wa-btn primary' : ''}" href="${esc(l.href)}" ${l.kind === 'wa' ? 'target="_blank" rel="noopener"' : ''} ${l.remind ? `data-remind="${esc(l.remind)}"` : ''}>${esc(l.label)}</a>`).join('')}</div>` : ''}
+      ${it.canUndo && ai.undo?.item === it ? `<button class="btn small ai-undo" data-action="ai-undo">↩︎ Vrátiť zmeny</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function aiChatHtml() {
+  if (!ai.items.length) {
+    return `<div class="ai-msg bot"><div class="bubble"><p><b>Ahoj! Som tvoj asistent.</b> Napíš mi, čo treba – naplánujem tréningy, zapíšem platby a výkony, poviem ti, kto dlhuje, alebo pripravím správy klientom.</p></div></div>
+      <div class="chips ai-examples">${AI_EXAMPLES.map((t) => `<button class="chip" data-action="ai-example" data-text="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
+  }
+  return ai.items.map(aiItemHtml).join('');
+}
+
+function aiPaint() {
+  const box = document.getElementById('ai-chat');
+  if (!box) return;
+  box.innerHTML = aiChatHtml();
+  const send = document.getElementById('ai-send');
+  if (send) send.disabled = ai.busy;
+  requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduceMotion.matches ? 'auto' : 'smooth' }));
+}
+// prekresliť len rozpracovanú odpoveď (zmeny počas práce asistenta)
+function aiPaintTurn() {
+  const i = ai.items.indexOf(ai.turn);
+  const el = document.querySelector(`#ai-chat .ai-msg[data-i="${i}"]`);
+  if (el && i >= 0) el.outerHTML = aiItemHtml(ai.turn, i);
+}
+
+function aiErrorText(e, Anthropic) {
+  if (Anthropic && e instanceof Anthropic.AuthenticationError) return 'API kľúč nie je platný. Skontroluj ho v Nastaveniach → AI asistent.';
+  if (Anthropic && e instanceof Anthropic.PermissionDeniedError) return 'Tento API kľúč nemá prístup k modelu. Skontroluj ho v Anthropic Console.';
+  if (Anthropic && e instanceof Anthropic.RateLimitError) return 'Priveľa požiadaviek naraz. Skús to o chvíľu znova.';
+  if (Anthropic && e instanceof Anthropic.BadRequestError) return /credit|billing|balance/i.test(e.message) ? 'Na účte Anthropic došiel kredit. Dobi ho v Anthropic Console → Billing.' : `Požiadavku sa nepodarilo spracovať (${e.message}).`;
+  if (Anthropic && e instanceof Anthropic.APIConnectionError) return 'Bez pripojenia na internet – asistent potrebuje internet.';
+  if (Anthropic && e instanceof Anthropic.APIError) return `Služba AI je dočasne nedostupná (chyba ${e.status ?? '?'}). Skús to znova.`;
+  if (e && e.name === 'AbortError') return 'Zastavené.';
+  return navigator.onLine === false ? 'Bez pripojenia na internet – asistent potrebuje internet.' : 'Asistenta sa nepodarilo spustiť. Skús obnoviť aplikáciu.';
+}
+
+async function aiSend(text) {
+  text = String(text || '').trim();
+  const key = aiKey();
+  if (ai.busy || !text || !key) return;
+  ai.busy = true;
+  const snapshot = JSON.stringify(db);
+  ai.undo = null;
+  ai.items.push({ role: 'user', text });
+  const item = { role: 'assistant', text: '', actions: [], links: [], pending: true };
+  ai.items.push(item);
+  ai.turn = item;
+  aiPaint();
+  const now = new Date();
+  const note = ai.undoNote ? '[Tréner medzitým vrátil všetky zmeny z tvojej predchádzajúcej odpovede – tie dáta sú v pôvodnom stave.]\n' : '';
+  const content = `[${DAYS_LONG[weekday(today())]} ${today()}, ${pad(now.getHours())}:${pad(now.getMinutes())}]\n${note}${text}`;
+  let sdk = null;
+  try {
+    sdk = await import('./vendor/anthropic-sdk.mjs');
+    const client = new sdk.Anthropic({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 });
+    const runner = client.beta.messages.toolRunner({
+      model: AI_MODEL,
+      max_tokens: 16000,
+      output_config: { effort: 'medium' },
+      // pri odmietnutí bezpečnostným filtrom server sám skúsi vhodný záložný model
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      cache_control: { type: 'ephemeral' },
+      system: AI_SYSTEM,
+      tools: aiTools(sdk.betaTool),
+      messages: [...ai.messages, { role: 'user', content }],
+      max_iterations: 25
+    });
+    const final = await runner.runUntilDone();
+    ai.messages = [...runner.params.messages];
+    ai.undoNote = false;
+    const out = final.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    item.text = final.stop_reason === 'refusal' ? 'Túto požiadavku nemôžem spracovať.'
+      : out || (item.actions.length || item.links.length ? 'Hotovo.' : '…');
+    if (final.stop_reason === 'max_tokens') item.text += '\n(Odpoveď bola príliš dlhá a skrátila sa.)';
+  } catch (e) {
+    console.error(e);
+    item.text = aiErrorText(e, sdk?.Anthropic);
+    item.error = true;
+  } finally {
+    item.pending = false;
+    ai.busy = false;
+    ai.turn = null;
+    if (JSON.stringify(db) !== snapshot) { ai.undo = { snapshot, item }; item.canUndo = true; }
+    aiPersist();
+    aiPaint();
+  }
+}
+
+function aiUndo() {
+  if (!ai.undo) return;
+  db = normalize(JSON.parse(ai.undo.snapshot));
+  ai.undo.item.canUndo = false;
+  ai.undo.item.actions = ai.undo.item.actions.map((a) => a.startsWith('(vrátené) ') ? a : `(vrátené) ${a}`);
+  ai.undo = null;
+  ai.undoNote = true;   // asistent sa to dozvie s ďalšou správou
+  save();
+  aiPersist();
+  aiPaint();
+  toast('Zmeny vrátené');
+}
+
+function viewAssistant() {
+  if (!aiKey()) {
+    return `<div class="page-head"><h1>✨ Asistent</h1></div>
+    <section class="card ai-setup">
+      <h2>Zapni si AI asistenta</h2>
+      <p class="muted">Asistentovi napíšeš (alebo nadiktuješ) bežnou rečou, čo treba – <i>„naplánuj Jane tréning v piatok o 7“, „Peter zaplatil 40 € na účet“, „kto mi dlhuje?“</i> – a on to v aplikácii urobí.</p>
+      <ol class="ai-steps">
+        <li>Choď na <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>, zaregistruj sa a v časti <b>Billing</b> si nabi kredit (stačí 5 $).</li>
+        <li>V <b>API Keys</b> vytvor nový kľúč a skopíruj ho (začína <code>sk-ant-</code>).</li>
+        <li>Vlož ho sem:</li>
+      </ol>
+      <div class="field"><label for="ai-key-input">API kľúč</label><input id="ai-key-input" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"></div>
+      <button class="btn primary" data-action="ai-save-key">Uložiť a začať</button>
+      <p class="hint" style="margin-bottom:0">Kľúč ostane len v tomto zariadení (nie je ani v zálohe). Platíš len za to, čo použiješ – bežná požiadavka stojí približne 2–10 centov. Asistent potrebuje internet.</p>
+    </section>`;
+  }
+  return `<div class="page-head ai-head"><h1>✨ Asistent</h1>${ai.items.length ? `<button class="btn small" data-action="ai-new">Nová konverzácia</button>` : ''}</div>
+  <section class="ai-chat" id="ai-chat">${aiChatHtml()}</section>
+  <form class="ai-input" id="ai-form" autocomplete="off">
+    <textarea id="ai-text" rows="1" placeholder="Napíš, čo treba urobiť…" aria-label="Správa pre asistenta" enterkeyhint="send"></textarea>
+    <button class="btn primary ai-send" id="ai-send" type="submit" aria-label="Odoslať" ${ai.busy ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+  </form>`;
+}
+
+document.addEventListener('submit', (e) => {
+  if (e.target.id !== 'ai-form') return;
+  e.preventDefault();
+  const ta = document.getElementById('ai-text');
+  const text = ta.value;
+  if (!text.trim() || ai.busy) return;
+  ta.value = '';
+  ta.style.height = '';
+  aiSend(text);
+});
+document.addEventListener('keydown', (e) => {
+  // Enter odošle (Shift+Enter = nový riadok) – na počítači
+  if (e.target.id === 'ai-text' && e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer: fine)').matches) {
+    e.preventDefault();
+    document.getElementById('ai-form').requestSubmit();
+  }
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'ai-text') { e.target.style.height = ''; e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`; }
+});
+
 const actions = {
   'new-client': () => openClientForm(),
   'edit-client': (d) => openClientForm(getClient(d.id)),
@@ -2481,6 +3109,33 @@ const actions = {
     const c = getClient(d.client);
     const card = document.getElementById(d.kind === 'x' ? 'records-card' : 'measure-card');
     if (c && card) card.outerHTML = d.kind === 'x' ? recordsCard(c) : measureCard(c);
+  },
+  'ai-save-key': () => {
+    const v = (document.getElementById('ai-key-input')?.value || '').trim();
+    if (!/^sk-ant-[\w-]{20,}$/.test(v)) { toast('Toto nevyzerá ako API kľúč (začína sk-ant-)'); return; }
+    try { localStorage.setItem(AI_KEY, v); } catch (e) { toast('Kľúč sa nepodarilo uložiť'); return; }
+    toast('Asistent je pripravený ✨');
+    render();
+  },
+  'ai-remove-key': () => {
+    if (!confirm('Odstrániť API kľúč z tohto zariadenia? Asistent prestane fungovať, kým nevložíš nový.')) return;
+    try { localStorage.removeItem(AI_KEY); } catch (e) { /* nič */ }
+    render();
+    toast('API kľúč odstránený');
+  },
+  'ai-new': () => {
+    if (ai.busy) return;
+    ai.items = []; ai.messages = []; ai.undo = null; ai.undoNote = false;
+    aiPersist();
+    render();
+  },
+  'ai-example': (d) => {
+    const ta = document.getElementById('ai-text');
+    if (ta) { ta.value = d.text; ta.focus(); ta.dispatchEvent(new Event('input', { bubbles: true })); }
+  },
+  'ai-undo': () => aiUndo(),
+  'jump': (d) => {
+    document.getElementById(d.target)?.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
   },
   'log-session': (d) => { const s = getSession(d.id); if (s) openLogSheet(s); },
   'print': () => window.print(),
