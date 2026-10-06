@@ -1091,3 +1091,10 @@ dialog.confirm .btn.danger.danger-fill { background: var(--danger); border-color
 }
 .toast-undo { background: var(--primary); color: var(--primary-ink); min-height: 34px; padding: 6px 16px; box-shadow: 0 8px 20px -10px rgba(63, 174, 163, .8); }
 .toast-undo:active { transform: scale(.96); }
+/* Tabuľka meraní – hodnota a zmena pod sebou, nič sa nezalamuje */
+#measure-card td, #measure-card th { white-space: nowrap; vertical-align: top; }
+#measure-card td.date { font-variant-numeric: tabular-nums; }
+#measure-card th small { display: block; font-size: .62rem; font-weight: 500; color: var(--muted); letter-spacing: 0; text-transform: none; }
+#measure-card td.num { line-height: 1.2; padding-top: 10px; }
+#measure-card .delta { display: block; font-size: .72rem; font-weight: 700; min-height: 1em; }
+#measure-card td:last-child { white-space: normal; min-width: 120px; color: var(--muted); font-size: .85rem; }
