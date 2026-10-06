@@ -7,11 +7,11 @@
   --text: #f6f6f8;
   --muted: #8c8c97;
   --border: #26262c;
-  --primary: #eeb0c8;
-  --primary-strong: #d98aac;
-  --primary-ink: #1a0611;
-  --primary-soft: rgba(238, 176, 200, .14);
-  --glow: 0 0 0 1px rgba(238, 176, 200, .35), 0 8px 32px rgba(217, 138, 172, .18);
+  --primary: #8fdcd2;
+  --primary-strong: #46b3a7;
+  --primary-ink: #062522;
+  --primary-soft: rgba(143, 220, 210, .14);
+  --glow: 0 0 0 1px rgba(143, 220, 210, .35), 0 8px 32px rgba(70, 179, 167, .18);
   --ok: #6ee7a0;
   --ok-soft: rgba(110, 231, 160, .14);
   --warn: #ffc857;
@@ -30,7 +30,7 @@ html, body { margin: 0; }
 
 body {
   background:
-    radial-gradient(900px 500px at 100% -10%, rgba(217, 138, 172, .10), transparent 60%),
+    radial-gradient(900px 500px at 100% -10%, rgba(70, 179, 167, .10), transparent 60%),
     var(--bg);
   background-attachment: fixed;
   color: var(--text);
@@ -129,14 +129,14 @@ main { max-width: 980px; margin: 0 auto; padding: 8px 16px 32px; outline: none; 
   border-radius: 28px;
   background:
     radial-gradient(420px 260px at 110% 0%, rgba(255, 255, 255, .35), transparent 60%),
-    linear-gradient(135deg, #f3cadb 0%, #ff8fc8 55%, #ff6fb5 100%);
+    linear-gradient(135deg, #b9ebe4 0%, #5cc4b8 55%, #3faea3 100%);
   color: var(--primary-ink);
 }
 .hero::after {
   content: ""; position: absolute; right: -40px; bottom: -60px; width: 220px; height: 220px;
-  border: 28px solid rgba(26, 6, 17, .07); border-radius: 50%;
+  border: 28px solid rgba(4, 30, 28, .07); border-radius: 50%;
 }
-.hero .eyebrow { color: rgba(26, 6, 17, .65); }
+.hero .eyebrow { color: rgba(4, 30, 28, .65); }
 .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .hero .btn.primary { background: var(--primary-ink); color: var(--primary); border-color: var(--primary-ink); }
 .hero-title { margin: 14px 0 0; font-size: 1.15rem; letter-spacing: .02em; }
@@ -147,10 +147,10 @@ main { max-width: 980px; margin: 0 auto; padding: 8px 16px 32px; outline: none; 
   position: relative; z-index: 1;
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%;
   margin-top: 16px; padding: 12px 14px; border: 0; border-radius: 16px;
-  background: rgba(26, 6, 17, .1); color: inherit; font: inherit; text-align: left; cursor: pointer;
+  background: rgba(4, 30, 28, .1); color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
 .hero-next strong { font-size: 1.05rem; }
-.hero-next:hover { background: rgba(26, 6, 17, .16); }
+.hero-next:hover { background: rgba(4, 30, 28, .16); }
 
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 14px; }
@@ -211,7 +211,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .avatar {
   width: 44px; height: 44px; flex: none; border-radius: 50%;
   display: grid; place-items: center; font-weight: 900; font-size: .9rem;
-  background: linear-gradient(135deg, #f3cadb, #d98aac); color: var(--primary-ink);
+  background: linear-gradient(135deg, #b9ebe4, #46b3a7); color: var(--primary-ink);
 }
 .avatar.lg { width: 64px; height: 64px; font-size: 1.3rem; box-shadow: var(--glow); }
 
@@ -341,7 +341,7 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100dvh - 2
   position: fixed; left: 50%; bottom: calc(var(--nav-h) + 28px + env(safe-area-inset-bottom));
   transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none;
   background: var(--primary); color: var(--primary-ink); padding: 12px 18px; border-radius: 999px;
-  font-size: .85rem; font-weight: 800; box-shadow: 0 10px 30px rgba(217, 138, 172, .3);
+  font-size: .85rem; font-weight: 800; box-shadow: 0 10px 30px rgba(70, 179, 167, .3);
   transition: opacity .2s, transform .2s; z-index: 50; max-width: calc(100vw - 32px);
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -420,7 +420,7 @@ main.animate .plan-items > li {
   content: ""; position: absolute; inset: -40%; z-index: 0; pointer-events: none;
   background:
     radial-gradient(closest-side at 30% 35%, rgba(255, 255, 255, .45), transparent),
-    radial-gradient(closest-side at 70% 65%, rgba(255, 92, 170, .55), transparent);
+    radial-gradient(closest-side at 70% 65%, rgba(63, 174, 163, .45), transparent);
   animation: hero-drift 14s ease-in-out infinite alternate;
   will-change: transform;
 }
@@ -430,7 +430,7 @@ main.animate .plan-items > li {
 .day.today { position: relative; }
 .day.today::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  box-shadow: 0 0 0 1px rgba(238, 176, 200, .6), 0 8px 44px rgba(217, 138, 172, .35);
+  box-shadow: 0 0 0 1px rgba(143, 220, 210, .6), 0 8px 44px rgba(70, 179, 167, .35);
   opacity: 0; animation: glow-fade 3s ease-in-out infinite; will-change: opacity;
 }
 
@@ -547,7 +547,7 @@ a, button, .nav, .chip, .badge, .stat, .hero { -webkit-touch-callout: none; -web
 .topbar-btn.active { color: var(--primary-ink); background: var(--primary); border-color: var(--primary); }
 
 .hero-finance .fin-big { font-size: 3.4rem; font-weight: 900; line-height: 1; letter-spacing: -.04em; margin: 10px 0 14px; font-variant-numeric: tabular-nums; }
-.fin-split { display: flex; flex-wrap: wrap; gap: 10px 24px; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: rgba(26, 6, 17, .7); }
+.fin-split { display: flex; flex-wrap: wrap; gap: 10px 24px; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: rgba(4, 30, 28, .7); }
 .fin-split b { display: block; font-size: 1.15rem; letter-spacing: -.01em; color: var(--primary-ink); text-transform: none; }
 
 .stat-warn b { color: var(--warn); }
@@ -683,20 +683,20 @@ tfoot td { font-weight: 900; border-top: 1px solid var(--surface-3); border-bott
   --border: rgba(255, 255, 255, .07);
   --text: #f5f5f7;
   --muted: #9a9aa5;
-  --primary: #eaa8c3;
-  --primary-strong: #d585a9;
-  --violet: #ab9de6;
-  --grad: linear-gradient(135deg, #eaa8c3 0%, #d585a9 45%, #ab9de6 100%);
-  --grad-deep: linear-gradient(135deg, #b65f87 0%, #93609f 55%, #6863ad 100%);
+  --primary: #7ad3c8;
+  --primary-strong: #3faea3;
+  --violet: #7fb3d5;
+  --grad: linear-gradient(135deg, #7ad3c8 0%, #3faea3 45%, #7fb3d5 100%);
+  --grad-deep: linear-gradient(135deg, #1f6f6b 0%, #1b5a66 55%, #24496a 100%);
   --radius: 24px;
   --font: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
   background:
-    radial-gradient(60% 40% at 100% 0%, rgba(196, 110, 150, .22), transparent 70%),
-    radial-gradient(50% 35% at 0% 25%, rgba(130, 110, 200, .16), transparent 70%),
-    radial-gradient(60% 40% at 50% 110%, rgba(196, 110, 150, .10), transparent 70%),
+    radial-gradient(60% 40% at 100% 0%, rgba(50, 150, 140, .22), transparent 70%),
+    radial-gradient(50% 35% at 0% 25%, rgba(70, 120, 170, .16), transparent 70%),
+    radial-gradient(60% 40% at 50% 110%, rgba(50, 150, 140, .10), transparent 70%),
     var(--bg);
   background-attachment: fixed;
   letter-spacing: -.01em;
@@ -728,7 +728,7 @@ th { font-size: .75rem; font-weight: 600; }
 /* Tlačidlá – bez veľkých písmen, mäkké, s farebným prechodom */
 .btn { text-transform: none; letter-spacing: -.01em; font-size: .92rem; font-weight: 650; border-radius: 14px; min-height: 44px; padding: 10px 18px; }
 .btn.small { font-size: .84rem; min-height: 36px; border-radius: 12px; padding: 6px 14px; }
-.btn.primary { background: var(--grad); border: 0; color: #2a0618; box-shadow: 0 8px 22px -10px rgba(213, 133, 169, .8); }
+.btn.primary { background: var(--grad); border: 0; color: #2a0618; box-shadow: 0 8px 22px -10px rgba(63, 174, 163, .8); }
 .btn.primary:hover { filter: brightness(1.05); }
 .btn:not(.primary):not(.danger):not(.pay-cash) { background: var(--surface-2); border-color: var(--border); }
 .icon-btn { background: var(--surface-2); border-color: var(--border); }
@@ -745,18 +745,18 @@ th { font-size: .75rem; font-weight: 600; }
 .hero {
   background: var(--grad-deep);
   color: #fff;
-  box-shadow: 0 24px 50px -24px rgba(192, 38, 211, .7), inset 0 1px 0 rgba(255, 255, 255, .2);
+  box-shadow: 0 24px 50px -24px rgba(20, 90, 90, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
 }
 .hero::before {
   background:
     radial-gradient(closest-side at 25% 30%, rgba(255, 255, 255, .28), transparent),
-    radial-gradient(closest-side at 75% 70%, rgba(234, 168, 195, .45), transparent);
+    radial-gradient(closest-side at 75% 70%, rgba(122, 211, 200, .45), transparent);
 }
 .hero::after { border-color: rgba(255, 255, 255, .08); }
 .hero .eyebrow, .hero-big span, .fin-split { color: rgba(255, 255, 255, .82); }
 .hero-title { text-transform: none; font-size: 1.15rem; letter-spacing: -.02em; }
 .hero-big span { text-transform: none; font-weight: 700; }
-.hero .btn.primary { background: #fff; color: #7c1d5c; box-shadow: none; }
+.hero .btn.primary { background: #fff; color: #0f4a46; box-shadow: none; }
 .hero-next { background: rgba(255, 255, 255, .14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; }
 .hero-next:hover { background: rgba(255, 255, 255, .2); }
 .fin-split { text-transform: none; font-size: .82rem; font-weight: 600; }
@@ -771,15 +771,15 @@ th { font-size: .75rem; font-weight: 600; }
   border-radius: 28px;
 }
 .nav a { text-transform: none; letter-spacing: 0; font-size: .7rem; font-weight: 600; }
-.nav a.active { background: rgba(234, 168, 195, .16); color: var(--primary); }
-.nav a.active svg { filter: drop-shadow(0 0 8px rgba(213, 133, 169, .55)); }
+.nav a.active { background: rgba(122, 211, 200, .16); color: var(--primary); }
+.nav a.active svg { filter: drop-shadow(0 0 8px rgba(63, 174, 163, .55)); }
 .topbar { background: rgba(7, 7, 10, .55); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); }
 .topbar-btn { background: var(--surface-2); border-color: var(--border); }
 .topbar-btn.active { background: var(--grad); color: #2a0618; }
 
 /* Avatary s jemným prstencom */
 .avatar { background: var(--grad); color: #2a0618; font-weight: 800; box-shadow: 0 0 0 2px rgba(255, 255, 255, .06); }
-.avatar.lg { box-shadow: 0 0 0 3px rgba(255, 255, 255, .08), 0 12px 30px -12px rgba(213, 133, 169, .7); }
+.avatar.lg { box-shadow: 0 0 0 3px rgba(255, 255, 255, .08), 0 12px 30px -12px rgba(63, 174, 163, .7); }
 
 /* Riadky zoznamov */
 .list > li + li { border-top-color: rgba(255, 255, 255, .05); }
@@ -790,7 +790,7 @@ th { font-size: .75rem; font-weight: 600; }
 
 /* Polia formulárov */
 input, select, textarea { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); border-radius: 14px; }
-input:focus, select:focus, textarea:focus { border-color: rgba(234, 168, 195, .7); box-shadow: 0 0 0 4px rgba(234, 168, 195, .15); }
+input:focus, select:focus, textarea:focus { border-color: rgba(122, 211, 200, .7); box-shadow: 0 0 0 4px rgba(122, 211, 200, .15); }
 /* rozbaľovací zoznam – na Windows/Androide je zoznam možností natívny: plné tmavé pozadie, inak biely text na bielom */
 select { color-scheme: dark; }
 select option, select optgroup { background-color: #1b1b21; color: #f6f6f8; }
@@ -815,8 +815,8 @@ dialog {
 #toast { background: rgba(255, 255, 255, .92); color: #14141a; font-weight: 650; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .6); }
 
 /* Menšie detaily */
-.count-pill { background: rgba(234, 168, 195, .14); }
-.day.today { box-shadow: 0 0 0 1px rgba(234, 168, 195, .45), 0 10px 30px -18px rgba(213, 133, 169, .6); }
+.count-pill { background: rgba(122, 211, 200, .14); }
+.day.today { box-shadow: 0 0 0 1px rgba(122, 211, 200, .45), 0 10px 30px -18px rgba(63, 174, 163, .6); }
 .due-row, .notice { border-radius: 16px; }
 .plan-items .n { background: var(--grad); color: #2a0618; }
 .credits b, .pay-amount b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -862,12 +862,12 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 .chart-sum span { color: var(--muted); font-size: .78rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chart-sum b { font-size: 1.6rem; font-weight: 900; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .chart-sum b small { font-size: .9rem; font-weight: 700; color: var(--muted); letter-spacing: 0; }
-.chart-sum b.chg { background: var(--grad, linear-gradient(90deg, #eeb0c8, #ab9de6)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.chart-sum b.chg { background: var(--grad, linear-gradient(90deg, #8fdcd2, #7fb3d5)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .chart-sum b.chg small { -webkit-text-fill-color: var(--muted); }
 .chart { position: relative; height: 170px; margin: 26px 6px 0; }
 .chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.chart-dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #eeb0c8; box-shadow: 0 0 0 3px rgba(9, 9, 11, .9); }
-.chart-dot.last { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; background: #fff; box-shadow: 0 0 0 4px rgba(217, 138, 172, .35), 0 0 16px rgba(217, 138, 172, .8); }
+.chart-dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #8fdcd2; box-shadow: 0 0 0 3px rgba(9, 9, 11, .9); }
+.chart-dot.last { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; background: #fff; box-shadow: 0 0 0 4px rgba(70, 179, 167, .35), 0 0 16px rgba(70, 179, 167, .8); }
 .chart-val { position: absolute; transform: translate(-50%, calc(-100% - 10px)); font-size: .8rem; font-weight: 800; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; }
 .chart-val.first { transform: translate(-6px, calc(-100% - 10px)); }
 .chart-val.last { transform: translate(calc(-100% + 6px), calc(-100% - 10px)); color: var(--primary); }
@@ -876,14 +876,14 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 /* Rekordy */
 .records .list-item { width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .records .list-item:disabled { cursor: default; opacity: 1; }
-.records .list-item.sel { background: rgba(238, 176, 200, .08); }
+.records .list-item.sel { background: rgba(143, 220, 210, .08); }
 .pr-icon { font-size: 1.2rem; flex: none; }
 .pr-val { font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--primary); }
 
 /* Tlačidlá v riadku tréningu */
 .icon-btn.sent { color: var(--ok); border-color: rgba(110, 231, 160, .35); background: var(--ok-soft); }
 .icon-btn.log { color: var(--text); }
-.icon-btn.logged { color: var(--primary-ink, #1a0611); background: var(--grad, linear-gradient(135deg, #eeb0c8, #ab9de6)); border-color: transparent; }
+.icon-btn.logged { color: var(--primary-ink, #062522); background: var(--grad, linear-gradient(135deg, #8fdcd2, #7fb3d5)); border-color: transparent; }
 .icon-btn.small { width: 32px; height: 32px; font-size: .8rem; }
 
 /* Pripomienky na zajtra */
@@ -936,7 +936,7 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 /* riadok tréningu: hlavné tlačidlo s popisom */
 .done-btn { min-height: 38px; padding: 6px 16px; font-size: .85rem; white-space: nowrap; }
 .btn.log { min-height: 38px; white-space: nowrap; }
-.btn.log.logged { color: var(--primary); border-color: rgba(238, 176, 200, .45); background: rgba(238, 176, 200, .1); }
+.btn.log.logged { color: var(--primary); border-color: rgba(143, 220, 210, .45); background: rgba(143, 220, 210, .1); }
 .quick { align-items: center; }
 @media (max-width: 600px) {
   /* meno na celú šírku, tlačidlá pod ním vpravo */
@@ -964,21 +964,21 @@ input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-an
 
 /* správa s tlačidlom Späť */
 #toast.has-undo { display: flex; align-items: center; gap: 14px; pointer-events: auto; padding-right: 10px; }
-.toast-undo { background: rgba(20, 20, 26, .08); border: 0; border-radius: 999px; padding: 6px 14px; color: #c2187a; font: inherit; font-weight: 800; cursor: pointer; }
+.toast-undo { background: rgba(20, 20, 26, .08); border: 0; border-radius: 999px; padding: 6px 14px; color: #0f6a63; font: inherit; font-weight: 800; cursor: pointer; }
 
 /* =========================================================
    POZADIE – interiér posilňovne (stmavené, aby bol text čitateľný)
    ========================================================= */
-html { background: #131116; }
+html { background: #111416; }
 body { background: transparent; }
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(70% 45% at 100% 0%, rgba(196, 110, 150, .16), transparent 70%),
-    radial-gradient(60% 40% at 0% 35%, rgba(130, 110, 200, .12), transparent 70%),
-    linear-gradient(180deg, rgba(19, 17, 22, .52) 0%, rgba(19, 17, 22, .66) 45%, rgba(19, 17, 22, .86) 100%),
+    radial-gradient(70% 45% at 100% 0%, rgba(50, 150, 140, .16), transparent 70%),
+    radial-gradient(60% 40% at 0% 35%, rgba(70, 120, 170, .12), transparent 70%),
+    linear-gradient(180deg, rgba(17, 20, 22, .52) 0%, rgba(17, 20, 22, .66) 45%, rgba(17, 20, 22, .86) 100%),
     url(../icons/bg-gym.jpg) center 35% / cover no-repeat,
-    #131116;
+    #111416;
 }
 @media print { body::before { display: none; } }
 
@@ -987,21 +987,21 @@ body::before {
    krémovo biely text, jemnejšie stavové farby, mäkké tiene
    ========================================================= */
 :root {
-  --bg: #131116;
+  --bg: #111416;
   --surface: rgba(255, 255, 255, .055);
   --surface-2: rgba(255, 255, 255, .08);
   --surface-3: rgba(255, 255, 255, .12);
   --border: rgba(255, 255, 255, .065);
-  --text: #ece7ee;
-  --muted: #a8a1ad;
-  --primary: #eaa8c3;
-  --primary-strong: #d585a9;
-  --primary-ink: #2a1020;
-  --primary-soft: rgba(234, 168, 195, .14);
-  --violet: #ab9de6;
-  --grad: linear-gradient(135deg, #f0b9ce 0%, #e3a3c1 50%, #b4a7e7 100%);
-  --grad-deep: linear-gradient(140deg, #b65f87 0%, #93609f 55%, #6863ad 100%);
-  --glow: 0 0 0 1px rgba(234, 168, 195, .22), 0 8px 26px rgba(213, 133, 169, .12);
+  --text: #e9eef0;
+  --muted: #9fa9ad;
+  --primary: #7ad3c8;
+  --primary-strong: #3faea3;
+  --primary-ink: #062522;
+  --primary-soft: rgba(122, 211, 200, .14);
+  --violet: #7fb3d5;
+  --grad: linear-gradient(135deg, #8fe0d5 0%, #5cc4b8 50%, #78afd3 100%);
+  --grad-deep: linear-gradient(140deg, #1f6f6b 0%, #1b5a66 55%, #24496a 100%);
+  --glow: 0 0 0 1px rgba(122, 211, 200, .22), 0 8px 26px rgba(63, 174, 163, .12);
   --ok: #8fd6ae; --ok-soft: rgba(143, 214, 174, .13);
   --warn: #e9c47a; --warn-soft: rgba(233, 196, 122, .13);
   --danger: #ec8f8f; --danger-soft: rgba(236, 143, 143, .13);
@@ -1011,16 +1011,16 @@ body { color: var(--text); }
 /* karty – jemný vrchný odlesk a mäkký tieň namiesto ostrých hrán */
 .card, .stat { border-color: var(--border); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035), 0 16px 34px -22px rgba(0, 0, 0, .65); }
 /* úvodná karta – stlmený gradient bez neónu */
-.hero { box-shadow: 0 22px 46px -26px rgba(120, 70, 130, .6), inset 0 1px 0 rgba(255, 255, 255, .16); }
-.hero .btn.primary { color: #6d2a52; }
+.hero { box-shadow: 0 22px 46px -26px rgba(20, 90, 90, .6), inset 0 1px 0 rgba(255, 255, 255, .16); }
+.hero .btn.primary { color: #0f4a46; }
 /* nadpisy a čísla o stupeň ľahšie – pôsobia pokojnejšie */
 .hero-big b, .stat b, .credits b, .fin-big { font-weight: 800; }
 h1 { font-weight: 800; }
 /* tlačidlá a čipy – jemnejší tieň */
-.btn.primary { box-shadow: 0 10px 24px -14px rgba(213, 133, 169, .7); }
+.btn.primary { box-shadow: 0 10px 24px -14px rgba(63, 174, 163, .7); }
 .icon-btn { border-color: rgba(255, 255, 255, .07); }
 /* horná lišta a spodné menu – teplejšie sklo */
-.topbar { background: rgba(19, 17, 22, .72); }
-.nav { background: rgba(28, 25, 32, .82); border-color: rgba(255, 255, 255, .06); }
+.topbar { background: rgba(17, 20, 22, .72); }
+.nav { background: rgba(24, 29, 31, .82); border-color: rgba(255, 255, 255, .06); }
 /* toast – krémový namiesto čisto bieleho */
-#toast { background: rgba(243, 236, 240, .95); color: #231a22; }
+#toast { background: rgba(236, 243, 242, .95); color: #14201f; }
