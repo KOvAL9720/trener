@@ -102,7 +102,10 @@
 
   <script src="js/exercise-icons.js" defer></script>
   <!-- cloud (klientska zóna) – samostatný modul, pri výpadku siete appka beží ďalej -->
-  <script type="module" src="js/cloud.js"></script>
+  <script type="module">
+    // ak sa modul (alebo Firebase z internetu) nenačíta, appka ukáže dôvod v Nastaveniach
+    import('./js/cloud.js').catch((e) => { window.cloudError = (e && (e.message || String(e))) || 'neznáma chyba'; window.dispatchEvent(new Event('cloud-ready')); });
+  </script>
   <script src="js/app.js" defer></script>
 </body>
 </html>

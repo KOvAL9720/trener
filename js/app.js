@@ -910,6 +910,7 @@ function viewSettings() {
   <section class="card">
     <div class="card-head"><h2>Klientska zóna</h2><span class="badge" id="cloud-state">…</span></div>
     <p class="muted" style="margin:0">Klientom, ktorým vytvoríš prístup (v detaile klienta), sa ich tréningy, plán a merania posielajú do klientskej zóny: <b>${esc(CLIENT_ZONE_URL)}</b>. Zdieľajú sa len dáta daného klienta, nie financie ani poznámky.</p>
+    <p class="muted" id="cloud-why" style="margin:10px 0 0;color:var(--warn)"></p>
     <p class="muted" style="margin:10px 0 0">${(() => { const n = db.clients.filter((c) => c.share).length; return n ? `${cnt(n, 'klient má', 'klienti majú', 'klientov má')} prístup.` : 'Zatiaľ nemá prístup žiadny klient.'; })()}</p>
   </section>
   <section class="card">
@@ -2161,11 +2162,14 @@ function updateCloudBadge() {
   const el = document.getElementById('cloud-state');
   if (!el) return;
   const st = window.cloud?.state();
-  const txt = !window.cloud ? 'Nedostupné' : !navigator.onLine ? 'Offline' : st?.error ? 'Chyba prihlásenia' : st?.uid ? 'Pripojené' : 'Pripájam…';
+  const txt = !window.cloud ? (window.cloudError ? 'Nedostupné' : 'Načítavam…') : !navigator.onLine ? 'Offline' : st?.error ? 'Chyba prihlásenia' : st?.uid ? 'Pripojené' : 'Pripájam…';
   el.textContent = txt;
+  el.title = window.cloudError || st?.error || '';
+  const why = document.getElementById('cloud-why');
+  if (why) why.textContent = window.cloudError ? `Dôvod: ${window.cloudError}` : st?.error ? `Dôvod: ${st.error}` : '';
   el.className = `badge ${txt === 'Pripojené' ? 'done' : txt === 'Pripájam…' ? '' : 'warn'}`;
 }
-window.addEventListener('cloud-ready', () => { window.cloud.onChange(updateCloudBadge); scheduleSync(); });
+window.addEventListener('cloud-ready', () => { if (window.cloud) { window.cloud.onChange(updateCloudBadge); scheduleSync(); } else updateCloudBadge(); });
 window.addEventListener('online', () => { db.settings.shareDirty = true; scheduleSync(); });
 
 /* =========================================================
