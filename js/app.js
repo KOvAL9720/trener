@@ -876,6 +876,9 @@ function fieldHtml(fd, values) {
     const decimal = fd.step != null && String(fd.step).includes('.');
     const shown = v === '' || v == null ? '' : String(v).replace('.', ',');
     input = `<input id="${id}" name="${fd.name}" type="text" inputmode="${decimal ? 'decimal' : 'numeric'}" autocomplete="off" value="${esc(shown)}" ${fd.required ? 'required' : ''} ${fd.placeholder ? `placeholder="${esc(fd.placeholder)}"` : ''}>`;
+  } else if (fd.type === 'time') {
+    // iPhone ukáže prázdny čas ako úplne prázdne pole – sivé „--:--“ naznačí, že sa doň ťuká
+    input = `<span class="time-wrap${v ? ' filled' : ''}"><input id="${id}" name="${fd.name}" type="time" value="${esc(v)}" ${attrs}><span class="time-ph" aria-hidden="true">--:--</span></span>`;
   } else {
     input = `<input id="${id}" name="${fd.name}" type="${fd.type || 'text'}" value="${esc(v)}" ${attrs}>`;
   }
@@ -925,6 +928,9 @@ function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubm
     render();
   };
   modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
+  modalForm.querySelectorAll('.time-wrap input').forEach((t) => {
+    t.oninput = t.onchange = t.onblur = () => t.parentNode.classList.toggle('filled', !!t.value);
+  });
   const del = modalForm.querySelector('[data-delete]');
   if (del) {
     del.onclick = () => {
