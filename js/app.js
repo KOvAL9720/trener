@@ -1630,6 +1630,9 @@ document.addEventListener('input', (e) => {
   }
 });
 
+// iPhone: zablokovať priblíženie dvoma prstami (Safari inak ignoruje user-scalable=no)
+['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+
 // Kalendár: potiahnutím prstom doľava/doprava ďalší/predchádzajúci týždeň
 let swipe = null;
 main.addEventListener('touchstart', (e) => {
