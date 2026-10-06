@@ -1040,6 +1040,8 @@ h1 { font-weight: 800; }
 .fin-split b { color: var(--text); }
 .hero .btn.primary { background: var(--primary); color: var(--primary-ink); box-shadow: 0 10px 24px -14px rgba(63, 174, 163, .7); }
 .hero-next { background: var(--surface-2); color: var(--text); }
+/* bez rozmazania pozadia – Safari ho počas nabiehajúcej animácie pri štarte nevie použiť a po jej skončení „Najbližší“ blikne */
+.hero-next { backdrop-filter: none; -webkit-backdrop-filter: none; }
 .hero-next:hover { background: var(--surface-3); }
 
 /* Knižnica cvikov – miniatúra (piktogram) pri každom cviku */
