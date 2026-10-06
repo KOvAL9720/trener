@@ -1300,7 +1300,20 @@ document.addEventListener('change', (e) => {
 /* =========================================================
    Štart
    ========================================================= */
-render(true);
+// Úvodná obrazovka s čiarou → potom zatočenie loga a nabehnutie obsahu
+const splash = document.getElementById('splash');
+if (splash) {
+  render();
+  const wait = reduceMotion.matches ? 0 : Math.max(0, 1150 - performance.now());
+  setTimeout(() => {
+    splash.classList.add('hide');
+    document.body.classList.add('ready');
+    if (!reduceMotion.matches) animateEnter();
+    setTimeout(() => splash.remove(), 700);
+  }, wait);
+} else {
+  render(true);
+}
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
