@@ -181,6 +181,8 @@ const clientDue = (id) => clientSessions(id).filter(isDue).sort(bySessionTime);
 const sumPrice = (list) => list.reduce((a, s) => a + priceOf(s), 0);
 const PAY = { cash: 'Hotovosť', bank: 'Na účet' };
 const payMethod = (s) => (s.payMethod === 'bank' ? 'bank' : 'cash');
+// platba sa počíta do príjmu len pri tréningu, ktorý nebol zrušený
+const isPaid = (s) => !!s.paid && s.status !== 'cancelled';
 const payButtons = (id) => `<button class="btn small pay-cash" data-action="pay-client" data-method="cash" data-id="${id}">Hotovosť</button><button class="btn small primary" data-action="pay-client" data-method="bank" data-id="${id}">Na účet</button>`;
 
 function credits(clientId) {
@@ -561,7 +563,7 @@ function viewClient(id) {
     <section class="card">
       <div class="card-head"><h2>Platby</h2></div>
       ${(() => {
-        const paidList = sessions.filter((x) => x.paid);
+        const paidList = sessions.filter(isPaid);
         const cash = sumPrice(paidList.filter((x) => payMethod(x) === 'cash'));
         const bank = sumPrice(paidList.filter((x) => payMethod(x) === 'bank'));
         const due = clientDue(id);
@@ -770,7 +772,7 @@ function viewFinance(monthParam) {
   const month = monthParam && Number(monthParam.slice(5)) >= 1 && Number(monthParam.slice(5)) <= 12 ? monthParam : t.slice(0, 7);
   const [y, m] = month.split('-').map(Number);
   const inMonth = (d) => !!d && d.startsWith(month);
-  const paidSessions = db.sessions.filter((s) => s.paid && inMonth(s.paidDate));
+  const paidSessions = db.sessions.filter((s) => isPaid(s) && inMonth(s.paidDate));
   const cash = sumPrice(paidSessions.filter((s) => payMethod(s) === 'cash'));
   const bank = sumPrice(paidSessions.filter((s) => payMethod(s) === 'bank'));
   const doneInMonth = db.sessions.filter((s) => s.status === 'done' && inMonth(s.date));
@@ -800,7 +802,7 @@ function viewFinance(monthParam) {
 
   // posledných 6 mesiacov
   const last6 = Array.from({ length: 6 }, (_, i) => monthKey(y, m - i)).map((k) => {
-    const paid = db.sessions.filter((s) => s.paid && s.paidDate?.startsWith(k));
+    const paid = db.sessions.filter((s) => isPaid(s) && s.paidDate?.startsWith(k));
     return { k, cash: sumPrice(paid.filter((s) => payMethod(s) === 'cash')), bank: sumPrice(paid.filter((s) => payMethod(s) === 'bank')) };
   });
   const sum6 = (key) => last6.reduce((a, r) => a + r[key], 0);
@@ -1241,6 +1243,7 @@ function openSessionForm(s, defaults = {}) {
         const clash = db.sessions.find((x) => x !== s && x.status !== 'cancelled' && x.time === d.time && dates.includes(x.date));
         if (clash && !confirm(`V tom čase (${fmtDate(clash.date)} ${clash.time}) už máš tréning s klientom ${clientName(clash.clientId)}. Uložiť aj tak?`)) return false;
       }
+      if (!s && d.status === 'planned' && d.date < today() && !confirm(`Dátum ${fmtDate(d.date)} už prešiel. Naplánovať tréning do minulosti?`)) return false;
       delete d.repeat;
       if (s) {
         if (d.date !== s.date || d.time !== (s.time || '')) delete s.reminded;
@@ -2007,7 +2010,7 @@ function setStatus(id, status) {
     const cr = credits(s.clientId);
     toast(isDue(s) ? `Odtrénované · na zaplatenie ${fmtMoney(priceOf(s))}` : PACKAGES && cr.bought ? `Odtrénované · zostáva ${cr.left} z permanentky` : 'Tréning odtrénovaný', undo);
   } else {
-    toast('Tréning zrušený', undo);
+    toast(s.paid ? `Tréning zrušený · platba ${fmtMoney(priceOf(s))} sa už nepočíta do príjmu` : 'Tréning zrušený', undo);
   }
 }
 
@@ -2225,8 +2228,7 @@ function progressImageFile(c, { label, unit, points, extra }) {
 
 async function exportData() {
   const t = today();
-  db.settings.lastBackup = t;
-  save();
+  const markBackup = () => { db.settings.lastBackup = t; save(); };
   const photos = await exportPhotos();
   const blob = new Blob([JSON.stringify({ app: 'trener', version: 2, exportedAt: new Date().toISOString(), data: db, photos })], { type: 'application/json' });
   const file = new File([blob], `trener-zaloha-${t}.json`, { type: 'application/json' });
@@ -2234,6 +2236,7 @@ async function exportData() {
   if (/iP(hone|ad|od)/.test(navigator.userAgent) && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file] });
+      markBackup();
       render();
       toast('Záloha pripravená');
       return;
@@ -2249,6 +2252,7 @@ async function exportData() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  markBackup();
   render();
   toast(photos.length ? `Záloha stiahnutá (vrátane ${cnt(photos.length, 'fotky', 'fotiek', 'fotiek')})` : 'Záloha stiahnutá');
 }
