@@ -1112,9 +1112,3 @@ body.bg-ready::before { opacity: 1; }
 /* Zoznam klientov – zelená gulička pri klientovi s prístupom do klientskej zóny */
 .avatar-wrap { position: relative; flex: none; display: inline-flex; }
 .share-dot { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; border-radius: 50%; background: var(--ok); border: 2px solid #15191b; box-shadow: 0 0 0 1px rgba(143, 214, 174, .35); }
-
-/* Nastavenia – profil trénera pre klientov */
-.trainer-profile { display: flex; align-items: center; gap: 14px; }
-.trainer-profile .info { display: flex; flex-direction: column; }
-.trainer-profile .info strong { font-size: 1.1rem; }
-.trainer-profile .info small { color: var(--muted); }
