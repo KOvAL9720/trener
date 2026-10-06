@@ -1067,3 +1067,6 @@ h1 { font-weight: 800; }
 .check input:checked::after { transform: translateX(20px); }
 .check input:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .check input, .check input::after { transition: none; } }
+
+/* Avatar s fotkou – bez tyrkysového podkladu, aby pri prekreslení nepreblikol kým sa fotka vykreslí */
+.avatar:has(img) { background: var(--surface-3); }
