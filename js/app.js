@@ -578,7 +578,12 @@ function burst(x, y) {
   }
 }
 
-window.addEventListener('hashchange', () => { render(true); window.scrollTo(0, 0); });
+// Prepínanie obrazoviek: jemné prelínanie (bez zmiznutia obsahu); staršie zariadenia prepnú okamžite
+window.addEventListener('hashchange', () => {
+  const swap = () => { render(); window.scrollTo(0, 0); };
+  if (document.startViewTransition && !reduceMotion.matches) document.startViewTransition(swap);
+  else swap();
+});
 
 /* =========================================================
    Formuláre v modálnom okne
