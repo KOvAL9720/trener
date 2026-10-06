@@ -9,7 +9,6 @@
   if (!document.getElementById('modal')) add('<dialog id="modal"><form id="modal-form" method="dialog"></form></dialog>');
   if (!document.getElementById('import-file')) add('<input type="file" id="import-file" accept="application/json,.json" hidden>');
   if (!document.getElementById('photo-file')) add('<input type="file" id="photo-file" accept="image/*" hidden>');
-  if (!document.getElementById('trainer-photo-file')) add('<input type="file" id="trainer-photo-file" accept="image/*" hidden>');
   if (!document.getElementById('gallery-file')) add('<input type="file" id="gallery-file" accept="image/*" multiple hidden>');
   if (!document.getElementById('toast')) add('<div id="toast" role="status" aria-live="polite"></div>');
   if (!document.getElementById('confirm')) add('<dialog id="confirm" class="confirm" aria-labelledby="confirm-text"><form method="dialog"><p id="confirm-text"></p><div class="confirm-btns"></div></form></dialog>');
@@ -909,19 +908,6 @@ function viewSettings() {
     </dl>
   </section>
   <section class="card">
-    <div class="card-head"><h2>Tvoj profil pre klientov</h2></div>
-    <div class="trainer-profile">
-      <button class="avatar lg avatar-edit" data-action="trainer-photo" aria-label="${db.settings.trainerPhoto ? 'Zmeniť fotku' : 'Pridať fotku'}">${isImageDataUrl(db.settings.trainerPhoto) ? `<img src="${db.settings.trainerPhoto}" alt="" decoding="sync">` : esc(initials(db.settings.trainerName || 'T'))}<span class="cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span></button>
-      <div class="info"><strong>${esc(db.settings.trainerName) || '<span class="muted">Bez mena</span>'}</strong><small>${esc(db.settings.trainerPhone) || 'Telefón nevyplnený'}</small></div>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <button class="btn small" data-action="trainer-photo">${db.settings.trainerPhoto ? 'Zmeniť fotku' : 'Pridať fotku'}</button>
-      ${db.settings.trainerPhoto ? '<button class="btn small danger" data-action="trainer-photo-remove">Odstrániť fotku</button>' : ''}
-      <button class="btn small" data-action="edit-defaults">Upraviť meno a telefón</button>
-    </div>
-    <p class="hint" style="margin:10px 0 0">Takto ťa uvidia klienti v klientskej zóne.</p>
-  </section>
-  <section class="card">
     <div class="card-head"><h2>Klientska zóna</h2><span class="badge" id="cloud-state">…</span></div>
     <p class="muted" style="margin:0">Klientom, ktorým vytvoríš prístup (v detaile klienta), sa ich tréningy, plán a merania posielajú do klientskej zóny: <b>${esc(CLIENT_ZONE_URL)}</b>. Zdieľajú sa len dáta daného klienta, nie financie ani poznámky.</p>
     <p class="muted" id="cloud-why" style="margin:10px 0 0;color:var(--warn)"></p>
@@ -1641,21 +1627,6 @@ async function photoToDataUrl(file) {
   }
 }
 
-document.getElementById('trainer-photo-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  e.target.value = '';
-  if (!file) return;
-  try {
-    db.settings.trainerPhoto = await photoToDataUrl(file);
-    db.settings.shareDirty = true;
-    save();
-    render();
-    toast('Fotka uložená');
-  } catch (err) {
-    toast('Túto fotku sa nepodarilo načítať');
-  }
-});
-
 document.getElementById('photo-file').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   e.target.value = '';
@@ -2145,7 +2116,7 @@ function shareSnapshot(c) {
   return {
     clientId: c.id,
     client: { name: c.name, goal: c.goal || '', since: c.createdAt || '', ...(photoOf(c) ? { photo: photoOf(c) } : {}) },
-    trainer: { name: db.settings.trainerName || '', phone: db.settings.trainerPhone || '', ...(isImageDataUrl(db.settings.trainerPhoto) ? { photo: db.settings.trainerPhoto } : {}) },
+    trainer: { name: db.settings.trainerName || '', phone: db.settings.trainerPhone || '' },
     sessions, plans, exercises, measurements
   };
 }
@@ -2784,8 +2755,6 @@ const actions = {
     ],
     onSubmit: (v) => { Object.assign(db.settings, v); db.settings.shareDirty = true; toast('Nastavenia uložené'); }
   }),
-  'trainer-photo': () => document.getElementById('trainer-photo-file').click(),
-  'trainer-photo-remove': () => { delete db.settings.trainerPhoto; db.settings.shareDirty = true; save(); render(); toast('Fotka odstránená'); },
   'share-create': (d) => createShare(d.id),
   'share-remove': (d) => removeShare(d.id),
   'share-copy': (d) => copyShare(d.id),
