@@ -628,3 +628,27 @@ tfoot td { font-weight: 900; border-top: 1px solid var(--surface-3); border-bott
 .avatar.xl { width: 120px; height: 120px; font-size: 2.2rem; box-shadow: var(--glow); }
 .photo-preview { width: 100%; display: grid; place-items: center; padding: 6px 0 4px; }
 .modal-body > .btn { width: 100%; }
+
+/* Galéria fotiek klienta */
+.photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 720px) { .photo-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.photo-grid .empty { grid-column: 1 / -1; }
+.ph { position: relative; aspect-ratio: 1; padding: 0; border: 0; border-radius: 12px; overflow: hidden; background: var(--surface-2); cursor: pointer; }
+.ph img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s; }
+.ph:active img { transform: scale(.96); }
+.ph span { position: absolute; left: 6px; bottom: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; font-size: .68rem; font-weight: 700; }
+
+.viewer {
+  position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
+  background: #000; color: #fff; animation: fade-in .2s ease-out;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.viewer-top, .viewer-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; }
+.viewer-info { display: flex; flex-direction: column; min-width: 0; }
+.viewer-info b { font-size: 1rem; }
+.viewer-info label { color: #aaa; font-size: .85rem; display: flex; align-items: center; gap: 4px; }
+.viewer-date { width: auto; min-height: 0; padding: 2px 6px; border: 0; background: transparent; color: #ddd; font-size: .85rem; }
+.viewer-stage { flex: 1; min-height: 0; display: grid; place-items: center; touch-action: pan-y; }
+.viewer-stage img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+.viewer .icon-btn { background: rgba(255, 255, 255, .1); border-color: transparent; color: #fff; }
+.viewer .icon-btn:disabled { opacity: .3; }
