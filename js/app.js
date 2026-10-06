@@ -334,8 +334,8 @@ function chartHtml(points, unit) {
   return `<div class="chart" role="img" aria-label="Graf: ${points.map((p) => `${fmtShort(p.date)} ${fmtNum(p.value)} ${unit}`).join(', ')}">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
       <defs>
-        <linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7ebf" stop-opacity=".32"/><stop offset="1" stop-color="#ff7ebf" stop-opacity="0"/></linearGradient>
-        <linearGradient id="${id}l" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="0"><stop offset="0" stop-color="#ffa8d5"/><stop offset="1" stop-color="#b98cff"/></linearGradient>
+        <linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d98aac" stop-opacity=".32"/><stop offset="1" stop-color="#d98aac" stop-opacity="0"/></linearGradient>
+        <linearGradient id="${id}l" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="0"><stop offset="0" stop-color="#eeb0c8"/><stop offset="1" stop-color="#ab9de6"/></linearGradient>
       </defs>
       <path d="${area}" fill="url(#${id}a)"/>
       <path d="${line}" fill="none" stroke="url(#${id}l)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
@@ -1009,7 +1009,7 @@ function countUp(el) {
 // Ružová „oslava“ pri odtrénovanom tréningu
 function burst(x, y) {
   if (reduceMotion.matches || !document.body.animate) return;
-  const colors = ['#ffa8d5', '#ff7ebf', '#ffffff', '#ffc2e2'];
+  const colors = ['#eeb0c8', '#d98aac', '#ffffff', '#f3cadb'];
   for (let i = 0; i < 18; i++) {
     const dot = document.createElement('span');
     dot.className = 'particle';
@@ -2029,7 +2029,7 @@ function planImageFile(p) {
   const PAD = 72;
   const INNER = W - 2 * PAD;
   const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-  const C = { bg: '#09090b', card: '#16161a', text: '#f6f6f8', muted: '#8c8c97', soft: '#c9c9d1', pink: '#ffa8d5', ink: '#1a0611' };
+  const C = { bg: '#09090b', card: '#16161a', text: '#f6f6f8', muted: '#8c8c97', soft: '#c9c9d1', pink: '#eeb0c8', ink: '#1a0611' };
   const items = p.items.map(exerciseLine);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -2117,8 +2117,8 @@ function planImageFile(p) {
   ctx.fillStyle = C.bg;
   ctx.fillRect(0, 0, W, canvas.height);
   const glow = ctx.createRadialGradient(W, 0, 0, W, 0, 700);
-  glow.addColorStop(0, 'rgba(255, 126, 191, 0.22)');
-  glow.addColorStop(1, 'rgba(255, 126, 191, 0)');
+  glow.addColorStop(0, 'rgba(217, 138, 172, 0.22)');
+  glow.addColorStop(1, 'rgba(217, 138, 172, 0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, canvas.height);
   ctx.textBaseline = 'alphabetic';
@@ -2165,7 +2165,7 @@ function progressImageFile(c, { label, unit, points, extra }) {
   const font = (w, sz) => { ctx.font = `${w} ${sz}px ${FONT}`; };
   ctx.fillStyle = '#09090b'; ctx.fillRect(0, 0, W, H);
   const glow = ctx.createRadialGradient(W, 0, 0, W, 0, 900);
-  glow.addColorStop(0, 'rgba(255, 126, 191, .26)'); glow.addColorStop(1, 'rgba(255, 126, 191, 0)');
+  glow.addColorStop(0, 'rgba(217, 138, 172, .26)'); glow.addColorStop(1, 'rgba(217, 138, 172, 0)');
   ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
   const glow2 = ctx.createRadialGradient(0, H, 0, 0, H, 800);
   glow2.addColorStop(0, 'rgba(160, 110, 255, .2)'); glow2.addColorStop(1, 'rgba(160, 110, 255, 0)');
@@ -2175,13 +2175,13 @@ function progressImageFile(c, { label, unit, points, extra }) {
   const d = Math.round((last.value - first.value) * 100) / 100;
   const days = daysBetween(first.date, last.date);
   ctx.textBaseline = 'alphabetic';
-  font(800, 30); ctx.fillStyle = '#ffa8d5'; ctx.fillText('MÔJ PROGRES', PAD, 140);
+  font(800, 30); ctx.fillStyle = '#eeb0c8'; ctx.fillText('MÔJ PROGRES', PAD, 140);
   font(900, 84); ctx.fillStyle = '#f6f6f8'; ctx.fillText(c.name.length > 18 ? firstName(c) : c.name, PAD, 240);
   font(600, 40); ctx.fillStyle = '#c9c9d1'; ctx.fillText(`${label}${extra ? ' · ' + extra : ''}`, PAD, 305);
 
   // veľké číslo zmeny
   const grad = ctx.createLinearGradient(PAD, 0, PAD + 700, 0);
-  grad.addColorStop(0, '#ffa8d5'); grad.addColorStop(1, '#b98cff');
+  grad.addColorStop(0, '#eeb0c8'); grad.addColorStop(1, '#ab9de6');
   font(900, 190); ctx.fillStyle = grad;
   const big = `${d > 0 ? '+' : d < 0 ? '−' : ''}${fmtNum(Math.abs(d))}`;
   ctx.fillText(big, PAD - 6, 520);
@@ -2204,13 +2204,13 @@ function progressImageFile(c, { label, unit, points, extra }) {
   const path = () => { ctx.beginPath(); points.forEach((p, i) => (i ? ctx.lineTo(X(i), Y(p.value)) : ctx.moveTo(X(i), Y(p.value)))); };
   path(); ctx.lineTo(X(points.length - 1), gy + gh); ctx.lineTo(X(0), gy + gh); ctx.closePath();
   const area = ctx.createLinearGradient(0, gy, 0, gy + gh);
-  area.addColorStop(0, 'rgba(255,126,191,.35)'); area.addColorStop(1, 'rgba(255,126,191,0)');
+  area.addColorStop(0, 'rgba(217, 138, 172,.35)'); area.addColorStop(1, 'rgba(217, 138, 172,0)');
   ctx.fillStyle = area; ctx.fill();
   path(); ctx.strokeStyle = grad; ctx.lineWidth = 10; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
   points.forEach((p, i) => {
     const endP = i === 0 || i === points.length - 1;
     ctx.beginPath(); ctx.arc(X(i), Y(p.value), endP ? 16 : 10, 0, Math.PI * 2);
-    ctx.fillStyle = endP ? '#ffffff' : '#ffa8d5'; ctx.fill();
+    ctx.fillStyle = endP ? '#ffffff' : '#eeb0c8'; ctx.fill();
   });
   font(800, 38); ctx.fillStyle = '#f6f6f8';
   const lbl = (i, align) => { ctx.textAlign = align; ctx.fillText(fmtNum(points[i].value), X(i), Y(points[i].value) - 34); };
