@@ -1103,3 +1103,6 @@ dialog.confirm .btn.danger.danger-fill { background: var(--danger); border-color
 body::before { opacity: 0; transition: opacity .7s ease; }
 body.bg-ready::before { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { body::before { transition: none; } }
+
+/* Klientska zóna – prístupový kód klienta */
+.share-code { font-size: 2rem; font-weight: 800; letter-spacing: .18em; font-variant-numeric: tabular-nums; margin: 6px 0 14px; color: var(--primary); }

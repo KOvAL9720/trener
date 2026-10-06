@@ -93,6 +93,7 @@ function flushSave() {
   } catch (e) {
     toast('Dáta sa nepodarilo uložiť – skontroluj úložisko prehliadača.');
   }
+  scheduleSync();
 }
 window.addEventListener('pagehide', flushSave);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
@@ -605,6 +606,8 @@ function viewClient(id) {
 
   ${measureCard(c)}
 
+  ${shareCard(c)}
+
   <section class="card" id="sec-plans">
     <div class="card-head"><h2>Tréningové plány</h2><button class="btn small" data-action="new-plan" data-client="${c.id}">+ Plán</button></div>
     ${plans.length ? `<ul class="list">${plans.map((p) => `<li><a class="list-item" href="#/plan/${p.id}">
@@ -901,7 +904,13 @@ function viewSettings() {
       <dt>Cena tréningu</dt><dd>${fmtMoney(sessionPrice())}</dd>
       <dt>Dĺžka tréningu</dt><dd>${db.settings.defaultDuration || 60} min</dd>
       <dt>Text pripomienky</dt><dd>${esc(reminderTemplate())}</dd>
+      <dt>Meno pre klientov</dt><dd>${esc(db.settings.trainerName) || '<span class="muted">–</span>'}</dd>
     </dl>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Klientska zóna</h2><span class="badge" id="cloud-state">…</span></div>
+    <p class="muted" style="margin:0">Klientom, ktorým vytvoríš prístup (v detaile klienta), sa ich tréningy, plán a merania posielajú do klientskej zóny: <b>${esc(CLIENT_ZONE_URL)}</b>. Zdieľajú sa len dáta daného klienta, nie financie ani poznámky.</p>
+    <p class="muted" style="margin:10px 0 0">${(() => { const n = db.clients.filter((c) => c.share).length; return n ? `${cnt(n, 'klient má', 'klienti majú', 'klientov má')} prístup.` : 'Zatiaľ nemá prístup žiadny klient.'; })()}</p>
   </section>
   <section class="card">
     <div class="card-head"><h2>Záloha dát</h2></div>
@@ -984,6 +993,7 @@ function render(animate = false) {
       if (animate && !reduceMotion.matches) animateEnter();
       const grid = main.querySelector('#photo-grid');
       if (grid) fillPhotoGrid(grid.dataset.client);
+      updateCloudBadge();
       const ver = main.querySelector('#app-version');
       if (ver && 'caches' in window) caches.keys().then((k) => { const v = k.find((x) => x.startsWith('trener-v')); if (v) ver.textContent = v.replace('trener-v', ''); }).catch(() => {});
       return;
@@ -2019,6 +2029,146 @@ function openContact(c, session, preferred) {
 }
 
 /* =========================================================
+   Klientska zóna – zdieľanie dát klienta cez cloud (js/cloud.js)
+   ========================================================= */
+const CLIENT_ZONE_URL = 'https://koval9720.github.io/Novy-web/app/';
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const makeCode = () => { const a = new Uint8Array(8); crypto.getRandomValues(a); return [...a].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join(''); };
+const fmtCode = (code) => `${code.slice(0, 4)}-${code.slice(4)}`;
+const shareLink = (code) => `${CLIENT_ZONE_URL}#/k/${code}`;
+
+function shareCard(c) {
+  const sh = c.share;
+  return `<section class="card" id="sec-share">
+    <div class="card-head"><h2>Klientska zóna</h2>${sh ? `<span class="badge ${sh.error ? 'warn' : sh.syncedAt ? 'done' : ''}">${sh.error ? 'Chyba' : sh.syncedAt ? 'Zdieľané' : 'Čaká'}</span>` : ''}</div>
+    ${sh ? `<p class="muted" style="margin-top:-6px">Klient vidí svoje tréningy, plán a merania. Prístupový kód:</p>
+      <div class="share-code">${fmtCode(sh.code)}</div>
+      <div class="row">
+        <button class="btn primary" data-action="share-send" data-id="${c.id}">Poslať klientovi</button>
+        <button class="btn" data-action="share-copy" data-id="${c.id}">Kopírovať odkaz</button>
+        <button class="btn danger" data-action="share-remove" data-id="${c.id}">Zrušiť prístup</button>
+      </div>
+      <p class="hint" style="margin:10px 0 0">${sh.error ? `Nepodarilo sa odoslať do cloudu (${esc(sh.error)}). Skúsi sa to znova pri ďalšej zmene.` : sh.syncedAt ? `Naposledy odoslané: ${new Date(sh.syncedAt).toLocaleString('sk-SK')}` : 'Dáta sa odošlú, hneď ako bude pripojenie.'}</p>`
+    : `<p class="muted" style="margin-top:-6px">Vytvor klientovi prístup – dostane kód, s ktorým si v klientskej zóne pozrie svoje tréningy, plán a progres.</p>
+      <button class="btn primary" data-action="share-create" data-id="${c.id}">Vytvoriť prístup</button>`}
+  </section>`;
+}
+
+function createShare(cid) {
+  const c = getClient(cid);
+  if (!c || c.share) return;
+  c.share = { code: makeCode(), createdAt: today(), hash: '' };
+  db.settings.shareDirty = true;
+  save();
+  render();
+  toast(`Prístup vytvorený · kód ${fmtCode(c.share.code)}`);
+}
+
+async function removeShare(cid) {
+  const c = getClient(cid);
+  if (!c?.share) return;
+  if (!(await askConfirm('Zrušiť klientovi prístup do klientskej zóny? Kód prestane fungovať.', { ok: 'Zrušiť prístup', danger: true }))) return;
+  const code = c.share.code;
+  delete c.share;
+  save();
+  render();
+  toast('Prístup zrušený');
+  try { await window.cloud?.unshare(code); } catch (e) { /* dokument už nemusí existovať */ }
+}
+
+function shareMessage(c) {
+  const name = db.settings.trainerName ? ` od ${db.settings.trainerName}` : '';
+  return `Ahoj ${firstName(c)}, tu je tvoja klientska zóna${name}: ${shareLink(c.share.code)}\nPrístupový kód: ${fmtCode(c.share.code)}`;
+}
+
+async function copyShare(cid) {
+  const c = getClient(cid);
+  if (!c?.share) return;
+  try { await navigator.clipboard.writeText(shareLink(c.share.code)); toast('Odkaz skopírovaný'); }
+  catch (e) { await notify(`Odkaz pre klienta:\n${shareLink(c.share.code)}`); }
+}
+
+function sendShare(cid) {
+  const c = getClient(cid);
+  if (!c?.share) return;
+  const text = shareMessage(c);
+  if (navigator.share) { navigator.share({ text }).catch(() => {}); return; }
+  const phone = intlPhone(c.phone);
+  if (phone) { window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank'); return; }
+  copyShare(cid);
+}
+
+// Čo klient vidí: jeho tréningy (bez cien a poznámok trénera), plány a cviky, ktoré používa, merania
+function shareSnapshot(c) {
+  const sessions = clientSessions(c.id).map((s) => ({
+    id: s.id, date: s.date, time: s.time || '', status: s.status, duration: s.duration || 60, planId: s.planId || '',
+    ...(s.log ? { log: s.log } : {})
+  }));
+  const planIds = new Set(db.plans.filter((p) => p.clientId === c.id).map((p) => p.id));
+  sessions.forEach((s) => { if (s.planId) planIds.add(s.planId); });
+  const plans = db.plans.filter((p) => planIds.has(p.id)).map((p) => ({ id: p.id, name: p.name, notes: p.notes || '', items: p.items }));
+  const exIds = new Set();
+  plans.forEach((p) => p.items.forEach((i) => exIds.add(i.exerciseId)));
+  sessions.forEach((s) => (s.log || []).forEach((e) => exIds.add(e.exerciseId)));
+  const exercises = db.exercises.filter((e) => exIds.has(e.id)).map((e) => ({ id: e.id, name: e.name, category: e.category || '' }));
+  const measurements = db.measurements.filter((m) => m.clientId === c.id).map((m) => ({ id: m.id, date: m.date, weight: m.weight ?? null, bodyFat: m.bodyFat ?? null, waist: m.waist ?? null, hips: m.hips ?? null }));
+  return {
+    clientId: c.id,
+    client: { name: c.name, goal: c.goal || '', since: c.createdAt || '', ...(photoOf(c) ? { photo: photoOf(c) } : {}) },
+    trainer: { name: db.settings.trainerName || '', phone: db.settings.trainerPhone || '' },
+    sessions, plans, exercises, measurements
+  };
+}
+
+// Po každom uložení: zdieľaným klientom poslať nový stav, ak sa niečo zmenilo (porovnanie podľa odtlačku)
+let syncTimer = 0;
+let syncing = false;
+function scheduleSync() {
+  if (!db.clients.some((c) => c.share)) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(runSync, 1500);
+}
+async function runSync() {
+  if (syncing || !navigator.onLine || !window.cloud) return;
+  syncing = true;
+  let changed = false;
+  try {
+    for (const c of db.clients.filter((x) => x.share)) {
+      const snap = shareSnapshot(c);
+      const str = JSON.stringify(snap);
+      const hash = `${str.length}:${simpleHash(str)}`;
+      if (!db.settings.shareDirty && c.share.hash === hash && !c.share.error) continue;
+      try {
+        await window.cloud.share(c.share.code, snap);
+        c.share.hash = hash; c.share.syncedAt = Date.now(); delete c.share.error;
+      } catch (e) {
+        c.share.error = e.code || 'offline';
+      }
+      changed = true;
+    }
+    db.settings.shareDirty = false;
+  } finally { syncing = false; }
+  if (changed) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { /* ignorovať */ }
+    const card = document.getElementById('sec-share');
+    const cid = location.hash.match(/^#\/client\/([\w-]+)$/)?.[1];
+    if (card && cid && getClient(cid)) card.outerHTML = shareCard(getClient(cid));
+    updateCloudBadge();
+  }
+}
+function simpleHash(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+function updateCloudBadge() {
+  const el = document.getElementById('cloud-state');
+  if (!el) return;
+  const st = window.cloud?.state();
+  const txt = !window.cloud ? 'Nedostupné' : !navigator.onLine ? 'Offline' : st?.error ? 'Chyba prihlásenia' : st?.uid ? 'Pripojené' : 'Pripájam…';
+  el.textContent = txt;
+  el.className = `badge ${txt === 'Pripojené' ? 'done' : txt === 'Pripájam…' ? '' : 'warn'}`;
+}
+window.addEventListener('cloud-ready', () => { window.cloud.onChange(updateCloudBadge); scheduleSync(); });
+window.addEventListener('online', () => { db.settings.shareDirty = true; scheduleSync(); });
+
+/* =========================================================
    Akcie
    ========================================================= */
 function setStatus(id, status) {
@@ -2591,14 +2741,21 @@ const actions = {
   'edit-exercise': (d) => openExerciseForm(getExercise(d.id)),
   'edit-defaults': () => openForm({
     title: 'Predvolené hodnoty',
-    values: { sessionPrice: sessionPrice(), defaultDuration: db.settings.defaultDuration || 60, reminderText: reminderTemplate() },
+    values: { sessionPrice: sessionPrice(), defaultDuration: db.settings.defaultDuration || 60, reminderText: reminderTemplate(), trainerName: db.settings.trainerName || '', trainerPhone: db.settings.trainerPhone || '' },
     fields: [
       { name: 'sessionPrice', label: 'Cena tréningu (€)', type: 'number', min: 0, step: 0.5, hint: 'Platí pre nové tréningy a tréningy bez vlastnej ceny' },
       { name: 'defaultDuration', label: 'Dĺžka tréningu (min)', type: 'number', min: 5, step: 5 },
-      { name: 'reminderText', label: 'Text SMS pripomienky', type: 'textarea', hint: 'Zástupné znaky: {meno}, {datum}, {cas}' }
+      { name: 'reminderText', label: 'Text SMS pripomienky', type: 'textarea', hint: 'Zástupné znaky: {meno}, {datum}, {cas}' },
+      { name: 'trainerName', label: 'Tvoje meno (vidia klienti v klientskej zóne)', placeholder: 'napr. Jakub' },
+      { name: 'trainerPhone', label: 'Tvoj telefón (tlačidlo „Napísať trénerovi“)', type: 'tel', placeholder: '+421 900 000 000' }
     ],
-    onSubmit: (v) => { Object.assign(db.settings, v); toast('Nastavenia uložené'); }
+    onSubmit: (v) => { Object.assign(db.settings, v); db.settings.shareDirty = true; toast('Nastavenia uložené'); }
   }),
+  'share-create': (d) => createShare(d.id),
+  'share-remove': (d) => removeShare(d.id),
+  'share-copy': (d) => copyShare(d.id),
+  'share-send': (d) => sendShare(d.id),
+  'share-sync': () => { db.settings.shareDirty = true; db.clients.forEach((c) => { if (c.share) c.share.hash = ''; }); save(); toast('Synchronizujem…'); },
   'export': exportData,
   'import': () => document.getElementById('import-file').click(),
   'demo': loadDemo,
