@@ -36,7 +36,16 @@ function normalize(d) {
   const str = (v, fallback = '') => (v == null ? fallback : String(v));
   // opraviť bežné poškodenia (chýbajúce meno, dátum, zoznam cvikov…), aby žiadna obrazovka nespadla
   const clients = arr(d.clients).map((c) => Object.assign(c, { name: str(c.name).trim() || 'Bez mena' }));
-  const sessions = arr(d.sessions).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date)).map((x) => Object.assign(x, { status: STATUS[x.status] ? x.status : 'planned', time: str(x.time) }));
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
+  const sessions = arr(d.sessions).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date)).map((x) => {
+    Object.assign(x, { status: STATUS[x.status] ? x.status : 'planned', time: str(x.time) });
+    // zapísané výkony: [{ exerciseId, sets: [{ w: kg, r: opakovania }] }]
+    if (x.log !== undefined) {
+      x.log = arr(x.log).map((e) => ({ exerciseId: str(e.exerciseId), sets: arr(e.sets).map((st) => ({ w: num(st.w), r: num(st.r) })).filter((st) => st.w != null || st.r != null) })).filter((e) => e.exerciseId && e.sets.length);
+      if (!x.log.length) delete x.log;
+    }
+    return x;
+  });
   const plans = arr(d.plans).map((p) => Object.assign(p, { name: str(p.name).trim() || 'Plán', items: arr(p.items) }));
   const exercises = arr(d.exercises).map((e) => Object.assign(e, { name: str(e.name).trim() || 'Cvik' }));
   const measurements = arr(d.measurements).filter((m) => /^\d{4}-\d{2}-\d{2}$/.test(m.date));
@@ -203,12 +212,16 @@ function sessionRow(s, { showClient = true, showDate = true } = {}) {
         : `<span class="badge ${s.status}">${STATUS[s.status]}</span>`}
     </button>
     ${s.status === 'planned' ? `<div class="quick">
-      ${canRemind ? `<button class="icon-btn" title="Poslať pripomienku" aria-label="Poslať pripomienku" data-action="remind" data-id="${s.id}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3 9.2 10.1M22 3H2l7.2 7.1 2.5 10.2z"/></svg></button>` : ''}
+      ${canRemind ? `<button class="icon-btn${s.reminded ? ' sent' : ''}" title="${s.reminded ? 'Pripomienka odoslaná – poslať znova' : 'Poslať pripomienku'}" aria-label="${s.reminded ? 'Pripomienka odoslaná' : 'Poslať pripomienku'}" data-action="remind" data-id="${s.id}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3 9.2 10.1M22 3H2l7.2 7.1 2.5 10.2z"/></svg></button>` : ''}
       <button class="icon-btn ok" title="Označiť ako odtrénovaný" aria-label="Odtrénovaný" data-action="session-done" data-id="${s.id}">✓</button>
       <button class="icon-btn cancel" title="Zrušiť tréning" aria-label="Zrušiť" data-action="session-cancel" data-id="${s.id}">✕</button>
-    </div>` : ''}
+    </div>` : s.status === 'done' ? `<div class="quick">${logButton(s)}</div>` : ''}
   </li>`;
 }
+
+// činka pri odtrénovanom tréningu – zápis váh a opakovaní
+const DUMBBELL = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>';
+const logButton = (s) => `<button class="icon-btn log${s.log ? ' logged' : ''}" title="${s.log ? 'Výkony zapísané – upraviť' : 'Zapísať výkony'}" aria-label="${s.log ? 'Upraviť výkony' : 'Zapísať výkony'}" data-action="log-session" data-id="${s.id}">${DUMBBELL}</button>`;
 
 const sessionList = (list, opts, emptyText = 'Žiadne tréningy.') =>
   list.length ? `<ul class="list">${list.map((s) => sessionRow(s, opts)).join('')}</ul>` : `<p class="empty">${emptyText}</p>`;
@@ -221,6 +234,107 @@ function exerciseLine(item) {
     item.rest ? `pauza ${item.rest}` : ''
   ].filter(Boolean).join(' · ');
   return { name: ex ? ex.name : 'Vymazaný cvik', dose, note: item.note || '' };
+}
+
+/* ---------- Výkony: váhy a opakovania z tréningov ---------- */
+const exName = (id) => getExercise(id)?.name || 'Vymazaný cvik';
+const fmtSet = (st) => (st.w != null && st.r != null ? `${fmtNum(st.w, 2)} kg × ${fmtNum(st.r, 0)}`
+  : st.w != null ? `${fmtNum(st.w, 2)} kg` : st.r != null ? `${fmtNum(st.r, 0)} opak.` : '');
+// lepšia séria = vyššia váha, pri rovnakej váhe viac opakovaní
+const betterSet = (a, b) => (a.w ?? 0) - (b.w ?? 0) || (a.r ?? 0) - (b.r ?? 0);
+const topSet = (sets) => sets.reduce((a, b) => (betterSet(b, a) > 0 ? b : a));
+const sessionKey = (x) => x.date + (x.time || '');
+const loggedSessions = (cid) => clientSessions(cid).filter((x) => x.log && x.status !== 'cancelled').sort(bySessionTime);
+
+// posledný zápis cviku pred daným tréningom
+function lastLog(s, exerciseId) {
+  const list = loggedSessions(s.clientId).filter((x) => x !== s && sessionKey(x) < sessionKey(s));
+  for (let i = list.length - 1; i >= 0; i--) {
+    const e = list[i].log.find((l) => l.exerciseId === exerciseId);
+    if (e) return { session: list[i], sets: e.sets };
+  }
+  return null;
+}
+
+// najlepšia séria cviku zo všetkých tréningov klienta okrem daného (voliteľne len pred ním)
+function bestBefore(s, exerciseId, onlyEarlier = true) {
+  let best = null;
+  for (const x of loggedSessions(s.clientId)) {
+    if (x === s || (onlyEarlier && sessionKey(x) >= sessionKey(s))) continue;
+    const e = x.log.find((l) => l.exerciseId === exerciseId);
+    if (e) { const t = topSet(e.sets); if (!best || betterSet(t, best.set) > 0) best = { set: t, date: x.date }; }
+  }
+  return best;
+}
+
+// rekordy a priebeh každého cviku klienta
+function clientRecords(cid) {
+  const map = new Map();
+  for (const x of loggedSessions(cid)) {
+    for (const e of x.log) {
+      const top = topSet(e.sets);
+      let r = map.get(e.exerciseId);
+      if (!r) map.set(e.exerciseId, (r = { exerciseId: e.exerciseId, best: top, date: x.date, tops: [] }));
+      else if (betterSet(top, r.best) > 0) { r.best = top; r.date = x.date; }
+      r.tops.push({ date: x.date, set: top });
+    }
+  }
+  return [...map.values()].map((r) => {
+    const byWeight = r.tops.some((t) => t.set.w != null);
+    const points = r.tops.map((t) => ({ date: t.date, value: byWeight ? t.set.w : t.set.r })).filter((p) => p.value != null);
+    return { ...r, name: exName(r.exerciseId), unit: byWeight ? 'kg' : 'opak.', points };
+  }).sort((a, b) => b.tops.length - a.tops.length || a.name.localeCompare(b.name, 'sk'));
+}
+
+/* ---------- Graf progresu ---------- */
+const METRICS = [['weight', 'Váha', 'kg'], ['bodyFat', 'Tuk', '%'], ['waist', 'Pás', 'cm'], ['hips', 'Boky', 'cm']];
+const chartSel = {};   // vybraná metrika / cvik pre každého klienta
+let chartN = 0;
+
+// body grafu: [{ date, value }] – aspoň 2. Čiara a plocha sú SVG (natiahnuté), body a popisy HTML (nedeformujú sa)
+function chartHtml(points, unit) {
+  const xs = points.map((p) => parseDate(p.date).getTime());
+  const x0 = xs[0];
+  const span = xs[xs.length - 1] - x0 || 1;
+  const vals = points.map((p) => p.value);
+  let lo = Math.min(...vals);
+  let hi = Math.max(...vals);
+  if (hi === lo) { hi += 1; lo -= 1; }
+  const padV = (hi - lo) * 0.18;
+  lo -= padV; hi += padV;
+  const X = (i) => (points.length === 1 ? 50 : 3 + ((xs[i] - x0) / span) * 94);
+  const Y = (v) => 8 + ((hi - v) / (hi - lo)) * 84;
+  const pts = points.map((p, i) => [X(i), Y(p.value)]);
+  const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`).join(' ');
+  const area = `${line} L${pts[pts.length - 1][0].toFixed(2)} 100 L${pts[0][0].toFixed(2)} 100 Z`;
+  const id = `cg${++chartN}`;
+  const last = points.length - 1;
+  const label = (i, cls) => `<span class="chart-val ${cls}" style="left:${pts[i][0]}%;top:${pts[i][1]}%">${fmtNum(points[i].value)}</span>`;
+  return `<div class="chart" role="img" aria-label="Graf: ${points.map((p) => `${fmtShort(p.date)} ${fmtNum(p.value)} ${unit}`).join(', ')}">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7ebf" stop-opacity=".32"/><stop offset="1" stop-color="#ff7ebf" stop-opacity="0"/></linearGradient>
+        <linearGradient id="${id}l" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="0"><stop offset="0" stop-color="#ffa8d5"/><stop offset="1" stop-color="#b98cff"/></linearGradient>
+      </defs>
+      <path d="${area}" fill="url(#${id}a)"/>
+      <path d="${line}" fill="none" stroke="url(#${id}l)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    </svg>
+    ${pts.map(([x, y], i) => `<span class="chart-dot${i === last ? ' last' : ''}" style="left:${x}%;top:${y}%" title="${fmtShort(points[i].date)}: ${fmtNum(points[i].value)} ${unit}"></span>`).join('')}
+    ${label(0, 'first')}${last ? label(last, 'last') : ''}
+  </div>
+  <div class="chart-axis"><span>${fmtShort(points[0].date)} ${parseDate(points[0].date).getFullYear()}</span><span>${fmtShort(points[last].date)} ${parseDate(points[last].date).getFullYear()}</span></div>`;
+}
+
+// zhrnutie nad grafom: aktuálna hodnota + zmena od začiatku
+function chartSummary(points, unit, label) {
+  const first = points[0];
+  const last = points[points.length - 1];
+  const d = Math.round((last.value - first.value) * 100) / 100;
+  const days = daysBetween(first.date, last.date);
+  return `<div class="chart-sum">
+    <div><span>${esc(label)} teraz</span><b>${fmtNum(last.value)} <small>${unit}</small></b></div>
+    <div><span>Zmena${days ? ` za ${days < 60 ? cnt(days, 'deň', 'dni', 'dní') : cnt(Math.round(days / 7), 'týždeň', 'týždne', 'týždňov')}` : ''}</span><b class="chg">${d > 0 ? '+' : d < 0 ? '−' : ''}${fmtNum(Math.abs(d))} <small>${unit}</small></b></div>
+  </div>`;
 }
 
 /* =========================================================
@@ -273,6 +387,8 @@ function viewDashboard() {
 
   ${(() => { const due = db.sessions.filter(isDue); return due.length ? `<a class="notice notice-money" href="#/finance"><span>Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span><span class="btn small">Financie ›</span></a>` : ''; })()}
 
+  ${remindersCard()}
+
   ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať</button></div>` : ''}
 
   <div class="stats">
@@ -306,6 +422,31 @@ function viewDashboard() {
       <span class="badge ${cr.left <= 0 ? 'cancelled' : 'warn'}">${cr.left <= 0 ? 'Minuté' : 'Posledný'}</span>
     </a></li>`).join('')}</ul>
   </section>` : ''}`;
+}
+
+// Pripomienky na zajtra – jedným ťuknutím WhatsApp/SMS každému klientovi, odoslané sa odškrtnú
+function remindersCard() {
+  const tm = addDays(today(), 1);
+  const list = (idx().sessionsByDate.get(tm) || []).filter((s) => s.status === 'planned').sort(bySessionTime)
+    .map((s) => ({ s, c: getClient(s.clientId) })).filter(({ c }) => c && (c.phone || c.email));
+  if (!list.length) return '';
+  const sent = list.filter(({ s }) => s.reminded).length;
+  const all = sent === list.length;
+  return `<section class="card reminders${all ? ' all-sent' : ''}" id="reminders">
+    <div class="card-head"><h2>${all ? '✓ Pripomienky na zajtra odoslané' : 'Pripomienky na zajtra'}</h2><span class="badge ${all ? 'done' : 'planned'}">${sent}/${list.length}</span></div>
+    ${all ? '' : `<p class="muted" style="margin-top:-6px">Ťukni na WhatsApp alebo SMS – správa je pripravená, stačí odoslať.</p>`}
+    <ul class="list">${list.map(({ s, c }) => {
+      const text = encodeURIComponent(reminderText(c, s));
+      const phone = (c.phone || '').replace(/\s/g, '');
+      return `<li class="remind-row${s.reminded ? ' sent' : ''}">
+        ${avatar(c)}
+        <span class="info"><strong>${esc(c.name)}</strong><small>${esc(s.time || 'bez času')}${s.reminded ? ' · odoslané ✓' : ''}</small></span>
+        <span class="row">${phone
+          ? `<a class="btn small wa-btn${s.reminded ? '' : ' primary'}" href="https://wa.me/${intlPhone(c.phone)}?text=${text}" target="_blank" rel="noopener" data-remind="${s.id}">WhatsApp</a><a class="btn small" href="sms:${esc(phone)}?&body=${text}" data-remind="${s.id}">SMS</a>`
+          : `<a class="btn small${s.reminded ? '' : ' primary'}" href="mailto:${esc(c.email)}?body=${text}" data-remind="${s.id}">E-mail</a>`}</span>
+      </li>`;
+    }).join('')}</ul>
+  </section>`;
 }
 
 function viewClients() {
@@ -351,15 +492,6 @@ function viewClient(id) {
   const cr = credits(id);
   const packages = db.packages.filter((p) => p.clientId === id).sort((a, b) => b.date.localeCompare(a.date));
   const plans = db.plans.filter((p) => p.clientId === id).sort(byName);
-  const ms = db.measurements.filter((m) => m.clientId === id).sort((a, b) => a.date.localeCompare(b.date));
-  const paid = packages.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
-
-  const delta = (cur, prev) => {
-    if (cur == null || prev == null) return '';
-    const d = Math.round((cur - prev) * 10) / 10;
-    if (!d) return '';
-    return ` <small class="${d < 0 ? 'delta-down' : 'delta-up'}">${d > 0 ? '+' : ''}${fmtNum(d)}</small>`;
-  };
 
   return `
   <a href="#/clients" class="back-link">‹ Klienti</a>
@@ -438,8 +570,37 @@ function viewClient(id) {
     <div class="photo-grid" id="photo-grid" data-client="${c.id}"></div>
   </section>
 
+  ${recordsCard(c)}
+
+  ${measureCard(c)}
+
   <section class="card">
-    <div class="card-head"><h2>Merania a progres</h2><button class="btn small" data-action="new-measurement" data-client="${c.id}">+ Meranie</button></div>
+    <div class="card-head"><h2>História tréningov</h2>${history.length ? `<span class="badge">${history.length}</span>` : ''}</div>
+    ${sessionList(showAllHistory === id ? history : history.slice(0, HISTORY_LIMIT), { showClient: false }, 'Zatiaľ žiadna história.')}
+    ${history.length > HISTORY_LIMIT && showAllHistory !== id ? `<button class="btn small" style="margin-top:10px" data-action="show-history" data-id="${id}">Zobraziť celú históriu (${history.length})</button>` : ''}
+  </section>`;
+}
+
+const SHARE_ICON = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+const shareBtn = (cid, kind) => `<button class="icon-btn small" title="Zdieľať ako obrázok" aria-label="Zdieľať ako obrázok" data-action="share-progress" data-id="${cid}" data-kind="${kind}">${SHARE_ICON}</button>`;
+
+// Karta „Merania a progres“ – graf vybranej metriky + tabuľka
+function measureCard(c) {
+  const ms = db.measurements.filter((m) => m.clientId === c.id).sort((a, b) => a.date.localeCompare(b.date));
+  const delta = (cur, prev) => {
+    if (cur == null || prev == null) return '';
+    const d = Math.round((cur - prev) * 10) / 10;
+    if (!d) return '';
+    return ` <small class="${d < 0 ? 'delta-down' : 'delta-up'}">${d > 0 ? '+' : ''}${fmtNum(d)}</small>`;
+  };
+  const avail = METRICS.map(([key, label, unit]) => ({ key, label, unit, points: ms.filter((m) => m[key] != null && m[key] !== '').map((m) => ({ date: m.date, value: Number(m[key]) })) }))
+    .filter((m) => m.points.length >= 2);
+  const sel = avail.find((m) => m.key === chartSel[c.id + ':m']) || avail[0];
+  return `<section class="card" id="measure-card" data-client="${c.id}">
+    <div class="card-head"><h2>Merania a progres</h2><span class="head-actions">${sel ? shareBtn(c.id, 'm') : ''}<button class="btn small" data-action="new-measurement" data-client="${c.id}">+ Meranie</button></span></div>
+    ${sel ? `${avail.length > 1 ? `<div class="chips chart-chips">${avail.map((m) => `<button class="chip ${m === sel ? 'active' : ''}" data-action="chart" data-client="${c.id}" data-kind="m" data-val="${m.key}">${m.label}</button>`).join('')}</div>` : ''}
+      ${chartSummary(sel.points, sel.unit, sel.label)}
+      ${chartHtml(sel.points, sel.unit)}` : ms.length === 1 ? '<p class="hint" style="margin-top:0">Graf sa ukáže po druhom meraní.</p>' : ''}
     ${ms.length ? `<div class="table-wrap"><table>
       <thead><tr><th>Dátum</th><th class="num">Váha (kg)</th><th class="num">Tuk (%)</th><th class="num">Pás (cm)</th><th class="num">Boky (cm)</th><th>Poznámka</th></tr></thead>
       <tbody>${ms.map((m, i) => {
@@ -453,15 +614,26 @@ function viewClient(id) {
           <td>${esc(m.note)}</td>
         </tr>`;
       }).join('')}</tbody>
-    </table></div>
-    ${ms.length > 1 && ms[0].weight != null && ms[ms.length - 1].weight != null ? `<p class="muted" style="margin-bottom:0">Zmena váhy od prvého merania: <b>${(ms[ms.length - 1].weight - ms[0].weight > 0 ? '+' : '') + fmtNum(ms[ms.length - 1].weight - ms[0].weight)} kg</b></p>` : ''}`
-    : '<p class="empty">Zatiaľ žiadne merania.</p>'}
-  </section>
+    </table></div>` : '<p class="empty">Zatiaľ žiadne merania.</p>'}
+  </section>`;
+}
 
-  <section class="card">
-    <div class="card-head"><h2>História tréningov</h2>${history.length ? `<span class="badge">${history.length}</span>` : ''}</div>
-    ${sessionList(showAllHistory === id ? history : history.slice(0, HISTORY_LIMIT), { showClient: false }, 'Zatiaľ žiadna história.')}
-    ${history.length > HISTORY_LIMIT && showAllHistory !== id ? `<button class="btn small" style="margin-top:10px" data-action="show-history" data-id="${id}">Zobraziť celú históriu (${history.length})</button>` : ''}
+// Karta „Výkony a rekordy“ – najlepšia séria každého cviku a graf jeho progresu
+function recordsCard(c) {
+  const recs = clientRecords(c.id);
+  const charted = recs.filter((r) => r.points.length >= 2);
+  const sel = charted.find((r) => r.exerciseId === chartSel[c.id + ':x']) || charted[0];
+  return `<section class="card" id="records-card" data-client="${c.id}">
+    <div class="card-head"><h2>Výkony a rekordy</h2>${sel ? shareBtn(c.id, 'x') : ''}</div>
+    ${!recs.length ? `<p class="empty">Po tréningu ťukni na <b>činku</b> pri odtrénovanom tréningu a zapíš váhy a opakovania. Appka ti ukáže progres, porovnanie s minulým tréningom aj osobné rekordy.</p>` : `
+      ${sel ? `${charted.length > 1 ? `<div class="chips chart-chips">${charted.map((r) => `<button class="chip ${r === sel ? 'active' : ''}" data-action="chart" data-client="${c.id}" data-kind="x" data-val="${esc(r.exerciseId)}">${esc(r.name)}</button>`).join('')}</div>` : ''}
+        ${chartSummary(sel.points, sel.unit, sel.name)}
+        ${chartHtml(sel.points, sel.unit)}` : ''}
+      <ul class="list records">${recs.map((r) => `<li><button class="list-item${r === sel ? ' sel' : ''}" ${r.points.length >= 2 ? `data-action="chart" data-client="${c.id}" data-kind="x" data-val="${esc(r.exerciseId)}"` : 'disabled'}>
+        <span class="pr-icon" aria-hidden="true">🏆</span>
+        <span class="info"><strong>${esc(r.name)}</strong><small>${fmtShort(r.date)} ${parseDate(r.date).getFullYear()}</small></span>
+        <b class="pr-val">${fmtSet(r.best)}</b>
+      </button></li>`).join('')}</ul>`}
   </section>`;
 }
 
@@ -1021,6 +1193,7 @@ function openSessionForm(s, defaults = {}) {
       }
       delete d.repeat;
       if (s) {
+        if (d.date !== s.date || d.time !== (s.time || '')) delete s.reminded;
         d.paid = !!d.payMethod;
         if (d.paid && !s.paid) d.paidDate = today();
         if (!d.paid) { delete s.paidDate; delete d.payMethod; delete s.payMethod; }
@@ -1213,6 +1386,116 @@ function openPaySheet(clientId, method) {
     burst(r.left + r.width / 2, r.top + r.height / 2);
   };
   update();
+  modal.showModal();
+}
+
+// Zápis výkonov z tréningu: pre každý cvik série „kg × opakovania“, porovnanie s minulým tréningom a rekordom
+function openLogSheet(s) {
+  const c = getClient(s.clientId);
+  const plan = s.planId ? getPlan(s.planId) : null;
+  const blank = (n) => Array.from({ length: Math.min(Math.max(Number(n) || 3, 1), 10) }, () => ({ w: '', r: '' }));
+  const asText = (sets) => sets.map((st) => ({ w: st.w == null ? '' : String(st.w).replace('.', ','), r: st.r == null ? '' : String(st.r) }));
+  let rows = s.log ? s.log.map((e) => ({ exerciseId: e.exerciseId, sets: asText(e.sets) }))
+    : plan ? plan.items.filter((it) => it.exerciseId).map((it) => ({ exerciseId: it.exerciseId, sets: blank(it.sets) })) : [];
+  const exOptions = [...db.exercises].sort(byName);
+
+  modalForm.innerHTML = `
+    <header class="modal-head"><h2>Výkony · ${esc(firstName(c || { name: '' }))} · ${fmtShort(s.date)}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
+    <div class="modal-body log-body">
+      <div id="log-list" class="log-list"></div>
+      <select id="log-add" aria-label="Pridať cvik"><option value="">+ Pridať cvik…</option>${exOptions.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}${e.category ? ` (${esc(e.category)})` : ''}</option>`).join('')}</select>
+    </div>
+    <footer class="modal-foot">
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Zrušiť</button>
+      <button type="submit" class="btn primary">Uložiť</button>
+    </footer>`;
+
+  const listEl = modalForm.querySelector('#log-list');
+  const draw = () => {
+    listEl.innerHTML = rows.length ? rows.map((e, i) => {
+      const prev = lastLog(s, e.exerciseId);
+      const best = bestBefore(s, e.exerciseId);
+      return `<div class="log-ex" data-i="${i}">
+        <div class="log-ex-head">
+          <strong>${esc(exName(e.exerciseId))}</strong>
+          ${prev ? `<button type="button" class="link-btn" data-copy="${i}">Ako minule</button>` : ''}
+          <button type="button" class="icon-btn small" data-rm-ex="${i}" aria-label="Odobrať cvik">✕</button>
+        </div>
+        ${prev || best ? `<p class="log-prev">${prev ? `Minule (${fmtShort(prev.session.date)}): ${prev.sets.map(fmtSet).join(' · ')}` : ''}${best ? `${prev ? '<br>' : ''}🏆 Rekord: ${fmtSet(best.set)}` : ''}</p>` : '<p class="log-prev">Prvý zápis tohto cviku</p>'}
+        ${e.sets.map((st, j) => `<div class="log-set">
+          <span class="set-n">${j + 1}</span>
+          <input type="text" inputmode="decimal" autocomplete="off" data-i="${i}" data-j="${j}" data-f="w" value="${esc(st.w)}" placeholder="kg" aria-label="Séria ${j + 1} – váha (kg)">
+          <span class="x">×</span>
+          <input type="text" inputmode="numeric" autocomplete="off" data-i="${i}" data-j="${j}" data-f="r" value="${esc(st.r)}" placeholder="opak." aria-label="Séria ${j + 1} – opakovania">
+          <button type="button" class="icon-btn small" data-rm-set="${i}:${j}" aria-label="Odobrať sériu" ${e.sets.length < 2 ? 'disabled' : ''}>−</button>
+        </div>`).join('')}
+        <button type="button" class="btn small add-set" data-add-set="${i}">+ Séria</button>
+      </div>`;
+    }).join('') : `<p class="empty">${plan ? 'Plán nemá žiadne cviky.' : 'Tréning nemá priradený plán.'} Pridaj cvik zo zoznamu nižšie.</p>`;
+  };
+  listEl.addEventListener('input', (ev) => {
+    const t = ev.target;
+    if (t.dataset.f) { rows[t.dataset.i].sets[t.dataset.j][t.dataset.f] = t.value; t.setCustomValidity(''); }
+  });
+  listEl.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    const d = b.dataset;
+    if (d.copy != null) {
+      const prev = lastLog(s, rows[d.copy].exerciseId);
+      if (prev) rows[d.copy].sets = asText(prev.sets);
+    } else if (d.rmEx != null) rows.splice(Number(d.rmEx), 1);
+    else if (d.rmSet) { const [i, j] = d.rmSet.split(':').map(Number); if (rows[i].sets.length > 1) rows[i].sets.splice(j, 1); }
+    else if (d.addSet != null) { const sets = rows[d.addSet].sets; sets.push({ ...(sets[sets.length - 1] || { w: '', r: '' }) }); }
+    else return;
+    draw();
+  });
+  modalForm.querySelector('#log-add').onchange = (ev) => {
+    const id = ev.target.value;
+    ev.target.value = '';
+    if (!id) return;
+    const prev = lastLog(s, id);
+    rows.push({ exerciseId: id, sets: prev ? asText(prev.sets).map(() => ({ w: '', r: '' })) : blank(3) });
+    draw();
+    listEl.lastElementChild?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+  modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
+  modalForm.onsubmit = (ev) => {
+    ev.preventDefault();
+    const parse = (v) => { const t = String(v).trim().replace(/\s/g, '').replace(',', '.'); return t === '' ? null : Number(t); };
+    for (const el of listEl.querySelectorAll('input[data-f]')) {
+      const n = parse(el.value);
+      if (n !== null && !(Number.isFinite(n) && n >= 0)) {
+        el.setCustomValidity('Zadaj číslo, napr. 62,5');
+        el.reportValidity();
+        return;
+      }
+    }
+    const log = rows.map((e) => ({ exerciseId: e.exerciseId, sets: e.sets.map((st) => ({ w: parse(st.w), r: parse(st.r) })).filter((st) => st.w != null || st.r != null) }))
+      .filter((e) => e.sets.length);
+    // nové osobné rekordy (oproti všetkým predchádzajúcim tréningom)
+    // (pri úprave už zapísaného tréningu len to, čo sa naozaj zlepšilo oproti predošlému zápisu)
+    const before = new Map((s.log || []).map((e) => [e.exerciseId, topSet(e.sets)]));
+    const records = log.map((e) => ({ e, top: topSet(e.sets), best: bestBefore(s, e.exerciseId), was: before.get(e.exerciseId) }))
+      .filter(({ top, best, was }) => best && betterSet(top, best.set) > 0 && (!was || betterSet(top, was) > 0));
+    if (log.length) s.log = log; else delete s.log;
+    const markDone = log.length && s.status === 'planned' && s.date <= today();
+    if (markDone) s.status = 'done';
+    const btn = modalForm.querySelector('[type=submit]').getBoundingClientRect();
+    modal.close();
+    flashId = s.id;
+    save();
+    render();
+    if (records.length) {
+      burst(btn.left + btn.width / 2, btn.top + btn.height / 2);
+      navigator.vibrate?.([15, 60, 15]);
+      toast(`🔥 Nový rekord: ${exName(records[0].e.exerciseId)} ${fmtSet(records[0].top)}${records.length > 1 ? ` (+${records.length - 1})` : ''}`);
+    } else {
+      toast(log.length ? `Výkony uložené${markDone ? ' · tréning odtrénovaný' : ''}` : 'Výkony vymazané');
+    }
+  };
+  draw();
   modal.showModal();
 }
 
@@ -1637,6 +1920,14 @@ function openContact(c, session, preferred) {
     set('mail', `mailto:${c.email}?body=${text}`);
   };
   ta.addEventListener('input', update);
+  modalForm.querySelectorAll('[data-channel]').forEach((a) => a.addEventListener('click', () => {
+    const active = modalForm.querySelector('.chip.active');
+    if (next && next.status === 'planned' && active && templates[Number(active.dataset.tpl)][0] === 'Pripomienka' && !next.reminded) {
+      next.reminded = today();
+      save();
+      setTimeout(() => { if (!modal.open) render(); }, 400);
+    }
+  }));
   modalForm.querySelectorAll('[data-tpl]').forEach((chip) => {
     chip.onclick = () => {
       modalForm.querySelectorAll('.chip').forEach((x) => x.classList.toggle('active', x === chip));
@@ -1781,11 +2072,103 @@ function planImageFile(p) {
   ctx.textBaseline = 'alphabetic';
   layout(true);
 
+  return canvasFile(canvas, p.name);
+}
+
+// Zdieľanie obrázka: iPhone/Android ponuka zdieľania, inak stiahnutie
+function shareImage(file, title, fallbackText, downloadedMsg) {
+  if (navigator.canShare?.({ files: [file] })) {
+    navigator.share({ files: [file], title }).catch((e) => { if (e.name !== 'AbortError') toast('Zdieľanie sa nepodarilo'); });
+    return;
+  }
+  if (navigator.share && fallbackText) {
+    navigator.share({ text: fallbackText }).catch((e) => { if (e.name !== 'AbortError') toast('Zdieľanie sa nepodarilo'); });
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file);
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(downloadedMsg);
+}
+
+const canvasFile = (canvas, name) => {
   const bin = atob(canvas.toDataURL('image/png').split(',')[1]);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  const slug = p.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'plan';
+  const slug = name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'trener';
   return new File([bytes], `${slug}.png`, { type: 'image/png' });
+};
+
+// Progres klienta ako obrázok 1080 × 1350 (formát na Instagram / WhatsApp)
+function progressImageFile(c, { label, unit, points, extra }) {
+  const W = 1080, H = 1350, PAD = 80;
+  const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const font = (w, sz) => { ctx.font = `${w} ${sz}px ${FONT}`; };
+  ctx.fillStyle = '#09090b'; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W, 0, 0, W, 0, 900);
+  glow.addColorStop(0, 'rgba(255, 126, 191, .26)'); glow.addColorStop(1, 'rgba(255, 126, 191, 0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  const glow2 = ctx.createRadialGradient(0, H, 0, 0, H, 800);
+  glow2.addColorStop(0, 'rgba(160, 110, 255, .2)'); glow2.addColorStop(1, 'rgba(160, 110, 255, 0)');
+  ctx.fillStyle = glow2; ctx.fillRect(0, 0, W, H);
+
+  const first = points[0], last = points[points.length - 1];
+  const d = Math.round((last.value - first.value) * 100) / 100;
+  const days = daysBetween(first.date, last.date);
+  ctx.textBaseline = 'alphabetic';
+  font(800, 30); ctx.fillStyle = '#ffa8d5'; ctx.fillText('MÔJ PROGRES', PAD, 140);
+  font(900, 84); ctx.fillStyle = '#f6f6f8'; ctx.fillText(c.name.length > 18 ? firstName(c) : c.name, PAD, 240);
+  font(600, 40); ctx.fillStyle = '#c9c9d1'; ctx.fillText(`${label}${extra ? ' · ' + extra : ''}`, PAD, 305);
+
+  // veľké číslo zmeny
+  const grad = ctx.createLinearGradient(PAD, 0, PAD + 700, 0);
+  grad.addColorStop(0, '#ffa8d5'); grad.addColorStop(1, '#b98cff');
+  font(900, 190); ctx.fillStyle = grad;
+  const big = `${d > 0 ? '+' : d < 0 ? '−' : ''}${fmtNum(Math.abs(d))}`;
+  ctx.fillText(big, PAD - 6, 520);
+  const bw = ctx.measureText(big).width;
+  font(800, 56); ctx.fillStyle = '#f6f6f8'; ctx.fillText(unit, PAD + bw + 18, 520);
+  font(500, 36); ctx.fillStyle = '#8c8c97';
+  ctx.fillText(days ? `za ${days < 60 ? cnt(days, 'deň', 'dni', 'dní') : cnt(Math.round(days / 7), 'týždeň', 'týždne', 'týždňov')}` : '', PAD, 580);
+
+  // graf
+  const gx = PAD, gy = 680, gw = W - 2 * PAD, gh = 460;
+  const xs = points.map((p) => parseDate(p.date).getTime());
+  const span = xs[xs.length - 1] - xs[0] || 1;
+  let lo = Math.min(...points.map((p) => p.value)), hi = Math.max(...points.map((p) => p.value));
+  if (hi === lo) { hi += 1; lo -= 1; }
+  const pv = (hi - lo) * 0.2; lo -= pv; hi += pv;
+  const X = (i) => gx + 30 + ((xs[i] - xs[0]) / span) * (gw - 60);
+  const Y = (v) => gy + ((hi - v) / (hi - lo)) * gh;
+  ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
+  for (let k = 0; k <= 3; k++) { const y = gy + (gh * k) / 3; ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx + gw, y); ctx.stroke(); }
+  const path = () => { ctx.beginPath(); points.forEach((p, i) => (i ? ctx.lineTo(X(i), Y(p.value)) : ctx.moveTo(X(i), Y(p.value)))); };
+  path(); ctx.lineTo(X(points.length - 1), gy + gh); ctx.lineTo(X(0), gy + gh); ctx.closePath();
+  const area = ctx.createLinearGradient(0, gy, 0, gy + gh);
+  area.addColorStop(0, 'rgba(255,126,191,.35)'); area.addColorStop(1, 'rgba(255,126,191,0)');
+  ctx.fillStyle = area; ctx.fill();
+  path(); ctx.strokeStyle = grad; ctx.lineWidth = 10; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+  points.forEach((p, i) => {
+    const endP = i === 0 || i === points.length - 1;
+    ctx.beginPath(); ctx.arc(X(i), Y(p.value), endP ? 16 : 10, 0, Math.PI * 2);
+    ctx.fillStyle = endP ? '#ffffff' : '#ffa8d5'; ctx.fill();
+  });
+  font(800, 38); ctx.fillStyle = '#f6f6f8';
+  const lbl = (i, align) => { ctx.textAlign = align; ctx.fillText(fmtNum(points[i].value), X(i), Y(points[i].value) - 34); };
+  lbl(0, 'left'); lbl(points.length - 1, 'right');
+  font(600, 30); ctx.fillStyle = '#8c8c97';
+  ctx.textAlign = 'left'; ctx.fillText(`${fmtShort(first.date)} ${parseDate(first.date).getFullYear()}`, gx, gy + gh + 60);
+  ctx.textAlign = 'right'; ctx.fillText(`${fmtShort(last.date)} ${parseDate(last.date).getFullYear()}`, gx + gw, gy + gh + 60);
+  ctx.textAlign = 'left';
+  font(800, 26); ctx.fillStyle = '#5f5f69'; ctx.fillText('TRÉNER', PAD, H - 60);
+  return canvasFile(canvas, `${c.name}-${label}-progres`);
 }
 
 async function exportData() {
@@ -1976,6 +2359,22 @@ function loadDemo() {
   [[martin, 2, '19:00', ''], [martin, 9, '19:00', ''], [jana, 0, '07:00', janaPlan.id], [peter, 1, '18:00', peterPlan.id], [lucia, 2, '17:00', template.id], [jana, 3, '07:00', janaPlan.id], [peter, 4, '18:00', peterPlan.id], [lucia, 9, '17:00', template.id], [jana, 7, '07:00', janaPlan.id], [jana, 10, '07:00', janaPlan.id]]
     .forEach(([c, off, time, plan]) => { if (addDays(ws, off) >= t) d.sessions.push(s(c, off, time, 'planned', plan)); });
   d.sessions.push({ id: uid(), clientId: jana.id, date: t, time: '19:00', duration: 45, status: 'planned', planId: janaPlan.id, notes: '' });
+  // Zapísané výkony – Peter postupne pridáva na drepe a benchi, Jana na hip thruste a veslovaní
+  const sets = (n, w, r) => Array.from({ length: n }, () => ({ w, r }));
+  d.sessions.filter((x) => x.clientId === peter.id && x.status === 'done').sort((a, b) => a.date.localeCompare(b.date)).forEach((x, i) => {
+    x.log = [
+      { exerciseId: ex('Drep'), sets: sets(5, 90 + i * 2.5, 5) },
+      { exerciseId: ex('Bench press'), sets: sets(5, 70 + i * 2.5, 5) },
+      { exerciseId: ex('Príťahy na hrazde'), sets: sets(4, null, 6 + Math.floor(i / 2)) }
+    ];
+  });
+  d.sessions.filter((x) => x.clientId === jana.id && x.status === 'done').sort((a, b) => a.date.localeCompare(b.date)).slice(-6).forEach((x, i) => {
+    x.log = [
+      { exerciseId: ex('Drep'), sets: sets(3, null, 10 + Math.floor(i / 2)) },
+      { exerciseId: ex('Veslovanie s činkou'), sets: sets(3, 8 + Math.floor(i / 2) * 2, 10) },
+      { exerciseId: ex('Hip thrust'), sets: sets(3, 20 + i * 5, 12) }
+    ];
+  });
   d.measurements = [
     { id: uid(), clientId: jana.id, date: addDays(t, -70), weight: 74.5, bodyFat: 31, waist: 86, hips: 104, note: 'vstupné meranie' },
     { id: uid(), clientId: jana.id, date: addDays(t, -42), weight: 72.8, bodyFat: 29.6, waist: 83, hips: 102, note: '' },
@@ -2055,28 +2454,35 @@ const actions = {
       }
     });
   },
-  'share-plan': async (d) => {
+  'share-plan': (d) => {
     const p = getPlan(d.id);
-    try {
-      // Obrázok sa generuje synchrónne, aby iOS nestratil „klik“ používateľa pred navigator.share
-      const file = planImageFile(p);
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: p.name });
-        return;
-      }
-      if (navigator.share) { await navigator.share({ text: planText(p) }); return; }
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(file);
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      toast('Obrázok plánu stiahnutý');
-    } catch (e) {
-      if (e.name !== 'AbortError') toast('Zdieľanie sa nepodarilo');
-    }
+    // Obrázok sa generuje synchrónne, aby iOS nestratil „klik“ používateľa pred navigator.share
+    try { shareImage(planImageFile(p), p.name, planText(p), 'Obrázok plánu stiahnutý'); } catch (e) { toast('Zdieľanie sa nepodarilo'); }
   },
+  'share-progress': (d) => {
+    const c = getClient(d.id);
+    if (!c) return;
+    let data;
+    if (d.kind === 'x') {
+      const recs = clientRecords(c.id).filter((r) => r.points.length >= 2);
+      const r = recs.find((x) => x.exerciseId === chartSel[c.id + ':x']) || recs[0];
+      if (r) data = { label: r.name, unit: r.unit, points: r.points, extra: `Rekord: ${fmtSet(r.best)}` };
+    } else {
+      const ms = db.measurements.filter((m) => m.clientId === c.id).sort((a, b) => a.date.localeCompare(b.date));
+      const avail = METRICS.map(([key, label, unit]) => ({ key, label, unit, points: ms.filter((m) => m[key] != null && m[key] !== '').map((m) => ({ date: m.date, value: Number(m[key]) })) })).filter((m) => m.points.length >= 2);
+      const m = avail.find((x) => x.key === chartSel[c.id + ':m']) || avail[0];
+      if (m) data = { label: m.label, unit: m.unit, points: m.points, extra: cnt(m.points.length, 'meranie', 'merania', 'meraní') };
+    }
+    if (!data) return;
+    try { shareImage(progressImageFile(c, data), `${c.name} – ${data.label}`, '', 'Obrázok progresu stiahnutý'); } catch (e) { toast('Zdieľanie sa nepodarilo'); }
+  },
+  'chart': (d) => {
+    chartSel[d.client + ':' + d.kind] = d.val;
+    const c = getClient(d.client);
+    const card = document.getElementById(d.kind === 'x' ? 'records-card' : 'measure-card');
+    if (c && card) card.outerHTML = d.kind === 'x' ? recordsCard(c) : measureCard(c);
+  },
+  'log-session': (d) => { const s = getSession(d.id); if (s) openLogSheet(s); },
   'print': () => window.print(),
   'new-item': (d) => openItemForm(getPlan(d.plan)),
   'edit-item': (d) => { const p = getPlan(d.plan); openItemForm(p, p.items.find((i) => i.id === d.id)); },
@@ -2117,6 +2523,17 @@ const actions = {
 };
 
 document.addEventListener('click', (e) => {
+  const rem = e.target.closest('a[data-remind]');
+  if (rem) {
+    const s = getSession(rem.dataset.remind);
+    if (s && !s.reminded) {
+      s.reminded = today();
+      save();
+      // obnoviť kartu až po odchode do WhatsAppu/SMS, nech sa odkaz stihne otvoriť
+      setTimeout(() => { const card = document.getElementById('reminders'); if (card) card.outerHTML = remindersCard(); }, 400);
+    }
+    return;
+  }
   const row = e.target.closest('tr[data-href]');
   if (row) { location.hash = row.dataset.href; return; }
   const el = e.target.closest('[data-action]');
