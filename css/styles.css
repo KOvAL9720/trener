@@ -671,3 +671,154 @@ tfoot td { font-weight: 900; border-top: 1px solid var(--surface-3); border-bott
   .page-head:has(.title-count) .btn { flex: none; padding: 8px 14px; white-space: nowrap; }
   .title-count h1 { font-size: clamp(1.6rem, 7.4vw, 2rem); }
 }
+
+/* =========================================================
+   MODERNÝ DIZAJN 2.0 – sklo, farebná žiara, čisté nadpisy (bez kričiacich VEĽKÝCH PÍSMEN)
+   ========================================================= */
+:root {
+  --bg: #07070a;
+  --surface: rgba(255, 255, 255, .045);
+  --surface-2: rgba(255, 255, 255, .07);
+  --surface-3: rgba(255, 255, 255, .11);
+  --border: rgba(255, 255, 255, .07);
+  --text: #f5f5f7;
+  --muted: #9a9aa5;
+  --primary: #ff9fd0;
+  --primary-strong: #ff79bd;
+  --violet: #b892ff;
+  --grad: linear-gradient(135deg, #ff9fd0 0%, #ff79bd 45%, #b892ff 100%);
+  --grad-deep: linear-gradient(135deg, #ec4899 0%, #c026d3 55%, #7c3aed 100%);
+  --radius: 24px;
+  --font: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(60% 40% at 100% 0%, rgba(236, 72, 153, .22), transparent 70%),
+    radial-gradient(50% 35% at 0% 25%, rgba(124, 58, 237, .16), transparent 70%),
+    radial-gradient(60% 40% at 50% 110%, rgba(236, 72, 153, .10), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+  letter-spacing: -.01em;
+}
+
+/* Typografia – veľké čisté nadpisy ako v iOS */
+h1 { text-transform: none; font-size: 2.1rem; font-weight: 800; letter-spacing: -.035em; }
+h2 { text-transform: none; font-size: 1.12rem; font-weight: 700; letter-spacing: -.02em; }
+.brand { text-transform: none; letter-spacing: -.02em; font-size: 1.2rem; font-weight: 800; }
+.eyebrow { letter-spacing: .02em; text-transform: none; font-size: .8rem; font-weight: 600; }
+.section-title { text-transform: none; letter-spacing: -.01em; font-size: .9rem; font-weight: 700; }
+.field label, .kv dt, th, .stat span, .pay-summary span, .fin-split { text-transform: none; letter-spacing: 0; }
+.field label { font-size: .82rem; font-weight: 600; }
+.kv dt { font-size: .85rem; font-weight: 600; }
+th { font-size: .75rem; font-weight: 600; }
+.stat span { font-size: .78rem; font-weight: 600; }
+
+/* Sklenené karty */
+.card, .stat, .day {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px -18px rgba(0, 0, 0, .8);
+}
+.card { border-radius: var(--radius); padding: 20px; }
+.stat { border-radius: 20px; padding: 16px; }
+.stat b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; letter-spacing: -.04em; }
+.stat-warn b { background: none; color: var(--warn); }
+
+/* Tlačidlá – bez veľkých písmen, mäkké, s farebným prechodom */
+.btn { text-transform: none; letter-spacing: -.01em; font-size: .92rem; font-weight: 650; border-radius: 14px; min-height: 44px; padding: 10px 18px; }
+.btn.small { font-size: .84rem; min-height: 36px; border-radius: 12px; padding: 6px 14px; }
+.btn.primary { background: var(--grad); border: 0; color: #2a0618; box-shadow: 0 8px 22px -10px rgba(255, 121, 189, .8); }
+.btn.primary:hover { filter: brightness(1.05); }
+.btn:not(.primary):not(.danger):not(.pay-cash) { background: var(--surface-2); border-color: var(--border); }
+.icon-btn { background: var(--surface-2); border-color: var(--border); }
+.icon-btn.ok { background: var(--grad); border: 0; color: #2a0618; }
+.chip, .seg-btn, .tabs a { text-transform: none; letter-spacing: -.01em; font-size: .86rem; font-weight: 650; }
+.chip.active, .tabs a.active { background: var(--grad); color: #2a0618; border-color: transparent; }
+.tabs { background: var(--surface); border-color: var(--border); }
+.seg-btn.active[data-m="bank"] { background: var(--grad); }
+
+/* Odznaky – jemné, bez veľkých písmen */
+.badge { text-transform: none; letter-spacing: 0; font-size: .74rem; font-weight: 650; padding: 4px 10px; }
+
+/* Hero karta – živý prechod ružová → fialová, biely text */
+.hero {
+  background: var(--grad-deep);
+  color: #fff;
+  box-shadow: 0 24px 50px -24px rgba(192, 38, 211, .7), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+.hero::before {
+  background:
+    radial-gradient(closest-side at 25% 30%, rgba(255, 255, 255, .28), transparent),
+    radial-gradient(closest-side at 75% 70%, rgba(255, 159, 208, .45), transparent);
+}
+.hero::after { border-color: rgba(255, 255, 255, .08); }
+.hero .eyebrow, .hero-big span, .fin-split { color: rgba(255, 255, 255, .82); }
+.hero-title { text-transform: none; font-size: 1.15rem; letter-spacing: -.02em; }
+.hero-big span { text-transform: none; font-weight: 700; }
+.hero .btn.primary { background: #fff; color: #7c1d5c; box-shadow: none; }
+.hero-next { background: rgba(255, 255, 255, .14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; }
+.hero-next:hover { background: rgba(255, 255, 255, .2); }
+.fin-split { text-transform: none; font-size: .82rem; font-weight: 600; }
+.fin-split b { color: #fff; }
+
+/* Spodné menu – sklo, mäkké zvýraznenie aktívnej položky */
+.nav {
+  background: rgba(22, 22, 28, .62);
+  border: 1px solid rgba(255, 255, 255, .08);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 28px;
+}
+.nav a { text-transform: none; letter-spacing: 0; font-size: .7rem; font-weight: 600; }
+.nav a.active { background: rgba(255, 159, 208, .16); color: var(--primary); }
+.nav a.active svg { filter: drop-shadow(0 0 8px rgba(255, 121, 189, .55)); }
+.topbar { background: rgba(7, 7, 10, .55); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); }
+.topbar-btn { background: var(--surface-2); border-color: var(--border); }
+.topbar-btn.active { background: var(--grad); color: #2a0618; }
+
+/* Avatary s jemným prstencom */
+.avatar { background: var(--grad); color: #2a0618; font-weight: 800; box-shadow: 0 0 0 2px rgba(255, 255, 255, .06); }
+.avatar.lg { box-shadow: 0 0 0 3px rgba(255, 255, 255, .08), 0 12px 30px -12px rgba(255, 121, 189, .7); }
+
+/* Riadky zoznamov */
+.list > li + li { border-top-color: rgba(255, 255, 255, .05); }
+.list-item { border-radius: 16px; }
+.list-item:hover, .session-main:hover { background: rgba(255, 255, 255, .04); }
+.session::before { width: 3px; border-radius: 3px; }
+.session:not(.done):not(.cancelled)::before { background: var(--grad); }
+
+/* Polia formulárov */
+input, select, textarea { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); border-radius: 14px; }
+input:focus, select:focus, textarea:focus { border-color: rgba(255, 159, 208, .7); box-shadow: 0 0 0 4px rgba(255, 159, 208, .15); }
+
+/* Vysúvacie panely – sklo + úchyt ako v iOS */
+dialog {
+  background: rgba(24, 24, 30, .86);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, .08);
+}
+.modal-head { position: relative; border-bottom-color: rgba(255, 255, 255, .06); }
+.modal-head h2 { text-transform: none; font-size: 1.15rem; }
+.modal-foot { border-top-color: rgba(255, 255, 255, .06); }
+@media (max-width: 600px) {
+  .modal-head { padding-top: 26px; }
+  .modal-head::before { content: ""; position: absolute; top: 9px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: rgba(255, 255, 255, .22); }
+}
+
+/* Toast – sklenená pilulka */
+#toast { background: rgba(255, 255, 255, .92); color: #14141a; font-weight: 650; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .6); }
+
+/* Menšie detaily */
+.count-pill { background: rgba(255, 159, 208, .14); }
+.day.today { box-shadow: 0 0 0 1px rgba(255, 159, 208, .45), 0 10px 30px -18px rgba(255, 121, 189, .6); }
+.due-row, .notice { border-radius: 16px; }
+.plan-items .n { background: var(--grad); color: #2a0618; }
+.credits b, .pay-amount b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.empty-hero h1::after { background: var(--grad); }
+/* zvyšky starých VEĽKÝCH PÍSMEN */
+.day-head b { text-transform: none; letter-spacing: -.01em; font-size: 1rem; font-weight: 700; }
+.day-head b .muted { font-weight: 500; }
+.contact-btn { text-transform: none; letter-spacing: -.01em; font-size: .95rem; font-weight: 650; }
+.week-nav .label { letter-spacing: -.01em; font-weight: 700; }
