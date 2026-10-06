@@ -791,6 +791,10 @@ th { font-size: .75rem; font-weight: 600; }
 /* Polia formulárov */
 input, select, textarea { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); border-radius: 14px; }
 input:focus, select:focus, textarea:focus { border-color: rgba(255, 159, 208, .7); box-shadow: 0 0 0 4px rgba(255, 159, 208, .15); }
+/* rozbaľovací zoznam – na Windows/Androide je zoznam možností natívny: plné tmavé pozadie, inak biely text na bielom */
+select { color-scheme: dark; }
+select option, select optgroup { background-color: #1b1b21; color: #f6f6f8; }
+select option:disabled { color: #8a8a96; }
 
 /* Vysúvacie panely – sklo + úchyt ako v iOS */
 dialog {
@@ -822,3 +826,8 @@ dialog {
 .day-head b .muted { font-weight: 500; }
 .contact-btn { text-transform: none; letter-spacing: -.01em; font-size: .95rem; font-weight: 650; }
 .week-nav .label { letter-spacing: -.01em; font-weight: 700; }
+
+/* Počítač – bočné menu s čitateľným písmom (prepisuje drobné písmo spodnej lišty) */
+@media (min-width: 900px) {
+  .nav a { font-size: .95rem; font-weight: 600; }
+}

@@ -287,7 +287,7 @@ function viewDashboard() {
     ${sessionList(overdue)}
   </section>` : ''}
 
-  <div class="grid two" style="margin-top:16px">
+  <div class="grid" style="margin-top:16px">
     <section class="card">
       <div class="card-head"><h2>Dnes</h2><a class="btn small" href="#/calendar">Kalendár</a></div>
       ${sessionList(todays, { showDate: false }, 'Dnes nemáš naplánovaný žiadny tréning.')}
