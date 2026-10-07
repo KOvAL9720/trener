@@ -1846,3 +1846,10 @@ html.live-on, html.live-on body { overflow: hidden; }
 .mini-txt b { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .live-rest.mini.paused .mini-txt b { opacity: .6; }
 .live-rest.mini .btn { min-height: 38px; flex: none; }
+/* lišta s časom tréningu (keď práve nebeží pauza) */
+.live-rest.idle { animation: none; }
+.live-rest.idle .fg.spin { transform-origin: 60px 60px; animation: ring-spin 2.4s linear infinite; }
+.live-rest.idle.paused .fg.spin { animation-play-state: paused; stroke: var(--muted); }
+.live-rest.idle.paused .mini-txt small { color: var(--warn); }
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .live-rest.idle .fg.spin { animation: none; } }
