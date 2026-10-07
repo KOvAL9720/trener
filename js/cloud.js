@@ -47,7 +47,7 @@ let switching = false;
 const userInfo = () => {
   const u = auth.currentUser;
   if (!u) return null;
-  return { uid: u.uid, anonymous: u.isAnonymous, email: u.email || u.providerData.find((p) => p.email)?.email || '', name: u.displayName || '', providers: u.providerData.map((p) => p.providerId) };
+  return { uid: u.uid, anonymous: u.isAnonymous, email: u.email || u.providerData.find((p) => p.email)?.email || '', name: u.displayName || u.providerData.find((p) => p.displayName)?.displayName || '', providers: u.providerData.map((p) => p.providerId) };
 };
 
 // Overí prihlasovacie údaje v dočasnej inštancii (bez zmeny aktuálneho prihlásenia) a vráti ID účtu

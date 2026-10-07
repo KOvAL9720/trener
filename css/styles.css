@@ -1153,3 +1153,7 @@ body.no-anim .brand img { animation: none; }
 
 /* Účet – „Zostať prihlásený“ */
 .check.remember { margin-top: 14px; color: var(--muted); font-size: .9rem; cursor: pointer; }
+
+/* vľavo hore – meno trénera pod názvom appky */
+.brand-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.brand-text small { font-size: .7rem; font-weight: 600; color: var(--muted); letter-spacing: 0; text-transform: none; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
