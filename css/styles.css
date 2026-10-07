@@ -1145,3 +1145,8 @@ body.no-anim .brand img { animation: none; }
   main { padding-top: 16px; }
   main > :first-child { margin-top: 0; }
 }
+@media (min-width: 900px) {
+  /* obsah hneď vedľa menu (rovnaká medzera ako okraj panelu), nie vycentrovaný do stredu obrazovky */
+  main { margin: 0; max-width: 1180px; padding-left: 16px; padding-right: 32px; }
+  #toast { left: calc(240px + min(100vw - 240px, 1180px) / 2); }
+}
