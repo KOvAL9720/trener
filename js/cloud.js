@@ -5,7 +5,7 @@
    ========================================================= */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { getFirestore, doc, setDoc, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { getFirestore, doc, setDoc, deleteDoc, updateDoc, collection, getDocs, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB3E6qCv4VFGeyHHvFClqjJXSkzyvnObjg',
@@ -48,6 +48,16 @@ const cloud = {
   async unshare(code) {
     await ready;
     await deleteDoc(doc(fs, 'shared', code));
+  },
+  // žiadosti klienta o tréning (shared/{kód}/requests) – nové, čakajúce na trénera
+  async newRequests(code) {
+    await ready;
+    const qs = await getDocs(query(collection(fs, 'shared', code, 'requests'), where('status', '==', 'new')));
+    return qs.docs.map((d) => { const { createdAt, ...r } = d.data(); return { id: d.id, code, ...r, createdAt: createdAt?.toMillis ? createdAt.toMillis() : 0 }; });
+  },
+  async answerRequest(code, id, status, extra = {}) {
+    await ready;
+    await updateDoc(doc(fs, 'shared', code, 'requests', id), { status, ...extra, answeredAt: serverTimestamp() });
   }
 };
 window.cloud = cloud;
