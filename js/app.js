@@ -255,6 +255,7 @@ function sessionRow(s, { showClient = true, showDate = true } = {}) {
     ${s.status === 'planned' ? `<div class="quick">
       ${canRemind ? `<button class="icon-btn${s.reminded ? ' sent' : ''}" title="${s.reminded ? 'Pripomienka odoslaná – poslať znova' : 'Poslať pripomienku'}" aria-label="${s.reminded ? 'Pripomienka odoslaná' : 'Poslať pripomienku'}" data-action="remind" data-id="${s.id}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3 9.2 10.1M22 3H2l7.2 7.1 2.5 10.2z"/></svg></button>` : ''}
       <button class="icon-btn cancel" title="Zrušiť tréning" aria-label="Zrušiť" data-action="session-cancel" data-id="${s.id}">✕</button>
+      ${s.date <= today() ? `<button class="icon-btn play" title="Začať živý tréning" aria-label="Začať živý tréning" data-action="live-start" data-id="${s.id}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg></button>` : ''}
       <button class="btn small primary done-btn" title="Označiť ako odtrénovaný" aria-label="Odtrénovaný" data-action="session-done" data-id="${s.id}">✓ Hotovo</button>
     </div>` : s.status === 'done' ? `<div class="quick">${logButton(s)}</div>` : ''}
   </li>`;
