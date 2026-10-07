@@ -108,7 +108,14 @@
   <script type="module">
     // cloud (Firebase z internetu) sa načíta až po vykreslení obsahu, aby nebrzdil štart;
     // ak sa nenačíta, appka ukáže dôvod v Nastaveniach
-    const loadCloud = () => import('./js/cloud.js').catch((e) => { window.cloudError = (e && (e.message || String(e))) || 'neznáma chyba'; window.dispatchEvent(new Event('cloud-ready')); });
+    // Safari pri slabom signáli (napr. hneď po prebudení appky) niekedy modul nestiahne – skúsi sa ešte 2× s pauzou
+    let cloudTry = 0;
+    const loadCloud = () => import(`./js/cloud.js${cloudTry ? `?pokus=${cloudTry}` : ''}`).catch((e) => {
+      cloudTry++;
+      if (cloudTry < 3) { setTimeout(loadCloud, cloudTry * 2500); return; }
+      window.cloudError = (e && (e.message || String(e))) || 'neznáma chyba';
+      window.dispatchEvent(new Event('cloud-ready'));
+    });
     if (document.readyState === 'complete') loadCloud(); else window.addEventListener('load', loadCloud, { once: true });
   </script>
   <script src="js/app.js" defer></script>
