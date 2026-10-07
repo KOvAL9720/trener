@@ -969,6 +969,14 @@ const routes = [
 ];
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+// vľavo hore pod „Tréner“ meno trénera (nastavenie „Meno pre klientov“, predvolene z Google účtu)
+function updateBrand() {
+  const brand = document.querySelector('.topbar .brand');
+  if (!brand) return;
+  const name = String(db.settings.trainerName || '').trim();
+  const html = `<img src="icons/icon.svg" alt="" width="28" height="28"><span class="brand-text">Tréner${name ? `<small>${esc(name)}</small>` : ''}</span>`;
+  if (brand.dataset.name !== name) { brand.innerHTML = html; brand.dataset.name = name; }
+}
 let flashId = null;
 let renderedDay = '';
 
@@ -1002,6 +1010,7 @@ function render(animate = false) {
       const grid = main.querySelector('#photo-grid');
       if (grid) fillPhotoGrid(grid.dataset.client);
       updateCloudBadge();
+      updateBrand();
       const ver = main.querySelector('#app-version');
       if (ver && 'caches' in window) caches.keys().then((k) => { const v = k.find((x) => x.startsWith('trener-v')); if (v) ver.textContent = v.replace('trener-v', ''); }).catch(() => {});
       return;
@@ -2622,6 +2631,7 @@ function accountCard() {
   return `<section class="card" id="account-card">
     <div class="card-head"><h2>Účet</h2><span class="badge ${syncBadge()[1]}" id="sync-state">${syncBadge()[0]}</span></div>
     <p class="muted" style="margin-top:-6px">Prihlásený ako <b>${esc(u.email || u.name || 'účet')}</b>. Klienti, tréningy, plány, financie a nastavenia sa synchronizujú medzi všetkými zariadeniami, kde si prihlásený. Fotky v galérii klienta ostávajú len v zariadení.</p>
+    <p class="muted" style="margin:0 0 6px">Meno pre klientov: <b>${esc(db.settings.trainerName || '–')}</b> <button class="btn small" data-action="edit-name" style="margin-left:6px">Zmeniť</button></p>
     <p class="muted" id="sync-last" style="margin:0 0 4px">${syncLastText()}</p>
     <p class="muted" id="sync-why" style="margin:0 0 10px;color:var(--warn)">${syncError && navigator.onLine ? `Dôvod: ${esc(syncError)}. Skúsi sa to znova automaticky.` : ''}</p>
     <div class="row">
@@ -2735,12 +2745,33 @@ async function logout() {
   toast('Odhlásený');
 }
 
+// meno trénera pre klientov – ak ho tréner ešte nevyplnil, vezme sa z Google účtu
+function ensureTrainerName() {
+  const u = signedUser();
+  if (!u?.name || String(db.settings.trainerName || '').trim() || sync.fresh || syncAsking) return;
+  db.settings.trainerName = u.name;
+  db.settings.shareDirty = true;
+  save();
+  updateBrand();
+}
+
+function openNameForm() {
+  const u = signedUser();
+  openForm({
+    title: 'Meno trénera',
+    values: { trainerName: db.settings.trainerName || u?.name || '' },
+    fields: [{ name: 'trainerName', label: 'Meno (vidia ho klienti v klientskej zóne)', required: true, placeholder: 'napr. Jakub Kovalčík', hint: u?.name ? `Z Google účtu: ${u.name}` : '' }],
+    onSubmit: (v) => { db.settings.trainerName = v.trainerName.slice(0, 60); db.settings.shareDirty = true; updateBrand(); toast('Meno uložené'); }
+  });
+}
+
 window.addEventListener('cloud-ready', () => {
   if (!window.cloud) return;
   let last = '';
   window.cloud.onChange((st) => {
     const u = st.user && !st.user.anonymous ? st.user : null;
     if (u) startDataSync(u); else if (syncOwner) stopDataSync();
+    if (u) setTimeout(ensureTrainerName, 2500); // až keď dobehne prvé zosynchronizovanie
     const key = u ? `${u.uid}|${u.providers.join(',')}|${u.email}` : st.user ? 'anon' : '';
     if (key !== last) {
       // pri štarte len doplniť kartu (bez prekreslenia obrazovky), pri prihlásení/odhlásení prekresliť
@@ -3358,6 +3389,7 @@ const actions = {
   'set-password': openSetPassword,
   'logout': logout,
   'sync-choose': () => firstSync(),
+  'edit-name': openNameForm,
   'sync-now': () => { syncNow(); toast('Synchronizujem…'); },
   'import': () => document.getElementById('import-file').click(),
   'demo': loadDemo,
