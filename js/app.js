@@ -3591,6 +3591,17 @@ if (splash && warmStart) {
   render(true);
 }
 
+// Nová verzia appky: keď ju service worker prevezme, stránka sa sama obnoví (ak práve nič nevypĺňaš – inak pri odchode)
+if ('serviceWorker' in navigator) {
+  let hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) { hadController = true; return; } // prvá inštalácia – nič neobnovovať
+    const go = () => { if (!reloading) { reloading = true; location.reload(); } };
+    if (!document.querySelector('dialog[open]')) go();
+    else document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') go(); }, { once: true });
+  });
+}
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
