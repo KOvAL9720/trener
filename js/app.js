@@ -3536,3 +3536,59 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 }
 // Požiadať prehliadač, aby dáta nemazal pri nedostatku miesta
 navigator.storage?.persist?.().catch(() => {});
+
+/* Potiahni a obnov – ťah prstom zhora nadol na začiatku stránky načíta najnovšie dáta z cloudu */
+function pullToRefresh(onRefresh) {
+  const el = document.createElement('div');
+  el.className = 'ptr';
+  el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>';
+  document.body.append(el);
+  const MAX = 96, TRIGGER = 64;
+  let y0 = null, pull = 0, busy = false;
+  const show = (p) => {
+    el.style.transform = `translate(-50%, ${p - 44}px) rotate(${p * 4}deg)`;
+    el.style.opacity = String(Math.min(1, p / TRIGGER));
+    el.classList.toggle('ready', p >= TRIGGER);
+  };
+  const blocked = (t) => document.querySelector('dialog[open]') || t.closest?.('input, textarea, select, .chips, .book-days, .book-times');
+  addEventListener('touchstart', (e) => {
+    y0 = !busy && window.scrollY <= 0 && e.touches.length === 1 && !blocked(e.target) ? e.touches[0].clientY : null;
+    pull = 0;
+    if (y0 != null) el.classList.add('drag');
+  }, { passive: true });
+  addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    const dy = e.touches[0].clientY - y0;
+    pull = dy > 0 && window.scrollY <= 0 ? Math.min(MAX, dy * 0.5) : 0;
+    show(pull);
+  }, { passive: true });
+  const end = async () => {
+    if (y0 == null) return;
+    y0 = null;
+    el.classList.remove('drag');
+    if (pull < TRIGGER) { show(0); return; }
+    busy = true;
+    show(TRIGGER);
+    el.classList.add('spin');
+    navigator.vibrate?.(10);
+    const t0 = Date.now();
+    try { await onRefresh(); } catch (e) { /* bez siete */ }
+    await new Promise((r) => setTimeout(r, Math.max(0, 700 - (Date.now() - t0))));
+    el.classList.remove('spin');
+    show(0);
+    busy = false;
+  };
+  addEventListener('touchend', end, { passive: true });
+  addEventListener('touchcancel', end, { passive: true });
+}
+pullToRefresh(async () => {
+  // prihlásený: nanovo sa napojiť na účet a počkať na čerstvý stav (najviac 4 s)
+  if (syncOwner) {
+    const before = syncLast;
+    syncNow();
+    for (let i = 0; i < 40 && syncLast === before; i++) await new Promise((r) => setTimeout(r, 100));
+  }
+  await loadRequests(true);
+  if (!document.getElementById('modal').open) render();
+});
