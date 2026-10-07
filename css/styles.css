@@ -1124,3 +1124,24 @@ body.no-anim .brand img { animation: none; }
 
 /* prihlásenie cez Google – logo v tlačidle */
 .g-logo { width: 18px; height: 18px; margin-right: 8px; flex: none; background: #fff; border-radius: 50%; padding: 2px; box-sizing: content-box; }
+
+/* upozornenia cez ntfy – postup */
+.steps { margin: 4px 0 14px; padding-left: 20px; color: var(--muted); line-height: 1.55; }
+.steps li { margin: 4px 0; }
+.share-code.ntfy-topic { font-size: 1.15rem; letter-spacing: .04em; margin: 6px 0 4px; word-break: break-all; user-select: all; }
+
+/* =========================================================
+   POČÍTAČ – zarovnanie: logo a menu v jednom paneli, obsah začína v rovnakej výške ako panel
+   (neskoršie vrstvy dávali hornej lište tmavé pozadie, ktoré nesedelo s menu)
+   ========================================================= */
+@media (min-width: 900px) {
+  .topbar {
+    position: fixed; left: 16px; top: 16px; width: 208px; height: 68px; z-index: 21;
+    padding: 0 12px 0 16px; background: transparent !important; border: 0 !important; box-shadow: none !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  }
+  .nav { top: 16px; bottom: 16px; padding-top: 76px; }
+  .nav::before { content: ""; position: absolute; left: 16px; right: 16px; top: 68px; height: 1px; background: var(--border); }
+  main { padding-top: 16px; }
+  main > :first-child { margin-top: 0; }
+}
