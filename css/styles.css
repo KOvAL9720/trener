@@ -1853,3 +1853,7 @@ html.live-on, html.live-on body { overflow: hidden; }
 .live-rest.idle.paused .mini-txt small { color: var(--warn); }
 @keyframes ring-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .live-rest.idle .fg.spin { animation: none; } }
+/* rozbehnutý (zbalený) živý tréning – tlačidlo ▶ svieti */
+.icon-btn.play.on { background: var(--accent); border-color: var(--accent); color: #062522; animation: play-pulse 1.8s ease-out infinite; }
+@keyframes play-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 10px transparent; } }
+@media (prefers-reduced-motion: reduce) { .icon-btn.play.on { animation: none; } }
