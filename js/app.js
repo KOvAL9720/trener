@@ -285,7 +285,8 @@ const fmtSet = (st) => (st.w && st.r != null ? `${fmtNum(st.w, 2)} kg × ${fmtNu
 const betterSet = (a, b) => (a.w ?? 0) - (b.w ?? 0) || (a.r ?? 0) - (b.r ?? 0);
 const topSet = (sets) => sets.reduce((a, b) => (betterSet(b, a) > 0 ? b : a));
 const sessionKey = (x) => x.date + (x.time || '');
-const loggedSessions = (cid) => clientSessions(cid).filter((x) => x.log && x.status !== 'cancelled').sort(bySessionTime);
+const selfWorkouts = (cid) => (clientEntries.get(cid) || []).filter((e) => e.type === 'workout').map((e) => ({ id: 'k_' + e.id, entryId: e.id, clientId: cid, date: e.date, time: '', status: 'done', self: true, note: e.note || '', log: e.log && e.log.length ? e.log : undefined }));
+const loggedSessions = (cid) => [...clientSessions(cid), ...selfWorkouts(cid)].filter((x) => x.log && x.status !== 'cancelled').sort(bySessionTime);
 
 // posledný zápis cviku pred daným tréningom
 function lastLog(s, exerciseId) {
@@ -607,6 +608,8 @@ function viewClient(id) {
 
   ${recordsCard(c)}
 
+  ${selfWorkoutsCard(c)}
+
   ${measureCard(c)}
 
   ${shareCard(c)}
@@ -635,7 +638,7 @@ const shareBtn = (cid, kind) => `<button class="icon-btn small" title="Zdieľať
 
 // Karta „Merania a progres“ – graf vybranej metriky + tabuľka
 function measureCard(c) {
-  const ms = db.measurements.filter((m) => m.clientId === c.id).sort((a, b) => a.date.localeCompare(b.date));
+  const ms = [...db.measurements.filter((m) => m.clientId === c.id), ...(clientEntries.get(c.id) || []).filter((e) => e.type === 'measure').map((e) => ({ id: 'k_' + e.id, entryId: e.id, clientId: c.id, date: e.date, weight: e.weight, bodyFat: e.bodyFat, waist: e.waist, hips: e.hips, note: 'Zapísal klient', self: true }))].sort((a, b) => a.date.localeCompare(b.date));
   const delta = (cur, prev) => {
     if (cur == null || prev == null) return '';
     const d = Math.round((cur - prev) * 10) / 10;
@@ -654,16 +657,32 @@ function measureCard(c) {
       <thead><tr><th>Dátum</th><th class="num">Váha<small>kg</small></th><th class="num">Tuk<small>%</small></th><th class="num">Pás<small>cm</small></th><th class="num">Boky<small>cm</small></th><th>Poznámka</th></tr></thead>
       <tbody>${ms.map((m, i) => {
         const p = ms[i - 1] || {};
-        return `<tr data-action="edit-measurement" data-id="${m.id}" style="cursor:pointer">
+        return `<tr ${m.self ? `data-action="del-entry" data-client="${c.id}" data-id="${esc(m.entryId)}" title="Zapísal klient – ťuknutím zmažeš"` : `data-action="edit-measurement" data-id="${m.id}"`} style="cursor:pointer">
           <td class="date">${fmtShort(m.date)} ${parseDate(m.date).getFullYear()}</td>
           <td class="num">${fmtNum(m.weight)}${delta(m.weight, p.weight)}</td>
           <td class="num">${fmtNum(m.bodyFat)}${delta(m.bodyFat, p.bodyFat)}</td>
           <td class="num">${fmtNum(m.waist)}${delta(m.waist, p.waist)}</td>
           <td class="num">${fmtNum(m.hips)}${delta(m.hips, p.hips)}</td>
-          <td>${esc(m.note)}</td>
+          <td>${m.self ? '<span class="badge self">od klienta</span>' : esc(m.note)}</td>
         </tr>`;
       }).join('')}</tbody>
     </table></div>` : '<p class="empty">Zatiaľ žiadne merania.</p>'}
+  </section>`;
+}
+
+// Tréningy, ktoré si klient zapísal sám v klientskej zóne
+function selfWorkoutsCard(c) {
+  const list = (clientEntries.get(c.id) || []).filter((e) => e.type === 'workout').sort((a, b) => b.date.localeCompare(a.date));
+  if (!list.length) return '';
+  return `<section class="card" id="self-card">
+    <div class="card-head"><h2>Klient trénoval sám</h2><span class="badge self">${list.length}</span></div>
+    <p class="muted" style="margin-top:-6px">Zapísané v klientskej zóne. Výkony sa počítajú do rekordov a grafu.</p>
+    <ul class="list">${list.slice(0, 12).map((e) => `<li class="self-row">
+      <div class="info"><strong>${fmtDate(e.date)}</strong>
+        ${(e.log || []).map((l) => `<small>${esc(exName(l.exerciseId))}: ${l.sets.map(fmtSet).join(' · ')}</small>`).join('')}
+        ${e.note ? `<small class="muted">„${esc(e.note)}“</small>` : ''}</div>
+      <button class="icon-btn" data-action="del-entry" data-client="${c.id}" data-id="${esc(e.id)}" title="Zmazať zápis" aria-label="Zmazať zápis">✕</button>
+    </li>`).join('')}</ul>
   </section>`;
 }
 
@@ -2091,6 +2110,48 @@ function requestsCard() {
   </section>`;
 }
 
+// Vlastné zápisy klientov (meranie, tréning sám) – načítajú sa z cloudu, v dátach trénera sa neukladajú
+let clientEntries = new Map();
+const okNum = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi ? v : undefined);
+function cleanEntry(e) {
+  if (!e || !/^[\w-]{1,64}$/.test(e.id) || !['measure', 'workout'].includes(e.type) || typeof e.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return null;
+  const out = { id: e.id, type: e.type, date: e.date, note: typeof e.note === 'string' ? e.note.slice(0, 300) : '' };
+  if (e.type === 'measure') {
+    Object.assign(out, { weight: okNum(e.weight, 20, 400), bodyFat: okNum(e.bodyFat, 1, 80), waist: okNum(e.waist, 30, 250), hips: okNum(e.hips, 30, 250) });
+    if ([out.weight, out.bodyFat, out.waist, out.hips].every((v) => v === undefined)) return null;
+  } else {
+    out.log = (Array.isArray(e.log) ? e.log : []).slice(0, 30).filter((l) => l && typeof l.exerciseId === 'string' && /^[\w-]{1,64}$/.test(l.exerciseId))
+      .map((l) => ({ exerciseId: l.exerciseId, sets: (Array.isArray(l.sets) ? l.sets : []).slice(0, 20).map((st) => ({ w: okNum(st?.w, 0, 500) ?? null, r: okNum(st?.r, 0, 1000) ?? null })).filter((st) => st.w != null || st.r != null) }))
+      .filter((l) => l.sets.length);
+    if (!out.log.length && !out.note) return null;
+  }
+  return out;
+}
+let entriesKey = '';
+async function loadEntries() {
+  const shared = db.clients.filter((c) => c.share);
+  if (!window.cloud?.entries || !shared.length) return;
+  const lists = await Promise.all(shared.map((c) => window.cloud.entries(c.share.code).then((l) => [c.id, l.map(cleanEntry).filter(Boolean)]).catch(() => [c.id, clientEntries.get(c.id) || []])));
+  const next = new Map(lists.filter(([, l]) => l.length));
+  const key = JSON.stringify([...next]);
+  if (key === entriesKey) return;
+  entriesKey = key;
+  clientEntries = next;
+  if ((location.hash || '').startsWith('#/client/') && !document.getElementById('modal').open) render();
+}
+
+async function deleteClientEntry(cid, id) {
+  const c = getClient(cid);
+  if (!c?.share || !(await askConfirm('Zmazať tento zápis klienta? Zmizne aj z jeho klientskej zóny.', { ok: 'Zmazať', danger: true }))) return;
+  try {
+    await window.cloud.deleteEntry(c.share.code, id);
+    clientEntries.set(cid, (clientEntries.get(cid) || []).filter((e) => e.id !== id));
+    entriesKey = '';
+    render();
+    toast('Zápis zmazaný');
+  } catch (e) { toast('Zápis sa nepodarilo zmazať – skontroluj internet'); }
+}
+
 async function loadRequests(force = false) {
   if (!window.cloud || !navigator.onLine) return;
   if (!force && Date.now() - requestsAt < 60 * 1000) return;
@@ -2102,6 +2163,7 @@ async function loadRequests(force = false) {
     const fresh = lists.flat()
       .filter((r) => typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date >= today() && typeof r.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(r.time) && /^[\w-]{1,64}$/.test(r.id))
       .map((r) => ({ ...r, note: String(r.note || '').slice(0, 300), clientName: String(r.clientName || '').slice(0, 80) }));
+    await loadEntries();
     const before = pendingRequests.length;
     pendingRequests = fresh;
     requestsAt = Date.now();
@@ -3395,6 +3457,7 @@ const actions = {
   'logout': logout,
   'sync-choose': () => firstSync(),
   'edit-name': openNameForm,
+  'del-entry': (d) => deleteClientEntry(d.client, d.id),
   'sync-now': () => { syncNow(); toast('Synchronizujem…'); },
   'import': () => document.getElementById('import-file').click(),
   'demo': loadDemo,
