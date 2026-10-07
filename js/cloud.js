@@ -154,6 +154,11 @@ const cloud = {
   async answerRequest(code, id, status, extra = {}) {
     await ready;
     await updateDoc(doc(fs, 'shared', code, 'requests', id), { status, ...extra, answeredAt: serverTimestamp() });
+  },
+  // termín zablokovaný žiadosťou klienta (holds/{tréner}_{dátum}_{čas}) – po vybavení žiadosti sa uvoľní
+  async releaseHold(date, time) {
+    await ready;
+    await deleteDoc(doc(fs, 'holds', `${uid}_${date}_${String(time).replace(':', '')}`)).catch(() => {});
   }
 };
 window.cloud = cloud;

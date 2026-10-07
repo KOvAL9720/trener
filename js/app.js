@@ -2122,12 +2122,14 @@ async function answerRequest(code, id, accept) {
     render();
     toast(`Tréning naplánovaný · ${firstName(c)} ${fmtDay(r.date)} ${r.time}`);
     try { await window.cloud.answerRequest(code, id, 'accepted', { sessionId: s.id }); } catch (e) { toast('Potvrdenie sa nepodarilo odoslať klientovi – skúsi sa to znova'); }
+    window.cloud.releaseHold?.(r.date, r.time); // termín je teraz obsadený tréningom
   } else {
     if (!(await askConfirm(`Odmietnuť žiadosť ${firstName(c)} na ${fmtDay(r.date)} ${r.time}?`, { ok: 'Odmietnuť', danger: true }))) return;
     pendingRequests = pendingRequests.filter((x) => x !== r);
     render();
     toast('Žiadosť odmietnutá');
     try { await window.cloud.answerRequest(code, id, 'declined'); } catch (e) { toast('Odmietnutie sa nepodarilo odoslať klientovi'); }
+    window.cloud.releaseHold?.(r.date, r.time); // termín je znova voľný pre ostatných klientov
   }
 }
 window.addEventListener('cloud-ready', () => { if (window.cloud) { window.cloud.ready.then(() => loadRequests(true)); setInterval(() => { if (document.visibilityState === 'visible') loadRequests(); }, 3 * 60 * 1000); } });
