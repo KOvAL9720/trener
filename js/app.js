@@ -1819,21 +1819,29 @@ function openLogSheet(s) {
 const photoOf = (c) => (typeof c.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(c.photo) ? c.photo : '');
 const avatar = (c, cls = '') => `<span class="avatar ${cls}">${photoOf(c) ? `<img src="${photoOf(c)}" alt="" decoding="sync">` : esc(initials(c.name))}</span>`;
 
+// Profil trénera ako „klient“ – fotka sa ukladá do nastavení (synchronizuje sa s účtom)
+const trainerProfile = () => ({
+  id: '__trainer',
+  name: db.settings.trainerName || 'Tréner',
+  get photo() { return db.settings.trainerPhoto; },
+  set photo(v) { if (v) db.settings.trainerPhoto = v; else delete db.settings.trainerPhoto; }
+});
+
 let photoClientId = null;
 function openPhotoSheet(c) {
   modalForm.innerHTML = `
-    <header class="modal-head"><h2>Fotka · ${esc(firstName(c))}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
+    <header class="modal-head"><h2>${c.id === '__trainer' ? 'Tvoja fotka' : `Fotka · ${esc(firstName(c))}`}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
     <div class="modal-body">
       <div class="photo-preview">${avatar(c, 'xl')}</div>
       <button type="button" class="btn primary photo-pick">${c.photo ? 'Zmeniť fotku' : 'Vybrať fotku'}</button>
       ${c.photo ? '<button type="button" class="btn danger photo-del">Odstrániť fotku</button>' : ''}
-      <p class="hint" style="margin:0">Fotka z WhatsAppu: otvor chat s klientom → ťukni na jeho meno hore → ťukni na profilovú fotku → <b>Zdieľať</b> → <b>Uložiť obrázok</b>. Potom ju tu vyber z galérie.</p>
+      ${c.id === '__trainer' ? '<p class="hint" style="margin:0">Fotka sa ukáže v tvojom profile v Nastaveniach.</p>' : `<p class="hint" style="margin:0">Fotka z WhatsAppu: otvor chat s klientom → ťukni na jeho meno hore → ťukni na profilovú fotku → <b>Zdieľať</b> → <b>Uložiť obrázok</b>. Potom ju tu vyber z galérie.</p>`}
     </div>`;
   modalForm.onsubmit = (e) => e.preventDefault();
   modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
   modalForm.querySelector('.photo-pick').onclick = () => { photoClientId = c.id; document.getElementById('photo-file').click(); };
   const del = modalForm.querySelector('.photo-del');
-  if (del) del.onclick = () => { delete c.photo; modal.close(); save(); render(); toast('Fotka odstránená'); };
+  if (del) del.onclick = () => { c.photo = undefined; delete c.photo; modal.close(); save(); render(); toast('Fotka odstránená'); };
   modal.showModal();
 }
 
@@ -1860,7 +1868,7 @@ async function photoToDataUrl(file) {
 document.getElementById('photo-file').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   e.target.value = '';
-  const c = getClient(photoClientId);
+  const c = photoClientId === '__trainer' ? trainerProfile() : getClient(photoClientId);
   if (!file || !c) return;
   try {
     c.photo = await photoToDataUrl(file);
@@ -2881,7 +2889,7 @@ function accountCard() {
   const name = db.settings.trainerName || '';
   const remember = `<label class="set-row set-toggle"><span class="set-ic" aria-hidden="true">${SI.lock}</span><span class="set-main"><b>Zostať prihlásený</b><small>Aj po zatvorení prehliadača</small></span><span class="check"><input type="checkbox" id="remember" ${window.cloud?.remembered?.() === false ? '' : 'checked'}></span></label>`;
   const profile = `<section class="set-profile">
-    <span class="avatar lg">${name ? initials(name) : '?'}</span>
+    <button type="button" class="avatar lg avatar-edit" data-action="trainer-photo" aria-label="${photoOf(trainerProfile()) ? 'Zmeniť fotku' : 'Pridať fotku'}">${photoOf(trainerProfile()) ? `<img src="${photoOf(trainerProfile())}" alt="">` : esc(name ? initials(name) : '?')}<span class="cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span></button>
     <div class="set-who"><h2>${esc(name || 'Tréner')}</h2><p>${u ? esc(u.email || u.name || 'Prihlásený') : 'Neprihlásený – dáta sú len v tomto zariadení'}</p></div>
     <button type="button" class="btn small" data-action="edit-name">Upraviť</button>
   </section>`;
@@ -3536,6 +3544,7 @@ const actions = {
     if (c) openContact(c, null, 'Platba');
   },
   'photo': (d) => { const c = getClient(d.id); if (c) openPhotoSheet(c); },
+  'trainer-photo': () => openPhotoSheet(trainerProfile()),
   'add-photos': (d) => { galleryClientId = d.client; document.getElementById('gallery-file').click(); },
   'view-photo': (d) => { openViewer(d.client, d.id); },
   'contact': (d) => {
