@@ -1116,3 +1116,8 @@ body.bg-ready::before { opacity: 1; }
 /* Teplý štart – bez prechodov (pozadie hneď, bez zatočenia loga) */
 body.no-anim::before { transition: none; }
 body.no-anim .brand img { animation: none; }
+
+/* Žiadosti klientov o tréning */
+.session.request::before { background: var(--warn); }
+.session.request .quick { display: flex; gap: 6px; align-items: center; flex: none; }
+.requests { margin-top: 6px; }

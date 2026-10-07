@@ -438,6 +438,8 @@ function viewDashboard() {
     ${sessionList(overdue)}
   </section>` : ''}
 
+  ${requestsCard()}
+
   ${remindersCard()}
 
   <section class="card">
@@ -709,6 +711,7 @@ function viewCalendar(weekParam) {
         <div class="day-head"><b>${DAYS_LONG[i]} <span class="muted">${fmtShort(d)}</span></b>
           <button class="icon-btn" data-action="new-session" data-date="${d}" aria-label="Pridať tréning na ${DAYS_LONG[i]}">+</button></div>
         ${list.length ? `<ul class="list">${list.map((s) => sessionRow(s, { showDate: false })).join('')}</ul>` : '<p class="empty" style="font-size:.85rem">Voľno</p>'}
+        ${requestRows(pendingRequests.filter((r) => r.date === d))}
       </section>`;
     }).join('')}
   </div>`;
@@ -2032,6 +2035,92 @@ function openContact(c, session, preferred) {
 }
 
 /* =========================================================
+   Žiadosti klientov o tréning (z klientskej zóny) – Prehľad + Kalendár
+   ========================================================= */
+let pendingRequests = [];
+let requestsAt = 0;
+const clientByCode = (code) => db.clients.find((c) => c.share?.code === code);
+
+function requestRows(list) {
+  if (!list.length) return '';
+  return `<ul class="list requests">${list.map((r) => {
+    const c = clientByCode(r.code);
+    return `<li class="session request">
+      <div class="session-main"><span class="time">${esc(r.time)}</span>
+        <span class="info"><strong>${esc(c?.name || r.clientName || 'Klient')}</strong><small>Žiadosť o tréning${r.note ? ' · ' + esc(r.note) : ''}</small></span>
+        <span class="badge warn">Žiadosť</span></div>
+      <span class="quick">
+        <button class="icon-btn cancel" title="Odmietnuť" aria-label="Odmietnuť" data-action="req-decline" data-code="${esc(r.code)}" data-id="${esc(r.id)}">✕</button>
+        <button class="btn small primary" data-action="req-accept" data-code="${esc(r.code)}" data-id="${esc(r.id)}">✓ Prijať</button>
+      </span>
+    </li>`;
+  }).join('')}</ul>`;
+}
+
+function requestsCard() {
+  if (!pendingRequests.length) return '';
+  const list = [...pendingRequests].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  return `<section class="card" id="requests-card">
+    <div class="card-head"><h2>Žiadosti o tréning</h2><span class="badge warn">${list.length}</span></div>
+    <p class="muted" style="margin-top:-6px">Klienti sa nahlásili cez klientsku zónu. Prijatím vznikne naplánovaný tréning.</p>
+    <ul class="list">${list.map((r) => {
+      const c = clientByCode(r.code);
+      const clash = db.sessions.find((x) => x.status !== 'cancelled' && x.date === r.date && x.time === r.time);
+      return `<li class="session request">
+        <div class="session-main"><span class="time">${esc(r.time)}</span>
+          <span class="info"><strong>${esc(c?.name || r.clientName || 'Klient')}</strong><small>${fmtDate(r.date)}${r.note ? ' · ' + esc(r.note) : ''}${clash ? ` · <b style="color:var(--warn)">koliduje: ${esc(clientName(clash.clientId))}</b>` : ''}</small></span></div>
+        <span class="quick">
+          <button class="icon-btn cancel" title="Odmietnuť" aria-label="Odmietnuť" data-action="req-decline" data-code="${esc(r.code)}" data-id="${esc(r.id)}">✕</button>
+          <button class="btn small primary" data-action="req-accept" data-code="${esc(r.code)}" data-id="${esc(r.id)}">✓ Prijať</button>
+        </span>
+      </li>`;
+    }).join('')}</ul>
+  </section>`;
+}
+
+async function loadRequests(force = false) {
+  if (!window.cloud || !navigator.onLine) return;
+  if (!force && Date.now() - requestsAt < 60 * 1000) return;
+  const codes = db.clients.filter((c) => c.share).map((c) => c.share.code);
+  if (!codes.length) { pendingRequests = []; return; }
+  try {
+    const lists = await Promise.all(codes.map((code) => window.cloud.newRequests(code).then((l) => l.map((r) => ({ code, ...r }))).catch(() => [])));
+    const fresh = lists.flat().filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date >= today());
+    const before = pendingRequests.length;
+    pendingRequests = fresh;
+    requestsAt = Date.now();
+    if (fresh.length !== before || force) {
+      const h = location.hash || '#/';
+      if (/^#\/?$/.test(h) || h.startsWith('#/calendar')) render();
+    }
+  } catch (e) { /* bez siete */ }
+}
+
+async function answerRequest(code, id, accept) {
+  const r = pendingRequests.find((x) => x.id === id && x.code === code);
+  const c = clientByCode(code);
+  if (!r || !c) return;
+  if (accept) {
+    const s = { id: uid(), clientId: c.id, date: r.date, time: r.time, duration: db.settings.defaultDuration || 60, status: 'planned', planId: '', notes: r.note ? `Žiadosť klienta: ${r.note}` : '', price: sessionPrice() };
+    db.sessions.push(s);
+    pendingRequests = pendingRequests.filter((x) => x !== r);
+    flashId = s.id;
+    save();
+    render();
+    toast(`Tréning naplánovaný · ${firstName(c)} ${fmtDay(r.date)} ${r.time}`);
+    try { await window.cloud.answerRequest(code, id, 'accepted', { sessionId: s.id }); } catch (e) { toast('Potvrdenie sa nepodarilo odoslať klientovi – skúsi sa to znova'); }
+  } else {
+    if (!(await askConfirm(`Odmietnuť žiadosť ${firstName(c)} na ${fmtDay(r.date)} ${r.time}?`, { ok: 'Odmietnuť', danger: true }))) return;
+    pendingRequests = pendingRequests.filter((x) => x !== r);
+    render();
+    toast('Žiadosť odmietnutá');
+    try { await window.cloud.answerRequest(code, id, 'declined'); } catch (e) { toast('Odmietnutie sa nepodarilo odoslať klientovi'); }
+  }
+}
+window.addEventListener('cloud-ready', () => { if (window.cloud) { window.cloud.ready.then(() => loadRequests(true)); setInterval(() => { if (document.visibilityState === 'visible') loadRequests(); }, 3 * 60 * 1000); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadRequests(); });
+
+/* =========================================================
    Klientska zóna – zdieľanie dát klienta cez cloud (js/cloud.js)
    ========================================================= */
 const CLIENT_ZONE_URL = 'https://koval9720.github.io/Novy-web/app/';
@@ -2757,6 +2846,8 @@ const actions = {
     ],
     onSubmit: (v) => { Object.assign(db.settings, v); db.settings.shareDirty = true; toast('Nastavenia uložené'); }
   }),
+  'req-accept': (d) => answerRequest(d.code, d.id, true),
+  'req-decline': (d) => answerRequest(d.code, d.id, false),
   'share-create': (d) => createShare(d.id),
   'share-remove': (d) => removeShare(d.id),
   'share-copy': (d) => copyShare(d.id),
