@@ -135,6 +135,7 @@ function liveEl() {
     el.addEventListener('input', liveInput);
     el.addEventListener('change', liveChange);
     liveSwipe(el);
+    liveRestDrag(el);
   }
   return el;
 }
@@ -193,6 +194,22 @@ function liveDraw() {
   </footer>
   ${liveRestHtml()}`;
   el.querySelector('.live-tab.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  liveFit(el);
+}
+
+// obsah sa odsunie nad okno s pauzou a aktuálna séria je vždy na očiach
+function liveFit(el) {
+  const rest = el.querySelector('.live-rest');
+  const foot = el.querySelector('.live-foot');
+  el.style.setProperty('--foot-h', `${foot?.offsetHeight || 0}px`);
+  el.style.setProperty('--rest-h', rest ? `${rest.offsetHeight - (rest.classList.contains('mini') ? 0 : (foot?.offsetHeight || 0))}px` : '0px');
+  const cur = el.querySelector('.lset.cur') || el.querySelector('.lset.done:last-of-type');
+  const body = el.querySelector('.live-body');
+  if (cur && body && rest) {
+    // poloha okna bez jeho nábehovej animácie (transform)
+    const r = cur.getBoundingClientRect(), b = body.getBoundingClientRect(), top = el.getBoundingClientRect().top + rest.offsetTop;
+    if (r.bottom > top - 8 || r.top < b.top) body.scrollBy({ top: r.bottom - (top - 16), behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+  }
 }
 
 function liveExerciseHtml(s, e) {
@@ -234,12 +251,30 @@ function liveRestHtml() {
   const left = Math.max(0, restLeft());
   const nxt = nextTarget();
   const paused = live.rest.paused != null;
-  return `<div class="live-rest${paused ? ' paused' : ''}" role="timer" aria-live="polite">
-    <button type="button" class="ring" data-l="rest-toggle" aria-label="${paused ? 'Pustiť odpočet' : 'Zastaviť odpočet'}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" id="rest-ring" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - (left / live.rest.total) * 100}"/></svg>
-      <span class="ring-txt"><small id="rest-state">${paused ? 'Zastavené' : 'Pauza'}</small><b id="rest-left">${fmtClock(left)}</b><span class="ring-hint">${paused ? '▶ pokračovať' : '⏸ zastaviť'}</span></span></button>
-    ${nxt ? `<p class="rest-next">Ďalej: <b>${esc(exName(nxt.e.exerciseId))}</b> · séria ${nxt.j + 1}${nxt.e.sets[nxt.j].w || nxt.e.sets[nxt.j].r ? ` · ${esc([nxt.e.sets[nxt.j].w && `${nxt.e.sets[nxt.j].w} kg`, nxt.e.sets[nxt.j].r && `× ${nxt.e.sets[nxt.j].r}`].filter(Boolean).join(' '))}` : ''}</p>` : '<p class="rest-next">Posledná séria hotová 💪</p>'}
+  const off = 100 - (left / live.rest.total) * 100;
+  const nextTxt = nxt ? `Ďalej: <b>${esc(exName(nxt.e.exerciseId))}</b> · séria ${nxt.j + 1}${nxt.e.sets[nxt.j].w || nxt.e.sets[nxt.j].r ? ` · ${esc([nxt.e.sets[nxt.j].w && `${nxt.e.sets[nxt.j].w} kg`, nxt.e.sets[nxt.j].r && `× ${nxt.e.sets[nxt.j].r}`].filter(Boolean).join(' '))}` : ''}` : 'Posledná séria hotová 💪';
+  const ring = (big) => `<svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg"${big ? ' id="rest-ring"' : ' id="rest-ring-mini"'} cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${off}"/></svg>`;
+  // zbalená pauza – tenká lišta dole, cvik a série ostávajú celé viditeľné
+  if (live.restMin) {
+    return `<div class="live-rest mini${paused ? ' paused' : ''}" role="timer" aria-live="polite" data-drag="rest">
+      <button type="button" class="ring mini-ring" data-l="rest-toggle" aria-label="${paused ? 'Pustiť odpočet' : 'Zastaviť odpočet'}">${ring(false)}<span class="mini-ic" aria-hidden="true">${paused ? '▶' : '⏸'}</span></button>
+      <button type="button" class="mini-txt" data-l="rest-expand" aria-label="Rozbaliť odpočet"><small id="rest-state">${paused ? 'Zastavené' : 'Pauza'}</small><b id="rest-left">${fmtClock(left)}</b></button>
+      <button type="button" class="btn small" data-l="rest-plus">+15 s</button>
+      <button type="button" class="btn small primary" data-l="rest-skip">Preskočiť</button>
+    </div>`;
+  }
+  return `<div class="live-rest${paused ? ' paused' : ''}" role="timer" aria-live="polite" data-drag="rest">
+    <button type="button" class="rest-grab" data-l="rest-collapse" aria-label="Zbaliť odpočet"><span></span></button>
+    <div class="rest-main">
+      <button type="button" class="ring" data-l="rest-toggle" aria-label="${paused ? 'Pustiť odpočet' : 'Zastaviť odpočet'}">${ring(true)}
+        <span class="ring-txt"><small id="rest-state">${paused ? 'Zastavené' : 'Pauza'}</small><b id="rest-left">${fmtClock(left)}</b><span class="ring-hint">${paused ? '▶ pokračovať' : '⏸ zastaviť'}</span></span></button>
+      <div class="rest-side">
+        <p class="rest-next">${nextTxt}</p>
+        <div class="rest-btns"><button type="button" class="btn" data-l="rest-minus">−15 s</button><button type="button" class="btn" data-l="rest-plus">+15 s</button></div>
+        <button type="button" class="btn primary rest-skip" data-l="rest-skip">Preskočiť</button>
+      </div>
+    </div>
     ${restChips(live.rest.total, 'in-rest')}
-    <div class="rest-btns"><button type="button" class="btn" data-l="rest-minus">−15 s</button><button type="button" class="btn primary" data-l="rest-skip">Preskočiť</button><button type="button" class="btn" data-l="rest-plus">+15 s</button></div>
   </div>`;
 }
 
@@ -290,6 +325,8 @@ function liveTimers() {
       if (t) t.textContent = fmtClock(left);
       const ring = document.getElementById('rest-ring');
       if (ring) ring.setAttribute('stroke-dashoffset', String(100 - (left / live.rest.total) * 100));
+      const mr = document.getElementById('rest-ring-mini');
+      if (mr) mr.setAttribute('stroke-dashoffset', String(100 - (left / live.rest.total) * 100));
       if (pc) pc.textContent = `Pauza ${fmtClock(left)}`;
       if (left <= 3.2 && left > 0 && !live.rest.warned) { live.rest.warned = true; beep(2, 660); }
     } else if (pc && !live.rest) pc.textContent = `${live.pausedAt ? '⏸ ' : ''}${fmtClock(elapsed())}`;
@@ -432,6 +469,8 @@ function liveClick(ev) {
       if (live.rest.paused != null) live.rest.paused = Math.max(1000, live.rest.paused - 15000);
       else live.rest.until = Math.max(Date.now() + 1000, live.rest.until - 15000);
       break;
+    case 'rest-collapse': live.restMin = true; break;
+    case 'rest-expand': live.restMin = false; break;
     case 'rest-toggle': // ťuknutie na odpočet: zastaviť / pustiť
       if (live.rest.paused != null) { live.rest.until = Date.now() + live.rest.paused; delete live.rest.paused; delete live.rest.warned; }
       else live.rest.paused = Math.max(0, live.rest.until - Date.now());
@@ -484,6 +523,36 @@ function liveChange(ev) {
 }
 
 // potiahnutie prstom doľava/doprava na cviku = ďalší/predchádzajúci cvik
+function liveRestDrag(el) {
+  let g = null;
+  el.addEventListener('touchstart', (e) => {
+    const sheet = e.target.closest('[data-drag="rest"]');
+    g = sheet && e.touches.length === 1 && !e.target.closest('.rest-pick') ? { y: e.touches[0].clientY, sheet, dy: 0, mini: sheet.classList.contains('mini') } : null;
+  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    if (!g) return;
+    g.dy = e.touches[0].clientY - g.y;
+    if (Math.abs(g.dy) < 6) return;
+    if (e.cancelable) e.preventDefault();
+    g.moved = true;
+    const d = g.mini ? Math.min(0, g.dy) * 0.4 : Math.max(0, g.dy);
+    g.sheet.style.transition = 'none';
+    g.sheet.style.transform = `translateY(${d}px)`;
+  }, { passive: false });
+  const end = () => {
+    if (!g) return;
+    const { sheet, dy, mini, moved } = g;
+    g = null;
+    sheet.style.transition = '';
+    sheet.style.transform = '';
+    if (!moved || !live?.rest) return;
+    if (!mini && dy > 60) { live.restMin = true; liveSave(); liveDraw(); }
+    else if (mini && dy < -30) { live.restMin = false; liveSave(); liveDraw(); }
+  };
+  el.addEventListener('touchend', end, { passive: true });
+  el.addEventListener('touchcancel', end, { passive: true });
+}
+
 function liveSwipe(el) {
   let sx = null, sy = 0, st = 0;
   el.addEventListener('touchstart', (e) => {

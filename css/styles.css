@@ -1816,3 +1816,33 @@ html.live-on, html.live-on body { overflow: hidden; }
 .live-ex, .rest-row { min-width: 0; max-width: 100%; }
 .rest-pick { max-width: 100%; }
 .live > * { min-width: 0; max-width: 100%; }
+/* pauza – kompaktné okno (cvik a série ostávajú nad ním), potiahnutím nadol sa zbalí do lišty */
+.live-body { padding-bottom: calc(24px + var(--rest-h, 0px)); }
+.live-rest { gap: 10px; padding: 6px 16px calc(14px + env(safe-area-inset-bottom)); align-items: stretch; touch-action: none; transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+.rest-grab { align-self: center; width: 100%; height: 22px; border: 0; background: none; display: grid; place-items: center; cursor: grab; padding: 0; }
+.rest-grab span { width: 40px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .45; }
+.rest-main { display: flex; align-items: center; gap: 16px; }
+.live-rest .ring { width: 124px; height: 124px; flex: none; }
+.live-rest .ring-txt b { font-size: 1.9rem; }
+.live-rest .ring-txt small { font-size: .62rem; }
+.ring-hint { font-size: .6rem; }
+.rest-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.rest-side .rest-next { text-align: left; font-size: .84rem; line-height: 1.35; }
+.rest-side .rest-btns { grid-template-columns: 1fr 1fr; max-width: none; }
+.rest-side .btn { min-height: 42px; }
+.rest-side .rest-skip { width: 100%; }
+.rest-pick.in-rest { flex-wrap: nowrap; justify-content: flex-start; max-width: none; }
+/* zbalená lišta */
+.live-rest.mini {
+  flex-direction: row; align-items: center; gap: 10px; bottom: var(--foot-h, 68px); padding: 8px 12px;
+  border-radius: 20px; margin: 0 10px 8px; left: 0; right: 0; animation: mini-in .35s cubic-bezier(.3, 1.3, .5, 1);
+}
+@keyframes mini-in { from { transform: translateY(30px); opacity: 0; } }
+.mini-ring { position: relative; width: 44px !important; height: 44px !important; }
+.mini-ring svg circle { stroke-width: 12; }
+.mini-ic { position: absolute; inset: 0; display: grid; place-items: center; font-size: .8rem; }
+.mini-txt { flex: 1; min-width: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; display: flex; flex-direction: column; cursor: pointer; padding: 0; }
+.mini-txt small { color: var(--muted); font-size: .66rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.mini-txt b { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.live-rest.mini.paused .mini-txt b { opacity: .6; }
+.live-rest.mini .btn { min-height: 38px; flex: none; }
