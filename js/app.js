@@ -1517,7 +1517,9 @@ function openSessionForm(s, defaults = {}) {
         Object.assign(s, d);
         toast('Tréning uložený');
       } else {
-        for (let i = 0; i < repeat; i++) db.sessions.push({ id: uid(), ...d, date: addDays(d.date, 7 * i) });
+        // opakované tréningy majú spoločné seriesId – v kalendári sa dajú presunúť aj „tento a nasledujúce“
+        const series = repeat > 1 ? uid() : null;
+        for (let i = 0; i < repeat; i++) db.sessions.push({ id: uid(), ...d, date: addDays(d.date, 7 * i), ...(series ? { seriesId: series } : {}) });
         toast(repeat > 1 ? `Naplánované: ${nTr(repeat)}` : 'Tréning naplánovaný');
       }
     },
