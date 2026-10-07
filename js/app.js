@@ -949,58 +949,93 @@ function viewFinance(monthParam) {
   </section>`;
 }
 
+// Ikony nastavení (tenké línie)
+const SI = {
+  sync: '<svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></svg>',
+  key: '<svg class="i" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg>',
+  lock: '<svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  out: '<svg class="i" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></svg>',
+  tag: '<svg class="i" viewBox="0 0 24 24"><path d="M3 12V4h8l9 9-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/></svg>',
+  clock: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  bell: '<svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg>',
+  globe: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  down: '<svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+  up: '<svg class="i" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"/></svg>',
+  flask: '<svg class="i" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3M7.5 15h9"/></svg>',
+  spark: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
+  phone: '<svg class="i" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18.5h2"/></svg>',
+  info: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg>',
+  trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  chev: '<svg class="i set-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
+};
+// jeden riadok nastavení: ikona, názov (+ popis), hodnota vpravo, šípka
+function setRow({ icon, title, sub = '', val = '', href = '', action = '', danger = false, chev = true, id = '', subId = '' }) {
+  const inner = `<span class="set-ic" aria-hidden="true">${SI[icon] || ''}</span>
+    <span class="set-main"><b>${title}</b>${sub || subId ? `<small${subId ? ` id="${subId}"` : ''}>${sub}</small>` : ''}</span>
+    ${val ? `<span class="set-val">${val}</span>` : ''}${chev ? SI.chev : ''}`;
+  const cls = `set-row${danger ? ' danger' : ''}`;
+  if (!href && !action) return `<div class="${cls} static">${inner}</div>`;
+  return href ? `<a class="${cls}" href="${href}"${id ? ` id="${id}"` : ''}>${inner}</a>`
+    : `<button type="button" class="${cls}" data-action="${action}"${id ? ` id="${id}"` : ''}>${inner}</button>`;
+}
+const setGroup = (title, rows, foot = '') => `<section class="set-group">${title ? `<h2 class="set-title">${title}</h2>` : ''}<div class="set-list">${rows.filter(Boolean).join('')}</div>${foot ? `<p class="set-foot">${foot}</p>` : ''}</section>`;
+
 function viewSettings() {
   const lb = db.settings.lastBackup;
+  const shared = db.clients.filter((c) => c.share).length;
+  const testN = db.clients.filter((c) => c.test).length;
+  const days = WEEK.filter(([k]) => workHours()[k]?.length).length;
   return `
   <div class="page-head"><h1>Nastavenia</h1></div>
   ${accountCard()}
-  ${workHoursCard()}
-  ${notifyCard()}
-  <section class="card">
-    <div class="card-head"><h2>Predvolené hodnoty tréningu</h2><button class="btn small" data-action="edit-defaults">Upraviť</button></div>
-    <dl class="kv">
-      <dt>Cena tréningu</dt><dd>${fmtMoney(sessionPrice())}</dd>
-      <dt>Dĺžka tréningu</dt><dd>${db.settings.defaultDuration || 60} min</dd>
-      <dt>Text pripomienky</dt><dd>${esc(reminderTemplate())}</dd>
-      <dt>Meno pre klientov</dt><dd>${esc(db.settings.trainerName) || '<span class="muted">–</span>'}</dd>
-    </dl>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>Klientska zóna</h2><span class="badge" id="cloud-state">…</span></div>
-    <p class="muted" style="margin:0">Klientom, ktorým vytvoríš prístup (v detaile klienta), sa ich tréningy, plán a merania posielajú do klientskej zóny: <b>${esc(CLIENT_ZONE_URL)}</b>. Zdieľajú sa len dáta daného klienta, nie financie ani poznámky.</p>
-    <p class="muted" id="cloud-why" style="margin:10px 0 0;color:var(--warn)"></p>
-    <p class="muted" style="margin:10px 0 0">${(() => { const n = db.clients.filter((c) => c.share).length; return n ? `${cnt(n, 'klient má', 'klienti majú', 'klientov má')} prístup.` : 'Zatiaľ nemá prístup žiadny klient.'; })()}</p>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>Záloha dát</h2></div>
-    <p class="muted" style="margin-top:-6px">${syncActive() ? 'Dáta sa ukladajú aj do tvojho účtu. Záloha do súboru je navyše pre istotu (obsahuje aj fotky z galérie).' : 'Dáta sú uložené iba v tomto zariadení a prehliadači. Pravidelne si ich zálohuj – súbor zálohy môžeš preniesť aj do iného zariadenia.'}
-    ${lb ? `<br>Posledná záloha: <b>${fmtDate(lb)}</b>` : ''}</p>
-    <div class="row">
-      <button class="btn primary" data-action="export">Stiahnuť zálohu</button>
-      <button class="btn" data-action="import">Obnoviť zo zálohy</button>
-    </div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>Inštalácia na telefón</h2></div>
-    <p class="muted" style="margin:0">Android (Chrome): menu ⋮ → <b>Inštalovať aplikáciu</b>.<br>iPhone (Safari): tlačidlo Zdieľať → <b>Pridať na plochu</b>.<br>Aplikácia potom funguje aj bez internetu.</p>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>Testovacie dáta</h2></div>
-    <p class="muted" style="margin-top:-6px">Pridá 20 vymyslených klientov s tréningami, platbami a meraniami k tvojim dátam (nič nezmaže). Sú označení „Test“ a dajú sa naraz odstrániť.</p>
-    <div class="row">
-      <button class="btn primary" data-action="add-test">Pridať 20 testovacích klientov</button>
-      ${(() => { const n = db.clients.filter((c) => c.test).length; return n ? `<button class="btn danger" data-action="remove-test">Odstrániť testovacích (${n})</button>` : ''; })()}
-    </div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>Ostatné</h2></div>
-    <div class="row">
-      <button class="btn" data-action="demo">Načítať ukážkové dáta</button>
-      <button class="btn danger" data-action="wipe">Vymazať všetky dáta</button>
-    </div>
-    <p class="muted" style="margin-bottom:0">${cnt(db.clients.length, 'klient', 'klienti', 'klientov')} · ${nTr(db.sessions.length)} · ${cnt(db.plans.length, 'plán', 'plány', 'plánov')} · ${nEx(db.exercises.length)}</p>
-    <p class="muted" style="margin-bottom:0">Verzia aplikácie: <b id="app-version">–</b></p>
-  </section>`;
+  ${setGroup('Tréningy', [
+    setRow({ icon: 'tag', title: 'Predvolený tréning', sub: 'Cena, dĺžka a text pripomienky', val: `${fmtMoney(sessionPrice())} · ${db.settings.defaultDuration || 60} min`, action: 'edit-defaults' }),
+    setRow({ icon: 'clock', title: 'Pracovné hodiny', sub: 'Voľné termíny pre klientov', val: days ? cnt(days, 'deň', 'dni', 'dní') + ' / týž.' : 'Nenastavené', href: '#/settings/hours' }),
+    setRow({ icon: 'bell', title: 'Upozornenia', sub: 'Žiadosti klientov cez ntfy', val: db.settings.ntfyTopic ? 'Zapnuté' : 'Vypnuté', href: '#/settings/notify' })
+  ])}
+  ${setGroup('Klientska zóna', [
+    setRow({ icon: 'globe', title: 'Klientska zóna', sub: shared ? `${cnt(shared, 'klient má', 'klienti majú', 'klientov má')} prístup` : 'Zatiaľ nemá prístup žiadny klient', val: '<span class="badge" id="cloud-state">…</span>', href: '#/settings/zone' })
+  ])}
+  ${setGroup('Dáta', [
+    setRow({ icon: 'down', title: 'Stiahnuť zálohu', sub: lb ? `Posledná záloha ${fmtDate(lb)}` : 'Zatiaľ žiadna záloha', action: 'export', chev: false }),
+    setRow({ icon: 'up', title: 'Obnoviť zo zálohy', action: 'import', chev: false }),
+    setRow({ icon: 'flask', title: 'Pridať 20 testovacích klientov', sub: 'Vymyslení klienti označení „Test“', action: 'add-test', chev: false }),
+    testN ? setRow({ icon: 'trash', title: `Odstrániť testovacích klientov (${testN})`, action: 'remove-test', danger: true, chev: false }) : '',
+    setRow({ icon: 'spark', title: 'Načítať ukážkové dáta', action: 'demo', chev: false })
+  ], syncActive() ? 'Dáta sa ukladajú do tvojho účtu. Záloha do súboru je navyše pre istotu – obsahuje aj fotky z galérie.' : 'Dáta sú uložené iba v tomto zariadení. Pravidelne si ich zálohuj.')}
+  ${setGroup('Aplikácia', [
+    setRow({ icon: 'phone', title: 'Inštalácia appky', sub: 'iPhone, Android a počítač', href: '#/settings/install' }),
+    setRow({ icon: 'info', title: 'Verzia', val: '<b id="app-version">–</b>', chev: false, action: '' })
+  ], `${cnt(db.clients.length, 'klient', 'klienti', 'klientov')} · ${nTr(db.sessions.length)} · ${cnt(db.plans.length, 'plán', 'plány', 'plánov')} · ${nEx(db.exercises.length)}`)}
+  ${setGroup('', [setRow({ icon: 'trash', title: 'Vymazať všetky dáta', action: 'wipe', danger: true, chev: false })])}`;
+}
+
+// Podstránky nastavení
+function viewSettingsSub(sub) {
+  const back = '<a class="back-link" href="#/settings">‹ Nastavenia</a>';
+  if (sub === 'hours') return `${back}<div class="page-head"><h1>Pracovné hodiny</h1></div>${workHoursCard()}`;
+  if (sub === 'notify') return `${back}<div class="page-head"><h1>Upozornenia</h1></div>${notifyCard()}`;
+  if (sub === 'zone') {
+    const shared = db.clients.filter((c) => c.share);
+    return `${back}<div class="page-head"><h1>Klientska zóna</h1></div>
+    <section class="card">
+      <div class="card-head"><h2>Stav</h2><span class="badge" id="cloud-state">…</span></div>
+      <p class="muted" style="margin:0">Klientom, ktorým vytvoríš prístup (v detaile klienta), sa ich tréningy, plán a merania posielajú do klientskej zóny. Zdieľajú sa len dáta daného klienta, nie financie ani poznámky.</p>
+      <p class="muted" id="cloud-why" style="margin:10px 0 0;color:var(--warn)"></p>
+      <div class="row" style="margin-top:12px"><a class="btn" href="${esc(CLIENT_ZONE_URL)}" target="_blank" rel="noopener">Otvoriť klientsku zónu</a></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Klienti s prístupom</h2><span class="badge">${shared.length}</span></div>
+      ${shared.length ? `<ul class="list">${shared.map((c) => `<li><a class="list-item" href="#/client/${c.id}">${avatar(c)}<span class="info"><strong>${esc(c.name)}</strong><small>Kód ${esc(c.share.code || '')}</small></span></a></li>`).join('')}</ul>` : '<p class="empty">Prístup vytvoríš v detaile klienta tlačidlom „Klientska zóna“.</p>'}
+    </section>`;
+  }
+  if (sub === 'install') return `${back}<div class="page-head"><h1>Inštalácia</h1></div>
+    <section class="card"><div class="card-head"><h2>iPhone</h2></div><p class="muted" style="margin:0">V Safari ťukni na tlačidlo <b>Zdieľať</b> → <b>Pridať na plochu</b>.</p></section>
+    <section class="card"><div class="card-head"><h2>Android</h2></div><p class="muted" style="margin:0">V Chrome otvor menu <b>⋮</b> → <b>Inštalovať aplikáciu</b>.</p></section>
+    <section class="card"><div class="card-head"><h2>Počítač</h2></div><p class="muted" style="margin:0">V Chrome alebo Edge ťukni na ikonku inštalácie v paneli s adresou (vpravo).</p></section>
+    <p class="set-foot">Nainštalovaná appka funguje aj bez internetu a sama sa aktualizuje.</p>`;
+  location.hash = '#/settings';
+  return '';
 }
 
 /* =========================================================
@@ -1016,6 +1051,7 @@ const routes = [
   [/^#\/plan\/([\w-]+)$/, viewPlan],
   [/^#\/exercises$/, viewExercises],
   [/^#\/settings$/, viewSettings],
+  [/^#\/settings\/(hours|notify|zone|install)$/, viewSettingsSub],
   [/^#\/finance(?:\/(\d{4}-\d{2}))?$/, viewFinance]
 ];
 
@@ -2784,7 +2820,7 @@ function askChoice(msg, options) {
 }
 
 const syncBadge = () => ({ sync: ['Synchronizujem…', ''], ok: ['Synchronizované', 'done'], error: [navigator.onLine ? 'Chyba' : 'Offline', 'warn'], choose: ['Čaká na výber', 'warn'] }[syncStatus] || ['Pripájam…', '']);
-const syncLastText = () => (syncLast && syncStatus === 'ok' ? `Naposledy synchronizované o ${new Date(syncLast).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })}.` : '');
+const syncLastText = () => (syncLast && syncStatus === 'ok' ? `Naposledy o ${new Date(syncLast).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })}.` : '');
 
 function setSyncStatus(st, err = '') {
   syncStatus = st;
@@ -2804,34 +2840,36 @@ const isStandaloneIos = () => /iP(hone|ad|od)/.test(navigator.userAgent) && (nav
 
 function accountCard() {
   const u = signedUser();
-  if (!u) {
-    return `<section class="card" id="account-card">
-    <div class="card-head"><h2>Účet</h2></div>
-    <p class="muted" style="margin-top:-6px">Prihlás sa a dáta sa budú ukladať do cloudu a samé sa zosynchronizujú medzi počítačom a mobilom. Pri prvom prihlásení sa dáta z tohto zariadenia nahrajú do účtu.</p>
-    <div class="row">
-      <button class="btn primary" data-action="login-google"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.7-3-.7-4.6s.3-3.1.7-4.6l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>Prihlásiť cez Google</button>
-      <button class="btn" data-action="login-email">Prihlásiť e-mailom</button>
-    </div>
-    <label class="check remember"><input type="checkbox" id="remember" ${window.cloud?.remembered?.() === false ? '' : 'checked'}> Zostať prihlásený</label>
-    <p class="hint" style="margin:10px 0 0">${isStandaloneIos() ? '<b>Na iPhone v appke z plochy</b> použi „Prihlásiť e-mailom“ (Google okno sa sem nevie vrátiť).' : 'Na iPhone v appke z plochy sa prihlasuje e-mailom'} – heslo si najprv nastav na počítači po prihlásení cez Google.</p>
+  const name = db.settings.trainerName || '';
+  const remember = `<label class="set-row set-toggle"><span class="set-ic" aria-hidden="true">${SI.lock}</span><span class="set-main"><b>Zostať prihlásený</b><small>Aj po zatvorení prehliadača</small></span><span class="check"><input type="checkbox" id="remember" ${window.cloud?.remembered?.() === false ? '' : 'checked'}></span></label>`;
+  const profile = `<section class="set-profile">
+    <span class="avatar lg">${name ? initials(name) : '?'}</span>
+    <div class="set-who"><h2>${esc(name || 'Tréner')}</h2><p>${u ? esc(u.email || u.name || 'Prihlásený') : 'Neprihlásený – dáta sú len v tomto zariadení'}</p></div>
+    <button type="button" class="btn small" data-action="edit-name">Upraviť</button>
   </section>`;
+  if (!u) {
+    return `<div id="account-card">${profile}
+    <section class="set-group"><h2 class="set-title">Účet</h2><div class="set-list set-login">
+      <p class="muted">Prihlás sa a dáta sa budú ukladať do cloudu a samé sa zosynchronizujú medzi počítačom a mobilom. Pri prvom prihlásení sa dáta z tohto zariadenia nahrajú do účtu.</p>
+      <div class="row">
+        <button class="btn primary" data-action="login-google"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.7-3-.7-4.6s.3-3.1.7-4.6l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>Prihlásiť cez Google</button>
+        <button class="btn" data-action="login-email">Prihlásiť e-mailom</button>
+      </div>
+    </div></section>
+    ${setGroup('', [remember], `${isStandaloneIos() ? '<b>Na iPhone v appke z plochy</b> použi „Prihlásiť e-mailom“ (Google okno sa sem nevie vrátiť).' : 'Na iPhone v appke z plochy sa prihlasuje e-mailom'} – heslo si najprv nastav na počítači po prihlásení cez Google.`)}
+    </div>`;
   }
   const hasPw = u.providers.includes('password');
-  return `<section class="card" id="account-card">
-    <div class="card-head"><h2>Účet</h2><span class="badge ${syncBadge()[1]}" id="sync-state">${syncBadge()[0]}</span></div>
-    <p class="muted" style="margin-top:-6px">Prihlásený ako <b>${esc(u.email || u.name || 'účet')}</b>. Klienti, tréningy, plány, financie a nastavenia sa synchronizujú medzi všetkými zariadeniami, kde si prihlásený. Fotky v galérii klienta ostávajú len v zariadení.</p>
-    <p class="muted" style="margin:0 0 6px">Meno pre klientov: <b>${esc(db.settings.trainerName || '–')}</b> <button class="btn small" data-action="edit-name" style="margin-left:6px">Zmeniť</button></p>
-    <p class="muted" id="sync-last" style="margin:0 0 4px">${syncLastText()}</p>
-    <p class="muted" id="sync-why" style="margin:0 0 10px;color:var(--warn)">${syncError && navigator.onLine ? `Dôvod: ${esc(syncError)}. Skúsi sa to znova automaticky.` : ''}</p>
-    <div class="row">
-      <button class="btn primary" data-action="sync-choose" id="sync-choose"${syncStatus === 'choose' ? '' : ' style="display:none"'}>Vybrať, ktoré dáta ponechať</button>
-      <button class="btn" data-action="sync-now">Synchronizovať teraz</button>
-      <button class="btn" data-action="set-password">${hasPw ? 'Zmeniť heslo pre mobil' : 'Nastaviť heslo pre mobil'}</button>
-      <button class="btn" data-action="logout">Odhlásiť</button>
-    </div>
-    <label class="check remember"><input type="checkbox" id="remember" ${window.cloud?.remembered?.() === false ? '' : 'checked'}> Zostať prihlásený</label>
-    ${hasPw ? '' : `<p class="hint" style="margin:10px 0 0">V mobile (appka z plochy na iPhone) sa prihlásiš e-mailom <b>${esc(u.email)}</b> a heslom, ktoré si tu nastavíš.</p>`}
-  </section>`;
+  return `<div id="account-card">${profile}
+  ${setGroup('Účet', [
+    `<button type="button" class="set-row set-choose" data-action="sync-choose" id="sync-choose"${syncStatus === 'choose' ? '' : ' style="display:none"'}><span class="set-ic" aria-hidden="true">${SI.sync}</span><span class="set-main"><b>Vybrať, ktoré dáta ponechať</b></span>${SI.chev}</button>`,
+    setRow({ icon: 'sync', title: 'Synchronizácia', sub: syncLastText(), subId: 'sync-last', val: `<span class="badge ${syncBadge()[1]}" id="sync-state">${syncBadge()[0]}</span>`, action: 'sync-now', chev: false }),
+    setRow({ icon: 'key', title: hasPw ? 'Zmeniť heslo pre mobil' : 'Nastaviť heslo pre mobil', sub: hasPw ? '' : `Na iPhone sa prihlásiš e-mailom ${esc(u.email)}`, action: 'set-password' }),
+    remember,
+    setRow({ icon: 'out', title: 'Odhlásiť sa', action: 'logout', danger: true, chev: false })
+  ], 'Klienti, tréningy, plány, financie a nastavenia sa synchronizujú medzi všetkými zariadeniami, kde si prihlásený. Fotky v galérii ostávajú len v zariadení.')}
+  <p class="set-warn" id="sync-why">${syncError && navigator.onLine ? `Dôvod: ${esc(syncError)}. Skúsi sa to znova automaticky.` : ''}</p>
+  </div>`;
 }
 
 function updateAccountCard() {
