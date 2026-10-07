@@ -3555,12 +3555,55 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && today() !== renderedDay && !modal.open) render();
 });
 
+// Otvorené okno: stránka pod ním sa pri ťahaní nehýbe (inak v iPhone poskakuje a presvitá biely okraj)
+document.addEventListener('touchmove', (e) => {
+  const d = document.querySelector('dialog[open]');
+  if (!d || e.touches.length !== 1) return;
+  const box = d.contains(e.target) ? e.target.closest('.modal-body, textarea, .log-ex-list, [data-scroll]') : null;
+  if (!box || box.scrollHeight <= box.clientHeight + 1) e.preventDefault();
+}, { passive: false });
+
+// Vysúvací panel sa dá zavrieť potiahnutím za hornú časť nadol (ako v iPhone)
+(() => {
+  let y0 = null, dy = 0, t0 = 0;
+  modal.addEventListener('touchstart', (e) => {
+    if (!matchMedia('(max-width: 600px)').matches || !e.target.closest('.modal-head') || e.target.closest('button')) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dy = 0; t0 = Date.now();
+    modal.style.transition = 'none';
+  }, { passive: true });
+  modal.addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    modal.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+  const end = () => {
+    if (y0 == null) return;
+    y0 = null;
+    const fast = dy > 60 && Date.now() - t0 < 250;
+    modal.style.transition = 'transform .22s ease';
+    if (dy > 110 || fast) {
+      modal.style.transform = 'translateY(100%)';
+      setTimeout(() => { modal.close(); modal.style.transform = ''; modal.style.transition = ''; }, 200);
+    } else {
+      modal.style.transform = '';
+      setTimeout(() => { modal.style.transition = ''; }, 230);
+    }
+  };
+  modal.addEventListener('touchend', end, { passive: true });
+  modal.addEventListener('touchcancel', end, { passive: true });
+})();
+
 // Klávesnica na iPhone: vysúvací panel formulára sa posunie nad ňu
 if (window.visualViewport) {
+  // len skutočná klávesnica (píše sa do políčka a ubudlo aspoň 120 px) – nie skrývanie lišty prehliadača
+  // (Instagram, Facebook, Safari pri posúvaní), inak by panel pri ťahaní poskakoval hore-dole
+  const typing = () => { const a = document.activeElement; return !!a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'file'].includes(a.type))); };
   const kb = () => {
-    const h = Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop);
+    const raw = window.innerHeight - visualViewport.height - visualViewport.offsetTop;
+    const h = typing() && raw > 120 ? raw : 0;
     document.documentElement.style.setProperty('--kb', `${Math.round(h)}px`);
   };
+  document.addEventListener('focusout', () => setTimeout(kb, 50));
   visualViewport.addEventListener('resize', kb);
   visualViewport.addEventListener('scroll', kb);
 }

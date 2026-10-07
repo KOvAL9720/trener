@@ -1182,3 +1182,7 @@ body.no-anim .brand img { animation: none; }
 .session.self .self-tag { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #9cc8e6; }
 .session.self::before, .session.self .session-main::before { border-color: #7fb3d5; }
 .session.self { opacity: .92; }
+
+/* otvorené okno: posúva sa len jeho obsah, nie stránka pod ním */
+dialog, dialog .modal-body { overscroll-behavior: contain; }
+html:has(dialog[open]) { overflow: hidden; }
