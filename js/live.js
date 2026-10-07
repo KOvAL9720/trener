@@ -46,7 +46,7 @@ const fmtClock = (sec) => {
 const elapsed = () => ((live.pausedAt || Date.now()) - live.start - (live.pausedMs || 0)) / 1000;
 const restLeft = () => (live.rest ? (live.rest.paused != null ? live.rest.paused : live.rest.until - Date.now()) / 1000 : 0);
 const restOver = () => live.rest && live.rest.paused == null && live.rest.until <= Date.now();
-const REST_PRESETS = [[30, '30 s'], [60, '1 min'], [90, '1:30'], [120, '2 min'], [180, '3 min'], [300, '5 min']];
+const REST_PRESETS = [[30, '30 s'], [45, '45 s'], [60, '1 min'], [90, '1:30'], [120, '2 min'], [180, '3 min']];
 const restOf = (e) => (e && e.restSec) || parseRest(e?.plan.rest || '90 s');
 const restChips = (cur, where) => `<div class="rest-pick${where ? ` ${where}` : ''}" role="group" aria-label="Dĺžka pauzy">${REST_PRESETS.map(([sec, label]) => `<button type="button" class="chip${sec === cur ? ' active' : ''}" data-l="rest-set" data-sec="${sec}">${label}</button>`).join('')}</div>`;
 const numOrNull = (v) => { const t = String(v ?? '').trim().replace(/\s/g, '').replace(',', '.'); if (t === '') return null; const n = Number(t); return Number.isFinite(n) && n >= 0 ? n : NaN; };
