@@ -1425,7 +1425,9 @@ function openSessionForm(s, defaults = {}) {
     ],
     onSubmit: async (d) => {
       const repeat = Math.min(Math.max(Number(d.repeat) || 1, 1), 52);
-      if (d.time && d.status !== 'cancelled') {
+      // upozorniť len pri novom tréningu alebo pri zmene termínu – úprava platby, stavu či poznámky sa nepýta
+      const moved = !s || d.date !== s.date || d.time !== (s.time || '');
+      if (moved && d.time && d.status !== 'cancelled') {
         const dates = Array.from({ length: s ? 1 : repeat }, (_, i) => addDays(d.date, 7 * i));
         const clash = db.sessions.find((x) => x !== s && x.status !== 'cancelled' && x.time === d.time && dates.includes(x.date));
         if (clash && !(await askConfirm(`V tom čase (${fmtDate(clash.date)} ${clash.time}) už máš tréning s klientom ${clientName(clash.clientId)}.`, { ok: 'Uložiť aj tak' }))) return false;
