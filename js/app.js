@@ -94,6 +94,7 @@ function flushSave() {
     toast('Dáta sa nepodarilo uložiť – skontroluj úložisko prehliadača.');
   }
   scheduleSync();
+  scheduleCloudPush();
 }
 window.addEventListener('pagehide', flushSave);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
@@ -402,7 +403,7 @@ function viewDashboard() {
   const low = PACKAGES ? active.map((c) => ({ c, cr: credits(c.id) })).filter(({ cr }) => cr.bought > 0 && cr.left <= 1) : [];
 
   const lastBackup = db.settings.lastBackup;
-  const needBackup = !lastBackup || daysBetween(lastBackup, t) > 14;
+  const needBackup = !syncActive() && (!lastBackup || daysBetween(lastBackup, t) > 14);
 
   const hour = new Date().getHours();
   const greet = hour < 10 ? 'Dobré ráno' : hour < 18 ? 'Dobrý deň' : 'Dobrý večer';
@@ -901,6 +902,7 @@ function viewSettings() {
   const lb = db.settings.lastBackup;
   return `
   <div class="page-head"><h1>Nastavenia</h1></div>
+  ${accountCard()}
   <section class="card">
     <div class="card-head"><h2>Predvolené hodnoty tréningu</h2><button class="btn small" data-action="edit-defaults">Upraviť</button></div>
     <dl class="kv">
@@ -918,7 +920,7 @@ function viewSettings() {
   </section>
   <section class="card">
     <div class="card-head"><h2>Záloha dát</h2></div>
-    <p class="muted" style="margin-top:-6px">Dáta sú uložené iba v tomto zariadení a prehliadači. Pravidelne si ich zálohuj – súbor zálohy môžeš preniesť aj do iného zariadenia.
+    <p class="muted" style="margin-top:-6px">${syncActive() ? 'Dáta sa ukladajú aj do tvojho účtu. Záloha do súboru je navyše pre istotu (obsahuje aj fotky z galérie).' : 'Dáta sú uložené iba v tomto zariadení a prehliadači. Pravidelne si ich zálohuj – súbor zálohy môžeš preniesť aj do iného zariadenia.'}
     ${lb ? `<br>Posledná záloha: <b>${fmtDate(lb)}</b>` : ''}</p>
     <div class="row">
       <button class="btn primary" data-action="export">Stiahnuť zálohu</button>
@@ -2264,6 +2266,355 @@ window.addEventListener('cloud-ready', () => { if (window.cloud) { window.cloud.
 window.addEventListener('online', () => { db.settings.shareDirty = true; scheduleSync(); });
 
 /* =========================================================
+   Účet trénera – prihlásenie (Google / e-mail) a synchronizácia dát medzi zariadeniami
+   Každý záznam je samostatný dokument trainers/{uid}/items/{kolekcia~id}. Zlučovanie je trojcestné:
+   porovná sa stav v zariadení, stav v cloude a stav pri poslednej synchronizácii – zmení sa len to,
+   čo sa naozaj zmenilo (pri súčasnej zmene toho istého záznamu vyhrá toto zariadenie).
+   ========================================================= */
+const SYNC_KEY = 'trainer-sync-v1';
+const SYNC_COLLS = ['clients', 'sessions', 'packages', 'measurements', 'exercises', 'plans'];
+const LOCAL_SETTINGS = ['shareDirty'];
+let sync = (() => {
+  try { const s = JSON.parse(localStorage.getItem(SYNC_KEY)); if (s && typeof s.uid === 'string' && s.base && typeof s.base === 'object') return s; } catch (e) { /* ok */ }
+  return { uid: '', base: {} };
+})();
+let syncRemote = null;   // Map kľúč → JSON záznamu v cloude (posledný stav)
+let syncOwner = '';      // účet, ktorého dáta sa práve sledujú
+let syncUnwatch = null;
+let syncStatus = '';     // '' | 'sync' | 'ok' | 'error' | 'choose'
+let syncError = '';
+let syncAsking = false;  // pri prvom prihlásení čaká voľba, ktoré dáta ponechať
+let syncPauseUntil = 0;  // po chybe zápisu chvíľu neskúšať znova
+const syncInflight = new Set();
+let syncPushTimer = 0;
+const saveSyncState = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) { /* ok */ } };
+const recHash = (j) => `${j.length}:${simpleHash(j)}`;
+const okSyncId = (id) => typeof id === 'string' && /^[\w-]{1,64}$/.test(id);
+const syncActive = () => !!sync.uid && !sync.fresh && !sync.off;
+
+function localRecords() {
+  const m = new Map();
+  for (const k of SYNC_COLLS) for (const r of db[k]) if (okSyncId(r.id)) m.set(`${k}~${r.id}`, JSON.stringify(r));
+  const s = { ...db.settings };
+  LOCAL_SETTINGS.forEach((x) => delete s[x]);
+  m.set('settings~main', JSON.stringify(s));
+  return m;
+}
+
+function applyRemote(k, j) {
+  const [coll, id] = k.split('~');
+  let val;
+  try { val = j === undefined ? undefined : JSON.parse(j); } catch (e) { return; }
+  if (coll === 'settings') {
+    const keep = {};
+    LOCAL_SETTINGS.forEach((x) => { if (x in db.settings) keep[x] = db.settings[x]; });
+    db.settings = { ...(val && typeof val === 'object' ? val : {}), ...keep };
+    return;
+  }
+  if (!SYNC_COLLS.includes(coll) || !okSyncId(id)) return;
+  const list = db[coll];
+  const i = list.findIndex((r) => r.id === id);
+  if (val === undefined) { if (i >= 0) list.splice(i, 1); }
+  else if (val && typeof val === 'object' && val.id === id) { if (i >= 0) list[i] = val; else list.push(val); }
+}
+
+function afterRemoteChange() {
+  db = normalize(db);
+  _idx = null;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { /* ok */ }
+  if (!document.getElementById('modal').open) render();
+  loadRequests(true);
+}
+
+function reconcile() {
+  if (!syncRemote || !syncOwner || sync.fresh || sync.uid !== syncOwner) return;
+  const local = localRecords();
+  const base = sync.base;
+  const puts = [], dels = [];
+  let changed = false;
+  for (const k of new Set([...local.keys(), ...syncRemote.keys(), ...Object.keys(base)])) {
+    if (syncInflight.has(k)) continue;
+    const lj = local.get(k), rj = syncRemote.get(k);
+    const L = lj === undefined ? undefined : recHash(lj);
+    const R = rj === undefined ? undefined : recHash(rj);
+    const S = base[k];
+    if (L === R) { if (L === undefined) delete base[k]; else base[k] = L; continue; }
+    if (L === S || (L === undefined && R !== S)) {
+      // tu sa nič nezmenilo (alebo tu zmazané, ale inde upravené) → prevziať z cloudu
+      applyRemote(k, rj);
+      changed = true;
+      if (R === undefined) delete base[k]; else base[k] = R;
+    } else if (lj === undefined) dels.push(k);
+    else puts.push([k, lj]);
+  }
+  saveSyncState();
+  if (changed) afterRemoteChange();
+  if ((puts.length || dels.length) && Date.now() >= syncPauseUntil) syncPush(puts, dels);
+  else if (!syncInflight.size && syncStatus !== 'error') setSyncStatus('ok');
+}
+
+async function syncPush(puts, dels) {
+  const owner = syncOwner;
+  const keys = [...puts.map(([k]) => k), ...dels];
+  keys.forEach((k) => syncInflight.add(k));
+  setSyncStatus('sync');
+  try {
+    await window.cloud.writeData(owner, puts, dels);
+    keys.forEach((k) => syncInflight.delete(k));
+    if (owner !== syncOwner) return;
+    puts.forEach(([k, j]) => { sync.base[k] = recHash(j); });
+    dels.forEach((k) => delete sync.base[k]);
+    saveSyncState();
+    setSyncStatus('ok');
+    scheduleCloudPush(); // medzitým mohli pribudnúť ďalšie zmeny
+  } catch (e) {
+    keys.forEach((k) => syncInflight.delete(k));
+    syncPauseUntil = Date.now() + 30 * 1000;
+    setSyncStatus('error', e.code || 'offline');
+    clearTimeout(syncPushTimer);
+    syncPushTimer = setTimeout(reconcile, 31 * 1000);
+  }
+}
+
+function scheduleCloudPush() {
+  if (!syncOwner) return;
+  clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(reconcile, 800);
+}
+
+function startDataSync(user) {
+  if (syncOwner === user.uid) return;
+  stopDataSync();
+  syncOwner = user.uid;
+  if (sync.uid !== user.uid) sync = { uid: user.uid, base: {}, fresh: true };
+  delete sync.off;
+  saveSyncState();
+  setSyncStatus('sync');
+  syncUnwatch = window.cloud.watchData((docs, owner) => {
+    if (owner !== syncOwner) return;
+    syncRemote = new Map(docs.filter(([k, j]) => typeof j === 'string' && k.includes('~')));
+    if (sync.fresh) { if (!syncAsking && syncStatus !== 'choose') firstSync(); return; }
+    reconcile();
+  }, (e) => setSyncStatus('error', e.code || 'offline'));
+}
+
+function stopDataSync() {
+  syncUnwatch?.();
+  syncUnwatch = null;
+  syncOwner = '';
+  syncRemote = null;
+  syncInflight.clear();
+  clearTimeout(syncPushTimer);
+  setSyncStatus('');
+}
+
+// Prvé prihlásenie v tomto zariadení: keď sú dáta aj tu, aj v účte, tréner vyberie, ktoré ponechať
+async function firstSync() {
+  if (!syncRemote || syncAsking) return;
+  const remoteClients = [...syncRemote.keys()].filter((k) => k.startsWith('clients~')).length;
+  const remoteHasData = [...syncRemote.keys()].some((k) => /^(clients|sessions|plans)~/.test(k));
+  const localHasData = db.clients.length || db.sessions.length || db.plans.length;
+  let mode = !syncRemote.size ? 'device' : !localHasData ? 'account' : !remoteHasData ? 'device' : null;
+  if (!mode) {
+    syncAsking = true;
+    setSyncStatus('choose');
+    mode = await askChoice(`V účte už sú uložené dáta (${cnt(remoteClients, 'klient', 'klienti', 'klientov')}). Aj v tomto zariadení sú dáta (${cnt(db.clients.length, 'klient', 'klienti', 'klientov')}). Ktoré chceš ponechať? Tie druhé sa nahradia.`,
+      [['account', 'Dáta z účtu', 'primary'], ['device', 'Dáta z tohto zariadenia', '']]);
+    syncAsking = false;
+    if (!mode) { setSyncStatus('choose'); return; }
+  }
+  if (!syncRemote || !syncOwner) return;
+  // stav cloudu je teraz spoločný základ: „účet“ ho prevezme, „zariadenie“ ho prepíše
+  sync.base = {};
+  for (const [k, j] of syncRemote) sync.base[k] = recHash(j);
+  if (mode === 'account') {
+    try { localStorage.setItem(STORAGE_KEY + '-pred-prihlasenim', JSON.stringify(db)); } catch (e) { /* ok */ }
+    const keep = {};
+    LOCAL_SETTINGS.forEach((x) => { if (x in db.settings) keep[x] = db.settings[x]; });
+    db = normalize({ settings: keep });
+    for (const [k, j] of syncRemote) applyRemote(k, j);
+    afterRemoteChange();
+  }
+  delete sync.fresh;
+  saveSyncState();
+  setSyncStatus('sync');
+  reconcile();
+  toast(mode === 'account' ? 'Dáta z účtu načítané' : 'Dáta nahrané do účtu');
+}
+
+function askChoice(msg, options) {
+  const dlg = document.getElementById('confirm');
+  if (dlg.open) return Promise.resolve(null);
+  dlg.querySelector('#confirm-text').textContent = msg;
+  dlg.querySelector('.confirm-btns').innerHTML = options.map(([, label, cls], i) => `<button type="button" class="btn ${cls}" data-c="${i}">${esc(label)}</button>`).join('');
+  return new Promise((resolve) => {
+    const done = (v) => { dlg.onclose = null; dlg.close(); resolve(v); };
+    dlg.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => done(options[+b.dataset.c][0]); });
+    dlg.onclose = () => resolve(null);
+    dlg.showModal();
+  });
+}
+
+function setSyncStatus(st, err = '') {
+  syncStatus = st;
+  syncError = st === 'error' ? err : '';
+  const el = document.getElementById('sync-state');
+  if (el) {
+    const [txt, cls] = { sync: ['Synchronizujem…', ''], ok: ['Synchronizované', 'done'], error: [navigator.onLine ? 'Chyba' : 'Offline', 'warn'], choose: ['Čaká na výber', 'warn'] }[st] || ['Pripájam…', ''];
+    el.textContent = txt;
+    el.className = `badge ${cls}`;
+  }
+  const why = document.getElementById('sync-why');
+  if (why) why.textContent = syncError && navigator.onLine ? `Dôvod: ${syncError}. Skúsi sa to znova automaticky.` : '';
+  const choose = document.getElementById('sync-choose');
+  if (choose) choose.style.display = st === 'choose' ? '' : 'none';
+}
+
+const signedUser = () => { const u = window.cloud?.user?.(); return u && !u.anonymous ? u : null; };
+const isStandaloneIos = () => /iP(hone|ad|od)/.test(navigator.userAgent) && (navigator.standalone || matchMedia('(display-mode: standalone)').matches);
+
+function accountCard() {
+  const u = signedUser();
+  if (!u) {
+    return `<section class="card" id="account-card">
+    <div class="card-head"><h2>Účet</h2></div>
+    <p class="muted" style="margin-top:-6px">Prihlás sa a dáta sa budú ukladať do cloudu a samé sa zosynchronizujú medzi počítačom a mobilom. Pri prvom prihlásení sa dáta z tohto zariadenia nahrajú do účtu.</p>
+    <div class="row">
+      <button class="btn primary" data-action="login-google"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.7-3-.7-4.6s.3-3.1.7-4.6l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>Prihlásiť cez Google</button>
+      <button class="btn" data-action="login-email">Prihlásiť e-mailom</button>
+    </div>
+    <p class="hint" style="margin:10px 0 0">${isStandaloneIos() ? '<b>Na iPhone v appke z plochy</b> použi „Prihlásiť e-mailom“ (Google okno sa sem nevie vrátiť).' : 'Na iPhone v appke z plochy sa prihlasuje e-mailom'} – heslo si najprv nastav na počítači po prihlásení cez Google.</p>
+  </section>`;
+  }
+  const hasPw = u.providers.includes('password');
+  return `<section class="card" id="account-card">
+    <div class="card-head"><h2>Účet</h2><span class="badge" id="sync-state">…</span></div>
+    <p class="muted" style="margin-top:-6px">Prihlásený ako <b>${esc(u.email || u.name || 'účet')}</b>. Klienti, tréningy, plány, financie a nastavenia sa synchronizujú medzi všetkými zariadeniami, kde si prihlásený. Fotky v galérii klienta ostávajú len v zariadení.</p>
+    <p class="muted" id="sync-why" style="margin:0 0 10px;color:var(--warn)"></p>
+    <div class="row">
+      <button class="btn primary" data-action="sync-choose" id="sync-choose"${syncStatus === 'choose' ? '' : ' style="display:none"'}>Vybrať, ktoré dáta ponechať</button>
+      <button class="btn" data-action="set-password">${hasPw ? 'Zmeniť heslo pre mobil' : 'Nastaviť heslo pre mobil'}</button>
+      <button class="btn" data-action="logout">Odhlásiť</button>
+    </div>
+    ${hasPw ? '' : `<p class="hint" style="margin:10px 0 0">V mobile (appka z plochy na iPhone) sa prihlásiš e-mailom <b>${esc(u.email)}</b> a heslom, ktoré si tu nastavíš.</p>`}
+  </section>`;
+}
+
+function updateAccountCard() {
+  const el = document.getElementById('account-card');
+  if (el) el.outerHTML = accountCard();
+  setSyncStatus(syncStatus, syncError);
+}
+
+function loginError(e) {
+  const code = e?.code || '';
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request' || code === 'auth/user-cancelled') return;
+  const msg = {
+    'auth/popup-blocked': 'Prehliadač zablokoval prihlasovacie okno. Povoľ vyskakovacie okná pre túto stránku a skús to znova.',
+    'auth/invalid-credential': 'Nesprávny e-mail alebo heslo.',
+    'auth/invalid-login-credentials': 'Nesprávny e-mail alebo heslo.',
+    'auth/wrong-password': 'Nesprávny e-mail alebo heslo.',
+    'auth/user-not-found': 'Účet s týmto e-mailom neexistuje. Najprv sa prihlás cez Google na počítači a nastav si heslo pre mobil.',
+    'auth/invalid-email': 'Neplatný e-mail.',
+    'auth/operation-not-allowed': 'Tento spôsob prihlásenia nie je vo Firebase zapnutý (Authentication → Sign-in method).',
+    'auth/network-request-failed': 'Bez pripojenia na internet. Skús to znova.',
+    'auth/too-many-requests': 'Príliš veľa pokusov. Skús to o chvíľu.',
+    'auth/requires-recent-login': 'Z bezpečnostných dôvodov sa odhlás a znova prihlás cez Google, potom to skús znova.',
+    'auth/weak-password': 'Heslo musí mať aspoň 6 znakov.',
+    'auth/unauthorized-domain': 'Táto adresa nie je vo Firebase povolená (Authentication → Settings → Authorized domains).'
+  }[code];
+  notify(msg || `Prihlásenie sa nepodarilo (${code || e?.message || 'neznáma chyba'}).${isStandaloneIos() ? ' Na iPhone v appke z plochy použi „Prihlásiť e-mailom“.' : ''}`);
+}
+
+const cloudMissing = () => {
+  if (window.cloud) return false;
+  notify(window.cloudError ? `Cloud nie je dostupný (${window.cloudError}). Skontroluj pripojenie a skús to znova.` : 'Cloud sa ešte načítava, skús to o chvíľu.');
+  return true;
+};
+
+// Účet už existuje (iné zariadenie): kódy klientov z tohto zariadenia prejdú naň, potom sa prihlási
+async function switchAccount({ cred, uid: newUid }) {
+  const codes = db.clients.filter((c) => c.share).map((c) => c.share.code);
+  if (codes.length) await window.cloud.transferShares(codes, newUid);
+  await window.cloud.finishSwitch(cred);
+}
+
+function loginGoogle() {
+  if (cloudMissing()) return;
+  // bez await pred otvorením okna – inak ho prehliadač zablokuje
+  window.cloud.signInGoogle()
+    .then(async (r) => { if (r.switchTo) await switchAccount(r.switchTo); updateAccountCard(); toast('Prihlásený – dáta sa synchronizujú'); })
+    .catch(loginError);
+}
+
+function openEmailLogin() {
+  if (cloudMissing()) return;
+  openForm({
+    title: 'Prihlásenie e-mailom',
+    submitLabel: 'Prihlásiť',
+    fields: [
+      { name: 'email', label: 'E-mail', type: 'email', required: true, placeholder: 'meno@gmail.com' },
+      { name: 'password', label: 'Heslo', type: 'password', required: true, hint: 'Heslo si nastavíš na počítači: Nastavenia → Účet → Nastaviť heslo pre mobil.' }
+    ],
+    onSubmit: async ({ email, password }) => {
+      try {
+        const r = await window.cloud.checkEmail(email, password);
+        await switchAccount(r.switchTo);
+        toast('Prihlásený – dáta sa synchronizujú');
+      } catch (e) { loginError(e); return false; }
+    }
+  });
+}
+
+function openSetPassword() {
+  const u = signedUser();
+  if (!u) return;
+  if (!u.email) { notify('Účet nemá e-mail, heslo sa nedá nastaviť.'); return; }
+  openForm({
+    title: 'Heslo pre mobil',
+    submitLabel: 'Uložiť heslo',
+    fields: [
+      { name: 'password', label: 'Nové heslo', type: 'password', required: true, hint: `V mobile sa potom prihlásiš e-mailom ${u.email} a týmto heslom.` },
+      { name: 'password2', label: 'Heslo znova', type: 'password', required: true }
+    ],
+    onSubmit: async ({ password, password2 }) => {
+      if (password.length < 6) { notify('Heslo musí mať aspoň 6 znakov.'); return false; }
+      if (password !== password2) { notify('Heslá sa nezhodujú.'); return false; }
+      try { await window.cloud.setPassword(password); toast('Heslo uložené'); }
+      catch (e) { loginError(e); return false; }
+    }
+  });
+}
+
+async function logout() {
+  if (!window.cloud) return;
+  if (!(await askConfirm('Odhlásiť sa? Dáta ostanú v tomto zariadení, ale prestanú sa synchronizovať s účtom a klientskou zónou.', { ok: 'Odhlásiť' }))) return;
+  stopDataSync();
+  sync.off = true;
+  saveSyncState();
+  await window.cloud.signOutUser().catch(() => {});
+  render();
+  toast('Odhlásený');
+}
+
+window.addEventListener('cloud-ready', () => {
+  if (!window.cloud) return;
+  let last = '';
+  window.cloud.onChange((st) => {
+    const u = st.user && !st.user.anonymous ? st.user : null;
+    if (u) startDataSync(u); else if (syncOwner) stopDataSync();
+    const key = u ? `${u.uid}|${u.providers.join(',')}|${u.email}` : st.user ? 'anon' : '';
+    if (key !== last) {
+      // pri štarte len doplniť kartu (bez prekreslenia obrazovky), pri prihlásení/odhlásení prekresliť
+      const initial = !last || last === 'anon' && !u;
+      last = key;
+      if (initial || document.getElementById('modal').open || document.getElementById('confirm').open) updateAccountCard(); else render();
+    }
+  });
+});
+window.addEventListener('online', () => { syncPauseUntil = 0; scheduleCloudPush(); });
+
+/* =========================================================
    Akcie
    ========================================================= */
 function setStatus(id, status) {
@@ -2854,6 +3205,11 @@ const actions = {
   'share-send': (d) => sendShare(d.id),
   'share-sync': () => { db.settings.shareDirty = true; db.clients.forEach((c) => { if (c.share) c.share.hash = ''; }); save(); toast('Synchronizujem…'); },
   'export': exportData,
+  'login-google': loginGoogle,
+  'login-email': openEmailLogin,
+  'set-password': openSetPassword,
+  'logout': logout,
+  'sync-choose': () => firstSync(),
   'import': () => document.getElementById('import-file').click(),
   'demo': loadDemo,
   'add-test': addTestClients,
