@@ -1941,3 +1941,49 @@ html.live-on, html.live-on body { overflow: hidden; }
   .cal-dh.today b { color: #fff; }
   .cal-col.today { background-color: rgba(21, 114, 104, .04); }
 }
+
+/* ===== Kalendár – Deň a Mesiac ===== */
+.cal-grid { grid-template-columns: 48px repeat(var(--n, 7), minmax(var(--colw), 1fr)); }
+.cal-wrap.day .cal-grid { --colw: 0px; }
+.cal-wrap.day .cal-dh { flex-direction: row; justify-content: center; gap: 10px; }
+.cal-wrap.day .cal-dh small { font-size: .8rem; }
+.cal-wrap.day .cal-ev span { font-size: .9rem; }
+.cal-wrap.day .cal-ev b, .cal-wrap.day .cal-ev small { font-size: .74rem; }
+@media (max-width: 520px) { .cal-mode button { padding: 7px 11px; font-size: .8rem; } }
+.month { border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+.month-head { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--border); }
+.month-head span { padding: 10px 0; text-align: center; color: var(--muted); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-auto-rows: minmax(108px, 1fr); }
+.mc {
+  position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; padding: 6px; text-align: left;
+  border: 0; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: none; color: var(--text); font: inherit; cursor: pointer;
+  transition: background-color .2s;
+}
+.mc:nth-child(7n) { border-right: 0; }
+.mc:hover { background: var(--surface-2); }
+.mc.out { color: var(--muted); background: rgba(127, 127, 127, .04); }
+.mc.out .mc-list { opacity: .55; }
+.mc.we:not(.out) { background: rgba(127, 127, 127, .03); }
+.mc-n { align-self: flex-start; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; font-size: .86rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.mc.today .mc-n { background: var(--accent); color: #062522; }
+@media (prefers-color-scheme: light) { .mc.today .mc-n { color: #fff; } }
+.mc-list { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mc-ev { display: block; padding: 2px 6px; border-radius: 6px; font-size: .7rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(111, 208, 196, .16); border-left: 3px solid var(--accent); }
+.mc-ev b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.mc-ev.st-done { background: rgba(70, 180, 110, .16); border-left-color: var(--ok); }
+.mc-ev.st-done.due { border-left-color: var(--warn); }
+.mc-ev.st-cancelled { opacity: .5; text-decoration: line-through; border-left-color: var(--muted); background: var(--surface-2); }
+.mc-ev.req { background: var(--warn-soft); border-left-color: var(--warn); color: var(--warn); }
+.mc-ev.self { background: rgba(127, 179, 213, .16); border-left-color: #7fb3d5; }
+.mc-more { font-size: .68rem; color: var(--muted); font-weight: 700; padding-left: 4px; }
+.mc-dots { display: none; gap: 3px; justify-content: center; margin-top: auto; }
+.mc-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+@media (prefers-color-scheme: light) { .mc-ev { background: #e3f1ef; } .mc-ev.st-done { background: #e2f1e7; } .mc-ev.self { background: rgba(63, 120, 166, .12); } }
+/* mobil: v bunke len číslo a bodky (počet tréningov) */
+@media (max-width: 640px) {
+  .month-grid { grid-auto-rows: minmax(64px, 1fr); }
+  .mc { align-items: center; padding: 6px 2px; }
+  .mc-n { align-self: center; }
+  .mc-list { display: none; }
+  .mc-dots { display: flex; }
+}
