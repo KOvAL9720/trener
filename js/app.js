@@ -41,7 +41,7 @@ function normalize(d) {
   const clients = arr(d.clients).map((c) => Object.assign(c, { name: str(c.name).trim() || 'Bez mena' }));
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
   const sessions = arr(d.sessions).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date)).map((x) => {
-    Object.assign(x, { status: STATUS[x.status] ? x.status : 'planned', time: str(x.time) });
+    Object.assign(x, { status: STATUS[x.status] ? x.status : 'planned', time: /^\d{2}:\d{2}$/.test(str(x.time)) ? str(x.time) : '' });
     // zapísané výkony: [{ exerciseId, sets: [{ w: kg, r: opakovania }] }]
     if (x.log !== undefined) {
       x.log = arr(x.log).map((e) => ({ exerciseId: str(e.exerciseId), sets: arr(e.sets).map((st) => ({ w: num(st.w), r: num(st.r) })).filter((st) => st.w != null || st.r != null) })).filter((e) => e.exerciseId && e.sets.length);
@@ -2098,7 +2098,10 @@ async function loadRequests(force = false) {
   if (!codes.length) { pendingRequests = []; return; }
   try {
     const lists = await Promise.all(codes.map((code) => window.cloud.newRequests(code).then((l) => l.map((r) => ({ code, ...r }))).catch(() => [])));
-    const fresh = lists.flat().filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date >= today());
+    // žiadosti posiela klient – prijať len správny tvar (dátum, čas) a rozumnú dĺžku textov
+    const fresh = lists.flat()
+      .filter((r) => typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date >= today() && typeof r.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(r.time) && /^[\w-]{1,64}$/.test(r.id))
+      .map((r) => ({ ...r, note: String(r.note || '').slice(0, 300), clientName: String(r.clientName || '').slice(0, 80) }));
     const before = pendingRequests.length;
     pendingRequests = fresh;
     requestsAt = Date.now();
