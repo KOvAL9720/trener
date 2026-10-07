@@ -398,6 +398,17 @@ function chartSummary(points, unit, label) {
 /* =========================================================
    Obrazovky
    ========================================================= */
+// ikony v štýle redizajnu (tenké línie)
+const IC = {
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  clock: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  users: '<svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>',
+  arrow: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  calendar: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  check: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  wallet: '<svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.2"/></svg>'
+};
+
 function viewDashboard() {
   if (!db.clients.length) {
     return `<section class="empty-hero">
@@ -430,17 +441,21 @@ function viewDashboard() {
   const doneWeek = week.filter((s) => s.status === 'done').length;
 
   return `
-  <section class="hero">
+  <section class="hero hero-photo">
     <div class="hero-top">
       <span class="eyebrow">${DAYS_LONG[weekday(t)]} · ${fmtShort(t)} ${parseDate(t).getFullYear()}</span>
-      <button class="btn primary" data-action="new-session" data-date="${t}">+ Tréning</button>
+      <button class="hero-add" data-action="new-session" data-date="${t}" aria-label="Nový tréning">${IC.plus}</button>
     </div>
-    <h1 class="hero-title">${greet}</h1>
-    <div class="hero-big"><b>${todays.length}</b><span>${pl(todays.length, 'tréning', 'tréningy', 'tréningov')}<br>dnes</span></div>
-    ${next ? `<button class="hero-next" data-action="edit-session" data-id="${next.id}">
-      <span class="eyebrow">Najbližší</span>
-      <strong>${next.date === t ? '' : fmtDate(next.date) + ' · '}${esc(next.time || '')} ${esc(clientName(next.clientId))}</strong>
-    </button>` : ''}
+    <h1 class="hero-title">${greet}${db.settings.trainerName ? `,<br>${esc(firstName({ name: db.settings.trainerName }))}` : ''}</h1>
+    <p class="hero-sub">${todays.length ? `Dnes ťa čaká ${nTr(todays.length)}.` : 'Dnes máš voľno.'} Drž sa plánu.</p>
+    <div class="hero-tiles">
+      ${next ? `<button class="hero-tile hero-next" data-action="edit-session" data-id="${next.id}">
+        <span class="ti" aria-hidden="true">${IC.clock}</span>
+        <span class="tv"><strong>${next.date === t ? '' : fmtShort(next.date) + ' '}${esc(next.time || '–')}</strong><span class="eyebrow">Najbližší · ${esc(firstName(getClient(next.clientId) || { name: '' }))}</span></span>
+      </button>` : `<div class="hero-tile"><span class="ti" aria-hidden="true">${IC.clock}</span><span class="tv"><strong>–</strong><span class="eyebrow">Najbližší</span></span></div>`}
+      <div class="hero-tile hero-big"><span class="ti" aria-hidden="true">${IC.users}</span><span class="tv"><b>${todays.length}</b><span class="eyebrow">${pl(todays.length, 'tréning', 'tréningy', 'tréningov')} dnes</span></span></div>
+    </div>
+    <button class="btn primary cta" data-action="new-session" data-date="${t}">Naplánovať tréning <span aria-hidden="true">${IC.arrow}</span></button>
   </section>
 
   <section class="card today-card">
@@ -466,9 +481,9 @@ function viewDashboard() {
   </section>
 
   <div class="stats">
-    <div class="stat"><b>${week.length}</b><span>tento týždeň</span></div>
-    <div class="stat"><b>${doneWeek}</b><span>odtrénované</span></div>
-    <div class="stat"><b>${active.length}</b><span>${pl(active.length, 'klient', 'klienti', 'klientov')}</span></div>
+    <div class="stat"><i aria-hidden="true">${IC.calendar}</i><b>${week.length}</b><span>tento týždeň</span></div>
+    <div class="stat"><i aria-hidden="true">${IC.check}</i><b>${doneWeek}</b><span>odtrénované</span></div>
+    <div class="stat"><i aria-hidden="true">${IC.users}</i><b>${active.length}</b><span>${pl(active.length, 'klient', 'klienti', 'klientov')}</span></div>
   </div>
 
   ${needBackup ? `<div class="notice"><span>${lastBackup ? `Posledná záloha: ${fmtDate(lastBackup)}.` : 'Dáta sú uložené len v tomto zariadení.'} Odporúčame si ich zálohovať.</span><button class="btn small" data-action="export">Zálohovať</button></div>` : ''}
@@ -1043,6 +1058,8 @@ function render(animate = false) {
         flashId = null;
       }
       if (animate && !reduceMotion.matches) animateEnter();
+      moveNavInd();
+      if (!reduceMotion.matches) revealOnScroll();
       const grid = main.querySelector('#photo-grid');
       if (grid) fillPhotoGrid(grid.dataset.client);
       updateCloudBadge();
@@ -1071,6 +1088,74 @@ function animateEnter() {
   main.querySelectorAll('.hero-big b, .stat b, .credits b').forEach(countUp);
 }
 
+// Posuvný indikátor v menu – „preskočí“ pod vybranú záložku
+function moveNavInd() {
+  const nav = document.querySelector('.nav');
+  const a = nav?.querySelector('a.active');
+  if (!nav) return;
+  let ind = nav.querySelector('.nav-ind');
+  if (!ind) { ind = document.createElement('span'); ind.className = 'nav-ind'; nav.prepend(ind); }
+  if (!a || !a.offsetWidth) { nav.classList.remove('has-ind'); return; }
+  const first = !nav.classList.contains('has-ind');
+  if (first) ind.style.transition = 'none';
+  ind.style.width = `${a.offsetWidth}px`;
+  ind.style.height = `${a.offsetHeight}px`;
+  ind.style.transform = `translate(${a.offsetLeft}px, ${a.offsetTop}px)`;
+  nav.classList.add('has-ind');
+  if (first) { void ind.offsetWidth; ind.style.transition = ''; }
+}
+window.addEventListener('resize', () => { clearTimeout(moveNavInd.t); moveNavInd.t = setTimeout(moveNavInd, 120); });
+
+// Karty pod okrajom obrazovky sa jemne vysunú až pri posunutí k nim
+const revealIO = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+  let n = 0;
+  entries.forEach((e) => {
+    if (!e.isIntersecting) return;
+    e.target.style.setProperty('--rd', `${Math.min(n++, 6) * 60}ms`);
+    e.target.classList.add('in');
+    revealIO.unobserve(e.target);
+    setTimeout(() => e.target.classList.remove('rv', 'in'), 1600);
+  });
+}, { rootMargin: '0px 0px -6% 0px' }) : null;
+function revealOnScroll() {
+  if (!revealIO) return;
+  const limit = innerHeight;
+  main.querySelectorAll(':scope > .card, :scope > section, .stats > .stat, .days > .day, .card .list > li').forEach((el) => {
+    if (el.closest('.rv')) return;
+    if (el.getBoundingClientRect().top > limit) { el.classList.add('rv'); revealIO.observe(el); }
+  });
+}
+
+// Úvodná fotka sa pri posúvaní hýbe pomalšie ako obsah (paralaxa)
+let parallaxRaf = 0;
+window.addEventListener('scroll', () => {
+  if (parallaxRaf || reduceMotion.matches) return;
+  parallaxRaf = requestAnimationFrame(() => {
+    parallaxRaf = 0;
+    const hero = main.querySelector('.hero');
+    if (!hero) return;
+    const r = hero.getBoundingClientRect();
+    if (r.bottom < 0) return;
+    hero.style.setProperty('--py', `${Math.round(Math.max(0, -r.top) * 0.28)}px`);
+  });
+}, { passive: true });
+
+// Na PC svetelný kužeľ na karte sleduje myš
+if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
+  let spotEl = null;
+  main.addEventListener('pointermove', (e) => {
+    const el = e.target.closest?.('.card, .stat, .day');
+    if (spotEl && spotEl !== el) spotEl.classList.remove('spot');
+    spotEl = el;
+    if (!el || el.classList.contains('hero')) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    el.style.setProperty('--my', `${e.clientY - r.top}px`);
+    el.classList.add('spot');
+  }, { passive: true });
+  main.addEventListener('pointerleave', () => { spotEl?.classList.remove('spot'); spotEl = null; });
+}
+
 // Číslo „nabehne“ od nuly po svoju hodnotu
 function countUp(el) {
   if (!/^\d+$/.test(el.textContent.trim())) return;   // „880 €“ a pod. nechať tak
@@ -1090,7 +1175,7 @@ function countUp(el) {
 // Ružová „oslava“ pri odtrénovanom tréningu
 function burst(x, y) {
   if (reduceMotion.matches || !document.body.animate) return;
-  const colors = ['#8fdcd2', '#46b3a7', '#ffffff', '#b9ebe4'];
+  const colors = ['#ffffff', '#6fd0c4', '#d4d5d9', '#9d9da6'];
   for (let i = 0; i < 18; i++) {
     const dot = document.createElement('span');
     dot.className = 'particle';
@@ -1129,6 +1214,13 @@ window.addEventListener('hashchange', () => {
     main.pushT = setTimeout(() => main.classList.remove('push'), 320);
   } else {
     main.classList.remove('push');
+    if (!reduceMotion.matches) {
+      main.classList.remove('tab-in');
+      void main.offsetWidth;
+      main.classList.add('tab-in');
+      clearTimeout(main.tabT);
+      main.tabT = setTimeout(() => main.classList.remove('tab-in'), 700);
+    }
   }
 });
 

@@ -2,12 +2,13 @@
 <html lang="sk">
 <head>
   <meta charset="utf-8">
-  <meta name="color-scheme" content="dark">
-  <style>html, body { background: #111416; }</style>
+  <meta name="color-scheme" content="dark light">
+  <style>html, body { background: #0b0b0c; } @media (prefers-color-scheme: light) { html, body { background: #eceef1; } }</style>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Tréner</title>
   <meta name="description" content="Správa klientov, rozvrh tréningov, tréningové plány a progres.">
-  <meta name="theme-color" content="#111416">
+  <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#eceef1" media="(prefers-color-scheme: light)">
   <!-- Náhľad odkazu v WhatsApp / Messenger / iMessage -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Tréner">
@@ -43,10 +44,11 @@
   <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="icons/splash/iphone-750x1334.png">
   <style>
     /* Úvodná obrazovka – inline, aby sa ukázala okamžite */
-    html, body { background: #111416; }
+    html, body { background: #0b0b0c; }
+    @media (prefers-color-scheme: light) { html, body, #splash { background: #eceef1 !important; } }
     /* obsah aplikácie skrytý, kým sa nenačítajú jej štýly – žiadne preskakovanie rozloženia */
     .topbar, .nav, main { visibility: hidden; }
-    #splash { position: fixed; inset: 0; z-index: 1000; background: #111416; display: grid; place-items: center; transition: opacity .35s ease, visibility .35s; }
+    #splash { position: fixed; inset: 0; z-index: 1000; background: #0b0b0c; display: grid; place-items: center; transition: opacity .35s ease, visibility .35s; }
     #splash.hide { opacity: 0; visibility: hidden; }
     #splash .line { position: relative; width: 100vw; height: 3px; background: rgba(143, 220, 210, .12); overflow: hidden; }
     #splash .line::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #b9ebe4, #46b3a7); box-shadow: 0 0 14px #46b3a7; transform-origin: left; animation: splash-fill .55s cubic-bezier(.45, 0, .25, 1) forwards, splash-glow .25s ease-out .55s forwards; }

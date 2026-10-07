@@ -1,4 +1,4 @@
-const CACHE = 'trener-v77';
+const CACHE = 'trener-v83';
 const ASSETS = [
   './',
   'index.html',
@@ -10,7 +10,8 @@ const ASSETS = [
   'icons/icon.svg',
   'icons/icon-192.png',
   'icons/icon-512.png',
-  'icons/bg-gym.jpg'
+  'icons/bg-gym.jpg',
+  'icons/hero.jpg'
 ];
 
 self.addEventListener('install', (e) => {
