@@ -155,6 +155,16 @@ const cloud = {
     await ready;
     await updateDoc(doc(fs, 'shared', code, 'requests', id), { status, ...extra, answeredAt: serverTimestamp() });
   },
+  // vlastné zápisy klienta z klientskej zóny (meranie, tréning sám) – shared/{kód}/entries
+  async entries(code) {
+    await ready;
+    const qs = await getDocs(collection(fs, 'shared', code, 'entries'));
+    return qs.docs.map((d) => { const { createdAt, ...e } = d.data(); return { id: d.id, ...e, createdAt: createdAt?.toMillis ? createdAt.toMillis() : 0 }; });
+  },
+  async deleteEntry(code, id) {
+    await ready;
+    await deleteDoc(doc(fs, 'shared', code, 'entries', id));
+  },
   // termín zablokovaný žiadosťou klienta (holds/{tréner}_{dátum}_{čas}) – po vybavení žiadosti sa uvoľní
   async releaseHold(date, time) {
     await ready;
