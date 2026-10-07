@@ -1194,7 +1194,15 @@ function burst(x, y) {
 // Prepínanie obrazoviek ako v natívnej aplikácii: záložky v menu okamžite (bez blikania),
 // otvorenie detailu (klient, plán) jemne vkĺzne sprava – animuje sa len posun, nie jas
 let prevHash = location.hash || '#/';
+// Koliesko nastavení funguje ako prepínač: druhé ťuknutie nastavenia zavrie a vráti na predchádzajúcu obrazovku
+let beforeSettings = '#/';
+document.querySelector('.topbar-btn[data-nav="settings"]')?.addEventListener('click', (e) => {
+  if (!(location.hash || '').startsWith('#/settings')) return;
+  e.preventDefault();
+  location.hash = beforeSettings;
+});
 window.addEventListener('hashchange', () => {
+  if (!prevHash.startsWith('#/settings')) beforeSettings = prevHash;
   if (modal.open) modal.close();
   const cf = document.getElementById('confirm');
   if (cf?.open) cf.close();
