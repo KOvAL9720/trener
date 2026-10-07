@@ -1150,3 +1150,6 @@ body.no-anim .brand img { animation: none; }
   main { margin: 0; max-width: 1180px; padding-left: 16px; padding-right: 32px; }
   #toast { left: calc(240px + min(100vw - 240px, 1180px) / 2); }
 }
+
+/* Účet – „Zostať prihlásený“ */
+.check.remember { margin-top: 14px; color: var(--muted); font-size: .9rem; cursor: pointer; }

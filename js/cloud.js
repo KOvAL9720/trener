@@ -4,7 +4,7 @@
    funguje ďalej, len bez synchronizácie (window.cloud ostane nedostupné).
    ========================================================= */
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-import { getAuth, initializeAuth, inMemoryPersistence, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, EmailAuthProvider, linkWithPopup, signInWithPopup, signInWithCredential, linkWithCredential, updatePassword, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { getAuth, initializeAuth, inMemoryPersistence, signInAnonymously, onAuthStateChanged, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, GoogleAuthProvider, EmailAuthProvider, linkWithPopup, signInWithPopup, signInWithCredential, linkWithCredential, updatePassword, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { getFirestore, doc, setDoc, deleteDoc, updateDoc, collection, getDocs, query, where, serverTimestamp, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -19,6 +19,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const fs = getFirestore(app);
+// „Zostať prihlásený“ (predvolene áno): inak sa prihlásenie zabudne po zavretí appky / prehliadača
+const REMEMBER_KEY = 'trainer-remember';
+const remembered = () => { try { return localStorage.getItem(REMEMBER_KEY) !== '0'; } catch (e) { return true; } };
+const persistence = (v) => (v ? indexedDBLocalPersistence : browserSessionPersistence);
+if (!remembered()) setPersistence(auth, persistence(false)).catch(() => {});
 
 let uid = null;
 const listeners = new Set();
@@ -59,6 +64,11 @@ const cloud = {
   ready,
   state: () => ({ uid, online: navigator.onLine, error: lastError, user: userInfo() }),
   user: userInfo,
+  remembered,
+  async setRemember(v) {
+    try { localStorage.setItem(REMEMBER_KEY, v ? '1' : '0'); } catch (e) { /* ok */ }
+    await setPersistence(auth, persistence(v)); // prenesie aj aktuálne prihlásenie
+  },
   // Google: anonymný účet tohto zariadenia sa prepojí s Google účtom (ID ostane – kódy klientov fungujú ďalej).
   // Ak už Google účet existuje (iné zariadenie), vráti { switchTo } – appka rozhodne o dátach a dokončí prepnutie.
   // Pozn.: okno sa musí otvoriť hneď po kliknutí, preto pred ním nie je žiadne await.
