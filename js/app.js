@@ -1256,6 +1256,17 @@ window.addEventListener('hashchange', () => {
   const push = isDetail(hash) && !isDetail(prevHash);
   const dir = settingsDir(prevHash, hash);
   prevHash = hash;
+  // návrat potiahnutím prstom: stará obrazovka už odišla doprava, Nastavenia len prídu zľava
+  if (swipedBack) {
+    const under = swipedBack;
+    swipedBack = false;
+    render();
+    window.scrollTo(0, 0);
+    main.style.transform = '';
+    under.remove?.();
+    main.classList.remove('push', 'tab-in', 'vt-back');
+    return;
+  }
   // Nastavenia: otvorenie/zatvorenie ako okno – odchádzajúca obrazovka odíde, nová príde (View Transitions)
   if (dir && !reduceMotion.matches) {
     main.classList.remove('push', 'tab-in');
@@ -3699,6 +3710,59 @@ document.addEventListener('input', (e) => {
 
 // iPhone: zablokovať priblíženie dvoma prstami (Safari inak ignoruje user-scalable=no)
 ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+
+// Podstránka nastavení: potiahnutím prstom doprava späť do Nastavení (obrazovka ide za prstom ako v iPhone)
+let swipedBack = false;
+(() => {
+  let g = null;
+  const back = () => (/^#\/settings\/[a-z]+$/.test(location.hash) ? '#/settings' : null);
+  document.addEventListener('touchstart', (e) => {
+    g = null;
+    if (e.touches.length !== 1 || !back() || reduceMotion.matches || document.querySelector('dialog[open]') || e.target.closest?.('input, textarea, select, .chips, .nav, .topbar')) return;
+    g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), on: false, dx: 0 };
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!g) return;
+    const dx = e.touches[0].clientX - g.x, dy = e.touches[0].clientY - g.y;
+    if (!g.on) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { g = null; return; } // posúvanie nahor/nadol
+      if (dx < 12) return;
+      g.on = true; g.x += 12; g.t = Date.now();
+      main.classList.add('swiping');
+      // pod stránkou sú vidieť Nastavenia, kam sa vraciaš
+      const r = main.getBoundingClientRect(), cs = getComputedStyle(main);
+      const under = document.createElement('div');
+      under.className = 'swipe-under';
+      under.innerHTML = viewSettings();
+      under.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+      Object.assign(under.style, { left: `${r.left}px`, width: `${r.width}px`, top: `${main.offsetTop}px`, padding: cs.padding });
+      main.before(under);
+      g.under = under;
+    }
+    if (e.cancelable) e.preventDefault();
+    g.dx = Math.max(0, e.touches[0].clientX - g.x);
+    main.style.transform = `translate3d(${g.dx}px, 0, 0)`;
+    g.under.style.setProperty('--p', String(Math.min(1, g.dx / innerWidth)));
+  }, { passive: false });
+  const end = () => {
+    if (!g?.on) { g = null; return; }
+    const speed = g.dx / Math.max(1, Date.now() - g.t);
+    const go = g.dx > innerWidth * 0.33 || (speed > 0.3 && g.dx > 50);
+    const under = g.under;
+    g = null;
+    main.classList.remove('swiping');
+    main.classList.add('swipe-settle');
+    under.classList.add('settle');
+    main.style.transform = go ? `translate3d(${innerWidth}px, 0, 0)` : '';
+    under.style.setProperty('--p', go ? '1' : '0');
+    setTimeout(() => {
+      main.classList.remove('swipe-settle');
+      if (go) { swipedBack = under; navigator.vibrate?.(8); location.hash = back() || '#/settings'; } else under.remove();
+    }, 230);
+  };
+  document.addEventListener('touchend', end, { passive: true });
+  document.addEventListener('touchcancel', end, { passive: true });
+})();
 
 // Kalendár: potiahnutím prstom doľava/doprava ďalší/predchádzajúci týždeň
 let swipe = null;
