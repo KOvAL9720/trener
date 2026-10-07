@@ -247,7 +247,16 @@ function liveExerciseHtml(s, e) {
 }
 
 function liveRestHtml() {
-  if (!live.rest) return '';
+  // bez pauzy: lišta s časom tréningu – časovač je vidieť hneď od spustenia
+  if (!live.rest) {
+    const off = !!live.pausedAt;
+    const e = live.ex[live.cur];
+    return `<div class="live-rest mini idle${off ? ' paused' : ''}">
+      <button type="button" class="ring mini-ring" data-l="clock-toggle" aria-label="${off ? 'Pustiť čas tréningu' : 'Zastaviť čas tréningu'}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg spin" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="22 78"/></svg><span class="mini-ic" aria-hidden="true">${off ? '▶' : '⏸'}</span></button>
+      <button type="button" class="mini-txt" data-l="clock-toggle" aria-label="${off ? 'Pustiť čas tréningu' : 'Zastaviť čas tréningu'}"><small>${off ? 'Tréning zastavený' : 'Čas tréningu'}</small><b id="live-clock-big">${fmtClock(elapsed())}</b></button>
+      ${e ? `<button type="button" class="btn small" data-l="rest-now">⏱ Pauza ${fmtClock(restOf(e))}</button>` : ''}
+    </div>`;
+  }
   const left = Math.max(0, restLeft());
   const nxt = nextTarget();
   const paused = live.rest.paused != null;
@@ -317,6 +326,8 @@ function liveTimers() {
     if (!live) { clearInterval(liveTick); return; }
     const clock = document.getElementById('live-clock');
     if (clock) clock.textContent = fmtClock(elapsed());
+    const big = document.getElementById('live-clock-big');
+    if (big) big.textContent = fmtClock(elapsed());
     const pc = document.getElementById('pill-clock');
     if (live.rest && live.rest.paused == null) {
       const left = restLeft();
@@ -469,6 +480,7 @@ function liveClick(ev) {
       if (live.rest.paused != null) live.rest.paused = Math.max(1000, live.rest.paused - 15000);
       else live.rest.until = Math.max(Date.now() + 1000, live.rest.until - 15000);
       break;
+    case 'rest-now': if (e) restStart(restOf(e)); break; // pauza spustená ručne
     case 'rest-collapse': live.restMin = true; break;
     case 'rest-expand': live.restMin = false; break;
     case 'rest-toggle': // ťuknutie na odpočet: zastaviť / pustiť
