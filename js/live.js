@@ -301,22 +301,19 @@ function nextTarget() {
 
 /* ---------- Plávajúca lišta, keď je tréning zbalený ---------- */
 function livePill() {
-  let pill = document.getElementById('live-pill');
-  const s = live && getSession(live.sid);
-  const show = s && !live.summary && document.getElementById('live')?.classList.contains('open') !== true;
-  if (!show) { pill?.remove(); return; }
-  if (!pill) {
-    pill = document.createElement('button');
-    pill.type = 'button';
-    pill.id = 'live-pill';
-    pill.className = 'live-pill';
-    pill.addEventListener('click', liveOpen);
-    document.body.appendChild(pill);
-  }
-  const c = getClient(s.clientId);
-  const resting = live.rest && restLeft() > 0;
-  pill.innerHTML = `<span class="live-dot${live.pausedAt ? ' off' : ''}"></span><b>${esc(c ? firstName(c) : 'Tréning')}</b><span id="pill-clock">${resting ? `Pauza ${live.rest.paused != null ? '⏸ ' : ''}${fmtClock(restLeft())}` : `${live.pausedAt ? '⏸ ' : ''}${fmtClock(elapsed())}`}</span><span class="go">Pokračovať ›</span>`;
+  // namiesto plávajúcej lišty: tlačidlo ▶ pri rozbehnutom tréningu svieti a ťuknutím sa v ňom pokračuje
+  document.getElementById('live-pill')?.remove();
+  const sid = live && !live.summary && getSession(live.sid) && !document.getElementById('live')?.classList.contains('open') ? live.sid : null;
+  document.querySelectorAll('[data-action="live-start"]').forEach((b) => {
+    const on = b.dataset.id === sid;
+    b.classList.toggle('on', on);
+    b.title = on ? 'Pokračovať v tréningu' : 'Začať živý tréning';
+    b.setAttribute('aria-label', b.title);
+  });
 }
+// po každom prekreslení obrazovky znova označiť rozbehnutý tréning
+const renderWithoutLive = render;
+render = function (...args) { const r = renderWithoutLive.apply(this, args); livePill(); return r; };
 
 /* ---------- Časovače (hodiny tréningu a odpočet pauzy) ---------- */
 function liveTimers() {
@@ -328,7 +325,7 @@ function liveTimers() {
     if (clock) clock.textContent = fmtClock(elapsed());
     const big = document.getElementById('live-clock-big');
     if (big) big.textContent = fmtClock(elapsed());
-    const pc = document.getElementById('pill-clock');
+    const pc = null;
     if (live.rest && live.rest.paused == null) {
       const left = restLeft();
       if (left <= 0) { restDone(); return; }
