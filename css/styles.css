@@ -1641,3 +1641,12 @@ html[data-vt] main { background: var(--bg); min-height: 100vh; }
 /* zatváranie plynulejšie (nezačne príliš prudko) */
 html[data-vt="down"]::view-transition-old(page), html[data-vt="down"]::view-transition-new(page),
 html[data-vt="back"]::view-transition-old(page), html[data-vt="back"]::view-transition-new(page) { animation-duration: .4s; animation-timing-function: cubic-bezier(.45, 0, .2, 1); }
+
+/* ===== Potiahnutie prstom späť (podstránky nastavení) ===== */
+main.swiping, main.swipe-settle { position: relative; z-index: 1; box-shadow: -18px 0 40px -12px rgba(0, 0, 0, .45); background: var(--bg); min-height: 100vh; will-change: transform; }
+main.swipe-settle { transition: transform .23s cubic-bezier(.2, .8, .2, 1); }
+main.swiping * { pointer-events: none; }
+/* Nastavenia pod ťahanou stránkou – vysúvajú sa zľava a zosvetľujú */
+.swipe-under { position: fixed; z-index: 0; bottom: 0; overflow: hidden; pointer-events: none; box-sizing: border-box;
+  transform: translate3d(calc((var(--p, 0) - 1) * 28%), 0, 0); opacity: calc(.45 + var(--p, 0) * .55); }
+.swipe-under.settle { transition: transform .23s cubic-bezier(.2, .8, .2, 1), opacity .23s; }
