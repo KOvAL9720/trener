@@ -234,6 +234,7 @@ function go(hash) {
    Komponenty
    ========================================================= */
 function sessionRow(s, { showClient = true, showDate = true } = {}) {
+  if (s.self) return selfRow(s, { showClient, showDate });
   const plan = s.planId ? getPlan(s.planId) : null;
   const c = getClient(s.clientId);
   const title = showClient ? esc(clientName(s.clientId)) : fmtDay(s.date);
@@ -258,6 +259,21 @@ function sessionRow(s, { showClient = true, showDate = true } = {}) {
     </div>` : s.status === 'done' ? `<div class="quick">${logButton(s)}</div>` : ''}
   </li>`;
 }
+
+// tréning, ktorý si klient zapísal sám v klientskej zóne – len na pozretie (detail v karte klienta)
+function selfRow(s, { showClient = true, showDate = true } = {}) {
+  const title = showClient ? esc(clientName(s.clientId)) : fmtDay(s.date);
+  const what = s.log ? s.log.map((l) => `${exName(l.exerciseId)} ${l.sets.length}×`).join(', ') : '';
+  const meta = [showClient && showDate ? fmtDay(s.date) : '', 'cvičil/a sám/sama', what, s.note ? `„${s.note}“` : ''].filter(Boolean).map(esc).join(' · ');
+  return `<li class="session self">
+    <a class="session-main" href="#/client/${s.clientId}">
+      <span class="time self-tag" title="Cvičil/a sám/sama – zapísané v klientskej zóne">sám</span>
+      <span class="info"><strong>${title}</strong><small>${meta}</small></span>
+      <span class="badge self">Sám/sama</span>
+    </a>
+  </li>`;
+}
+const selfOnDate = (d) => [...clientEntries.keys()].flatMap((cid) => selfWorkouts(cid)).filter((x) => x.date === d);
 
 // činka pri odtrénovanom tréningu – zápis váh a opakovaní
 const DUMBBELL = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>';
@@ -531,7 +547,7 @@ function viewClient(id) {
   const t = today();
   const sessions = clientSessions(id);
   const upcoming = sessions.filter((s) => s.date >= t && s.status === 'planned').sort(bySessionTime);
-  const history = sessions.filter((s) => !(s.date >= t && s.status === 'planned')).sort(bySessionTime).reverse();
+  const history = [...sessions.filter((s) => !(s.date >= t && s.status === 'planned')), ...selfWorkouts(id)].sort(bySessionTime).reverse();
   const cr = credits(id);
   const packages = db.packages.filter((p) => p.clientId === id).sort((a, b) => b.date.localeCompare(a.date));
   const plans = db.plans.filter((p) => p.clientId === id).sort(byName);
@@ -570,6 +586,7 @@ function viewClient(id) {
         <dt>Poznámky</dt><dd>${esc(c.notes) || '<span class="muted">–</span>'}</dd>
         <dt>Klientom od</dt><dd>${c.createdAt ? fmtDate(c.createdAt) : '–'}</dd>
         <dt>Odtrénované</dt><dd>${nTr(sessions.filter((s) => s.status === 'done').length)}</dd>
+        ${selfWorkouts(id).length ? `<dt>Cvičil/a sám/sama</dt><dd>${nTr(selfWorkouts(id).length)} <span class="badge self">klientska zóna</span></dd>` : ''}
       </dl>
     </section>
 
@@ -730,7 +747,7 @@ function viewCalendar(weekParam) {
       return `<section class="day ${d === t ? 'today' : ''}">
         <div class="day-head"><b>${DAYS_LONG[i]} <span class="muted">${fmtShort(d)}</span></b>
           <button class="icon-btn" data-action="new-session" data-date="${d}" aria-label="Pridať tréning na ${DAYS_LONG[i]}">+</button></div>
-        ${list.length ? `<ul class="list">${list.map((s) => sessionRow(s, { showDate: false })).join('')}</ul>` : '<p class="empty" style="font-size:.85rem">Voľno</p>'}
+        ${list.length || selfOnDate(d).length ? `<ul class="list">${[...list, ...selfOnDate(d)].map((s) => sessionRow(s, { showDate: false })).join('')}</ul>` : '<p class="empty" style="font-size:.85rem">Voľno</p>'}
         ${requestRows(pendingRequests.filter((r) => r.date === d))}
       </section>`;
     }).join('')}
