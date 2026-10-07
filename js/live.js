@@ -187,11 +187,6 @@ function liveDraw() {
     <label class="live-tab add"><span class="ex-pic">+</span><span>Cvik</span><select data-l="add-ex" aria-label="Pridať cvik"><option value="">+ Pridať cvik…</option>${[...db.exercises].sort(byName).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></label>
   </nav>
   <main class="live-body">${e ? liveExerciseHtml(s, e) : `<div class="live-empty"><p>Tréning nemá plán.</p><p class="muted">Pridaj prvý cvik tlačidlom <b>+ Cvik</b> hore.</p></div>`}</main>
-  <footer class="live-foot">
-    <button type="button" class="btn" data-l="prev" ${live.cur <= 0 ? 'disabled' : ''}>‹ Späť</button>
-    <span class="live-pos">${live.ex.length ? `${live.cur + 1} / ${live.ex.length}` : ''}</span>
-    <button type="button" class="btn ${e && e.sets.every((x) => x.done) ? 'primary' : ''}" data-l="next" ${live.cur >= live.ex.length - 1 ? 'disabled' : ''}>Ďalší cvik ›</button>
-  </footer>
   ${liveRestHtml()}`;
   el.querySelector('.live-tab.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   liveFit(el);
