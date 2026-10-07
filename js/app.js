@@ -2614,6 +2614,7 @@ function accountCard() {
       <button class="btn primary" data-action="login-google"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.7-3-.7-4.6s.3-3.1.7-4.6l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>Prihlásiť cez Google</button>
       <button class="btn" data-action="login-email">Prihlásiť e-mailom</button>
     </div>
+    <label class="check remember"><input type="checkbox" id="remember" ${window.cloud?.remembered?.() === false ? '' : 'checked'}> Zostať prihlásený</label>
     <p class="hint" style="margin:10px 0 0">${isStandaloneIos() ? '<b>Na iPhone v appke z plochy</b> použi „Prihlásiť e-mailom“ (Google okno sa sem nevie vrátiť).' : 'Na iPhone v appke z plochy sa prihlasuje e-mailom'} – heslo si najprv nastav na počítači po prihlásení cez Google.</p>
   </section>`;
   }
@@ -2629,6 +2630,7 @@ function accountCard() {
       <button class="btn" data-action="set-password">${hasPw ? 'Zmeniť heslo pre mobil' : 'Nastaviť heslo pre mobil'}</button>
       <button class="btn" data-action="logout">Odhlásiť</button>
     </div>
+    <label class="check remember"><input type="checkbox" id="remember" ${window.cloud?.remembered?.() === false ? '' : 'checked'}> Zostať prihlásený</label>
     ${hasPw ? '' : `<p class="hint" style="margin:10px 0 0">V mobile (appka z plochy na iPhone) sa prihlásiš e-mailom <b>${esc(u.email)}</b> a heslom, ktoré si tu nastavíš.</p>`}
   </section>`;
 }
@@ -2687,10 +2689,13 @@ function openEmailLogin() {
     submitLabel: 'Prihlásiť',
     fields: [
       { name: 'email', label: 'E-mail', type: 'email', required: true, placeholder: 'meno@gmail.com' },
-      { name: 'password', label: 'Heslo', type: 'password', required: true, hint: 'Heslo si nastavíš na počítači: Nastavenia → Účet → Nastaviť heslo pre mobil.' }
+      { name: 'password', label: 'Heslo', type: 'password', required: true, hint: 'Heslo si nastavíš na počítači: Nastavenia → Účet → Nastaviť heslo pre mobil.' },
+      { name: 'remember', label: 'Zostať prihlásený', type: 'checkbox' }
     ],
-    onSubmit: async ({ email, password }) => {
+    values: { remember: window.cloud.remembered?.() !== false },
+    onSubmit: async ({ email, password, remember }) => {
       try {
+        await window.cloud.setRemember?.(remember);
         const r = await window.cloud.checkEmail(email, password);
         await switchAccount(r.switchTo);
         toast('Prihlásený – dáta sa synchronizujú');
@@ -2746,6 +2751,11 @@ window.addEventListener('cloud-ready', () => {
   });
 });
 window.addEventListener('online', () => { syncPauseUntil = 0; syncNow(); });
+document.addEventListener('change', (e) => {
+  if (e.target.id !== 'remember' || !window.cloud?.setRemember) return;
+  const v = e.target.checked;
+  window.cloud.setRemember(v).then(() => toast(v ? 'Prihlásenie sa zapamätá' : 'Po zavretí appky sa odhlásiš')).catch(() => {});
+});
 
 /* =========================================================
    Akcie
