@@ -1650,3 +1650,11 @@ main.swiping * { pointer-events: none; }
 .swipe-under { position: fixed; z-index: 0; bottom: 0; overflow: hidden; pointer-events: none; box-sizing: border-box;
   transform: translate3d(calc((var(--p, 0) - 1) * 28%), 0, 0); opacity: calc(.45 + var(--p, 0) * .55); }
 .swipe-under.settle { transition: transform .23s cubic-bezier(.2, .8, .2, 1), opacity .23s; }
+
+/* ===== Biele tlačidlá – decentný tyrkysový lem ===== */
+:root { --cta-ring: inset 0 0 0 1.5px rgba(111, 208, 196, .75), 0 0 14px -4px rgba(111, 208, 196, .45); }
+@media (prefers-color-scheme: dark) {
+  .btn.primary, .icon-btn.ok, .topbar-btn.active { box-shadow: var(--cta-ring), 0 10px 24px -14px rgba(0, 0, 0, .55); }
+}
+/* tlačidlo na fotke je biele v oboch režimoch */
+.hero .btn.primary, .hero .btn.primary.cta { box-shadow: var(--cta-ring), 0 14px 30px -16px rgba(0, 0, 0, .8); }
