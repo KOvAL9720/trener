@@ -42,6 +42,13 @@ const fmtClock = (sec) => {
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 };
+// čas tréningu bez zastavení a zostávajúca pauza (aj zastavená)
+const elapsed = () => ((live.pausedAt || Date.now()) - live.start - (live.pausedMs || 0)) / 1000;
+const restLeft = () => (live.rest ? (live.rest.paused != null ? live.rest.paused : live.rest.until - Date.now()) / 1000 : 0);
+const restOver = () => live.rest && live.rest.paused == null && live.rest.until <= Date.now();
+const REST_PRESETS = [[30, '30 s'], [60, '1 min'], [90, '1:30'], [120, '2 min'], [180, '3 min'], [300, '5 min']];
+const restOf = (e) => (e && e.restSec) || parseRest(e?.plan.rest || '90 s');
+const restChips = (cur, where) => `<div class="rest-pick${where ? ` ${where}` : ''}" role="group" aria-label="Dĺžka pauzy">${REST_PRESETS.map(([sec, label]) => `<button type="button" class="chip${sec === cur ? ' active' : ''}" data-l="rest-set" data-sec="${sec}">${label}</button>`).join('')}</div>`;
 const numOrNull = (v) => { const t = String(v ?? '').trim().replace(/\s/g, '').replace(',', '.'); if (t === '') return null; const n = Number(t); return Number.isFinite(n) && n >= 0 ? n : NaN; };
 const kgText = (n) => (n == null ? '' : String(Math.round(n * 100) / 100).replace('.', ','));
 
@@ -168,7 +175,7 @@ function liveDraw() {
   el.innerHTML = `
   <header class="live-head">
     <button type="button" class="icon-btn" data-l="min" aria-label="Zbaliť tréning"><svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-    <div class="live-title"><b>${esc(c ? c.name : 'Tréning')}</b><small><span class="live-dot"></span><span id="live-clock">${fmtClock((Date.now() - live.start) / 1000)}</span> · ${done}/${total} sérií</small></div>
+    <div class="live-title"><b>${esc(c ? c.name : 'Tréning')}</b><small><button type="button" class="live-clock${live.pausedAt ? ' paused' : ''}" data-l="clock-toggle" aria-label="${live.pausedAt ? 'Pustiť čas tréningu' : 'Zastaviť čas tréningu'}"><span class="live-dot"></span><span id="live-clock">${fmtClock(elapsed())}</span>${live.pausedAt ? '<span class="pz">⏸</span>' : ''}</button> · ${done}/${total} sérií</small></div>
     <button type="button" class="btn small primary" data-l="finish">Dokončiť</button>
   </header>
   <div class="live-progress" aria-hidden="true"><i style="width:${total ? Math.round((done / total) * 100) : 0}%"></i></div>
@@ -204,6 +211,7 @@ function liveExerciseHtml(s, e) {
     ${e.plan.note ? `<p class="live-note">${esc(e.plan.note)}</p>` : ''}
     ${e.sug.why ? `<p class="live-hint${e.sug.up ? ' up' : ''}"><span aria-hidden="true">${e.sug.up ? '📈' : '💡'}</span> ${esc(e.sug.why)}</p>` : ''}
     <div class="live-meta">${prev ? `<span>Minule (${fmtShort(prev.session.date)}): ${esc(prev.sets.map(fmtSet).join(' · '))}</span>` : '<span>Prvý zápis tohto cviku</span>'}${best ? `<span>🏆 Rekord: ${esc(fmtSet(best.set))}</span>` : ''}</div>
+    <div class="rest-row"><span>⏱ Pauza medzi sériami</span>${restChips(restOf(e))}</div>
     <div class="live-sets">
       <div class="lset head" aria-hidden="true"><span>Séria</span><span>kg</span><span>Opakovania</span><span></span></div>
       ${e.sets.map((st, j) => `<div class="lset${st.done ? ' done' : ''}${j === firstOpen ? ' cur' : ''}${st.pr ? ' pr' : ''}">
@@ -223,12 +231,14 @@ function liveExerciseHtml(s, e) {
 
 function liveRestHtml() {
   if (!live.rest) return '';
-  const left = Math.max(0, (live.rest.until - Date.now()) / 1000);
+  const left = Math.max(0, restLeft());
   const nxt = nextTarget();
-  return `<div class="live-rest" role="timer" aria-live="polite">
-    <div class="ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" id="rest-ring" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - (left / live.rest.total) * 100}"/></svg>
-      <div class="ring-txt"><small>Pauza</small><b id="rest-left">${fmtClock(left)}</b></div></div>
+  const paused = live.rest.paused != null;
+  return `<div class="live-rest${paused ? ' paused' : ''}" role="timer" aria-live="polite">
+    <button type="button" class="ring" data-l="rest-toggle" aria-label="${paused ? 'Pustiť odpočet' : 'Zastaviť odpočet'}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" id="rest-ring" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - (left / live.rest.total) * 100}"/></svg>
+      <span class="ring-txt"><small id="rest-state">${paused ? 'Zastavené' : 'Pauza'}</small><b id="rest-left">${fmtClock(left)}</b><span class="ring-hint">${paused ? '▶ pokračovať' : '⏸ zastaviť'}</span></span></button>
     ${nxt ? `<p class="rest-next">Ďalej: <b>${esc(exName(nxt.e.exerciseId))}</b> · séria ${nxt.j + 1}${nxt.e.sets[nxt.j].w || nxt.e.sets[nxt.j].r ? ` · ${esc([nxt.e.sets[nxt.j].w && `${nxt.e.sets[nxt.j].w} kg`, nxt.e.sets[nxt.j].r && `× ${nxt.e.sets[nxt.j].r}`].filter(Boolean).join(' '))}` : ''}</p>` : '<p class="rest-next">Posledná séria hotová 💪</p>'}
+    ${restChips(live.rest.total, 'in-rest')}
     <div class="rest-btns"><button type="button" class="btn" data-l="rest-minus">−15 s</button><button type="button" class="btn primary" data-l="rest-skip">Preskočiť</button><button type="button" class="btn" data-l="rest-plus">+15 s</button></div>
   </div>`;
 }
@@ -260,8 +270,8 @@ function livePill() {
     document.body.appendChild(pill);
   }
   const c = getClient(s.clientId);
-  const resting = live.rest && live.rest.until > Date.now();
-  pill.innerHTML = `<span class="live-dot"></span><b>${esc(c ? firstName(c) : 'Tréning')}</b><span id="pill-clock">${resting ? `Pauza ${fmtClock((live.rest.until - Date.now()) / 1000)}` : fmtClock((Date.now() - live.start) / 1000)}</span><span class="go">Pokračovať ›</span>`;
+  const resting = live.rest && restLeft() > 0;
+  pill.innerHTML = `<span class="live-dot${live.pausedAt ? ' off' : ''}"></span><b>${esc(c ? firstName(c) : 'Tréning')}</b><span id="pill-clock">${resting ? `Pauza ${live.rest.paused != null ? '⏸ ' : ''}${fmtClock(restLeft())}` : `${live.pausedAt ? '⏸ ' : ''}${fmtClock(elapsed())}`}</span><span class="go">Pokračovať ›</span>`;
 }
 
 /* ---------- Časovače (hodiny tréningu a odpočet pauzy) ---------- */
@@ -271,10 +281,10 @@ function liveTimers() {
   liveTick = setInterval(() => {
     if (!live) { clearInterval(liveTick); return; }
     const clock = document.getElementById('live-clock');
-    if (clock) clock.textContent = fmtClock((Date.now() - live.start) / 1000);
+    if (clock) clock.textContent = fmtClock(elapsed());
     const pc = document.getElementById('pill-clock');
-    if (live.rest) {
-      const left = (live.rest.until - Date.now()) / 1000;
+    if (live.rest && live.rest.paused == null) {
+      const left = restLeft();
       if (left <= 0) { restDone(); return; }
       const t = document.getElementById('rest-left');
       if (t) t.textContent = fmtClock(left);
@@ -282,12 +292,12 @@ function liveTimers() {
       if (ring) ring.setAttribute('stroke-dashoffset', String(100 - (left / live.rest.total) * 100));
       if (pc) pc.textContent = `Pauza ${fmtClock(left)}`;
       if (left <= 3.2 && left > 0 && !live.rest.warned) { live.rest.warned = true; beep(2, 660); }
-    } else if (pc) pc.textContent = fmtClock((Date.now() - live.start) / 1000);
+    } else if (pc && !live.rest) pc.textContent = `${live.pausedAt ? '⏸ ' : ''}${fmtClock(elapsed())}`;
   }, 250);
 }
 
-function restStart(sec) {
-  live.rest = { until: Date.now() + sec * 1000, total: sec };
+function restStart(sec, exIdx = live.cur) {
+  live.rest = { until: Date.now() + sec * 1000, total: sec, ex: exIdx };
   liveSave();
 }
 function restDone(skipped = false) {
@@ -329,7 +339,7 @@ async function keepAwake(on) {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || !live) return;
   if (document.getElementById('live')?.classList.contains('open')) keepAwake(true);
-  if (live.rest && live.rest.until <= Date.now()) restDone(true);
+  if (restOver()) restDone(true);
   else livePill();
 });
 
@@ -384,7 +394,7 @@ function toggleDone(e, j) {
   // pauza podľa plánu; po poslednej sérii cviku prejsť na ďalší cvik
   const nxt = nextTarget();
   if (nxt) {
-    restStart(parseRest(e.plan.rest || '90 s'));
+    restStart(restOf(e), live.ex.indexOf(e));
     if (e.sets.every((x) => x.done) && nxt.i !== live.cur) live.cur = nxt.i;
   }
   liveSave();
@@ -417,8 +427,28 @@ function liveClick(ev) {
       live.cur = Math.max(0, Math.min(live.cur, live.ex.length - 1));
       break;
     case 'rest-skip': restDone(true); return;
-    case 'rest-plus': live.rest.until += 15000; live.rest.total += 15; break;
-    case 'rest-minus': live.rest.until = Math.max(Date.now() + 1000, live.rest.until - 15000); break;
+    case 'rest-plus': if (live.rest.paused != null) live.rest.paused += 15000; else live.rest.until += 15000; live.rest.total += 15; break;
+    case 'rest-minus':
+      if (live.rest.paused != null) live.rest.paused = Math.max(1000, live.rest.paused - 15000);
+      else live.rest.until = Math.max(Date.now() + 1000, live.rest.until - 15000);
+      break;
+    case 'rest-toggle': // ťuknutie na odpočet: zastaviť / pustiť
+      if (live.rest.paused != null) { live.rest.until = Date.now() + live.rest.paused; delete live.rest.paused; delete live.rest.warned; }
+      else live.rest.paused = Math.max(0, live.rest.until - Date.now());
+      navigator.vibrate?.(8);
+      break;
+    case 'rest-set': { // zvolená dĺžka pauzy platí pre tento cvik (aj pre bežiaci odpočet)
+      const sec = Number(d.sec);
+      const target = live.rest ? live.ex[live.rest.ex] || e : e;
+      if (target) target.restSec = sec;
+      if (live.rest) { live.rest.total = sec; if (live.rest.paused != null) live.rest.paused = sec * 1000; else live.rest.until = Date.now() + sec * 1000; delete live.rest.warned; }
+      break;
+    }
+    case 'clock-toggle': // zastaviť / pustiť čas celého tréningu
+      if (live.pausedAt) { live.pausedMs = (live.pausedMs || 0) + (Date.now() - live.pausedAt); delete live.pausedAt; }
+      else live.pausedAt = Date.now();
+      navigator.vibrate?.(8);
+      break;
     case 'finish': liveFinish(); return;
     case 'back': delete live.summary; break;
     case 'save': liveCommit(); return;
@@ -490,14 +520,14 @@ function liveFinish() {
     return;
   }
   live.rest = null;
-  live.summary = { end: Date.now() };
+  live.summary = { end: live.pausedAt || Date.now() };
   liveSave();
   liveDraw();
 }
 
 function liveSummaryHtml(s, c) {
   const log = liveLog();
-  const dur = ((live.summary.end || Date.now()) - live.start) / 1000;
+  const dur = ((live.summary.end || Date.now()) - live.start - (live.pausedMs || 0)) / 1000;
   const sets = log.reduce((a, e) => a + e.sets.length, 0);
   const vol = volumeOf(log);
   // objem rovnakých cvikov minule
@@ -552,4 +582,4 @@ async function liveDiscard(force = false) {
 /* ---------- Napojenie na appku ---------- */
 actions['live-start'] = (d) => liveStart(d.id);
 // po štarte appky: rozbehnutý tréning sa ukáže ako lišta „Pokračovať“
-if (live) { if (live.rest && live.rest.until <= Date.now()) live.rest = null; livePill(); liveTimers(); }
+if (live) { if (restOver()) live.rest = null; livePill(); liveTimers(); }
