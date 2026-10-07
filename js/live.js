@@ -176,7 +176,7 @@ function liveDraw() {
   el.innerHTML = `
   <header class="live-head">
     <button type="button" class="icon-btn" data-l="min" aria-label="Zbaliť tréning"><svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-    <div class="live-title"><b>${esc(c ? c.name : 'Tréning')}</b><small><button type="button" class="live-clock${live.pausedAt ? ' paused' : ''}" data-l="clock-toggle" aria-label="${live.pausedAt ? 'Pustiť čas tréningu' : 'Zastaviť čas tréningu'}"><span class="live-dot"></span><span id="live-clock">${fmtClock(elapsed())}</span>${live.pausedAt ? '<span class="pz">⏸</span>' : ''}</button> · ${done}/${total} sérií</small></div>
+    <div class="live-title"><b>${esc(c ? c.name : 'Tréning')}</b><small><span class="live-dot${live.pausedAt ? ' off' : ''}"></span>${done}/${total} sérií</small></div>
     <button type="button" class="btn small primary" data-l="finish">Dokončiť</button>
   </header>
   <div class="live-progress" aria-hidden="true"><i style="width:${total ? Math.round((done / total) * 100) : 0}%"></i></div>
