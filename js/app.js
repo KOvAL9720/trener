@@ -2452,7 +2452,10 @@ function updateCloudBadge() {
   el.textContent = txt;
   el.title = window.cloudError || st?.error || '';
   const why = document.getElementById('cloud-why');
-  if (why) why.textContent = window.cloudError ? `Dôvod: ${window.cloudError}` : st?.error ? `Dôvod: ${st.error}` : '';
+  if (why) {
+    why.textContent = window.cloudError ? 'Nepodarilo sa pripojiť na cloud (slabý signál alebo výpadok internetu). ' : st?.error ? `Dôvod: ${st.error}` : '';
+    if (window.cloudError) why.insertAdjacentHTML('beforeend', '<button class="btn small" data-action="reload-app">Načítať znova</button>');
+  }
   el.className = `badge ${txt === 'Pripojené' ? 'done' : txt === 'Pripájam…' ? '' : 'warn'}`;
 }
 window.addEventListener('cloud-ready', () => { if (window.cloud) { window.cloud.onChange(updateCloudBadge); scheduleSync(); } else updateCloudBadge(); });
@@ -2757,7 +2760,10 @@ function loginError(e) {
 
 const cloudMissing = () => {
   if (window.cloud) return false;
-  notify(window.cloudError ? `Cloud nie je dostupný (${window.cloudError}). Skontroluj pripojenie a skús to znova.` : 'Cloud sa ešte načítava, skús to o chvíľu.');
+  if (window.cloudError) {
+    askConfirm('Nepodarilo sa pripojiť na cloud – pravdepodobne slabý signál alebo výpadok internetu. Skontroluj pripojenie a načítaj appku znova.', { ok: 'Načítať znova', cancel: 'Zavrieť' })
+      .then((yes) => { if (yes) location.reload(); });
+  } else notify('Cloud sa ešte načítava, skús to o chvíľu.');
   return true;
 };
 
@@ -3474,6 +3480,7 @@ const actions = {
   'logout': logout,
   'sync-choose': () => firstSync(),
   'edit-name': openNameForm,
+  'reload-app': () => location.reload(),
   'del-entry': (d) => deleteClientEntry(d.client, d.id),
   'sync-now': () => { syncNow(); toast('Synchronizujem…'); },
   'import': () => document.getElementById('import-file').click(),
