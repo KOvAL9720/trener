@@ -1121,3 +1121,6 @@ body.no-anim .brand img { animation: none; }
 .session.request::before { background: var(--warn); }
 .session.request .quick { display: flex; gap: 6px; align-items: center; flex: none; }
 .requests { margin-top: 6px; }
+
+/* prihlásenie cez Google – logo v tlačidle */
+.g-logo { width: 18px; height: 18px; margin-right: 8px; flex: none; background: #fff; border-radius: 50%; padding: 2px; box-sizing: content-box; }
