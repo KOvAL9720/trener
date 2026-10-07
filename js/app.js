@@ -2387,6 +2387,8 @@ let syncAsking = false;  // pri prvom prihlásení čaká voľba, ktoré dáta p
 let syncPauseUntil = 0;  // po chybe zápisu chvíľu neskúšať znova
 const syncInflight = new Set();
 let syncPushTimer = 0;
+let syncLast = 0;        // kedy naposledy prišiel stav z cloudu alebo sa podarilo odoslať
+let syncRenderPending = false;
 const saveSyncState = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) { /* ok */ } };
 const recHash = (j) => `${j.length}:${simpleHash(j)}`;
 const okSyncId = (id) => typeof id === 'string' && /^[\w-]{1,64}$/.test(id);
@@ -2422,9 +2424,11 @@ function afterRemoteChange() {
   db = normalize(db);
   _idx = null;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { /* ok */ }
-  if (!document.getElementById('modal').open) render();
+  if (!document.getElementById('modal').open) render(); else syncRenderPending = true;
   loadRequests(true);
 }
+// zmena z iného zariadenia počas otvoreného formulára sa ukáže hneď po jeho zatvorení
+document.getElementById('modal').addEventListener('close', () => { if (syncRenderPending) { syncRenderPending = false; render(); } });
 
 function reconcile() {
   if (!syncRemote || !syncOwner || sync.fresh || sync.uid !== syncOwner) return;
@@ -2465,6 +2469,7 @@ async function syncPush(puts, dels) {
     puts.forEach(([k, j]) => { sync.base[k] = recHash(j); });
     dels.forEach((k) => delete sync.base[k]);
     saveSyncState();
+    syncLast = Date.now();
     setSyncStatus('ok');
     scheduleCloudPush(); // medzitým mohli pribudnúť ďalšie zmeny
   } catch (e) {
@@ -2490,13 +2495,38 @@ function startDataSync(user) {
   delete sync.off;
   saveSyncState();
   setSyncStatus('sync');
+  watchNow();
+}
+
+function watchNow() {
+  syncUnwatch?.();
   syncUnwatch = window.cloud.watchData((docs, owner) => {
     if (owner !== syncOwner) return;
     syncRemote = new Map(docs.filter(([k, j]) => typeof j === 'string' && k.includes('~')));
+    syncLast = Date.now();
     if (sync.fresh) { if (!syncAsking && syncStatus !== 'choose') firstSync(); return; }
     reconcile();
   }, (e) => setSyncStatus('error', e.code || 'offline'));
 }
+
+// Mobil uspí appku na pozadí a spojenie s cloudom môže ostať „visieť“ – po návrate sa napojí nanovo
+// (načíta aktuálny stav), pred odchodom sa čakajúce zmeny odošlú hneď, nie až po pauze.
+let syncHiddenAt = 0;
+function syncNow() {
+  if (!syncOwner) return;
+  syncPauseUntil = 0;
+  watchNow();
+}
+document.addEventListener('visibilitychange', () => {
+  if (!syncOwner) return;
+  if (document.visibilityState === 'hidden') {
+    syncHiddenAt = Date.now();
+    clearTimeout(syncPushTimer);
+    reconcile();
+  } else if (Date.now() - syncHiddenAt > 3000) syncNow();
+});
+window.addEventListener('pagehide', () => { if (syncOwner) { clearTimeout(syncPushTimer); reconcile(); } });
+window.addEventListener('focus', () => { if (syncOwner && Date.now() - syncLast > 60 * 1000) syncNow(); });
 
 function stopDataSync() {
   syncUnwatch?.();
@@ -2555,15 +2585,16 @@ function askChoice(msg, options) {
   });
 }
 
+const syncBadge = () => ({ sync: ['Synchronizujem…', ''], ok: ['Synchronizované', 'done'], error: [navigator.onLine ? 'Chyba' : 'Offline', 'warn'], choose: ['Čaká na výber', 'warn'] }[syncStatus] || ['Pripájam…', '']);
+const syncLastText = () => (syncLast && syncStatus === 'ok' ? `Naposledy synchronizované o ${new Date(syncLast).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })}.` : '');
+
 function setSyncStatus(st, err = '') {
   syncStatus = st;
   syncError = st === 'error' ? err : '';
   const el = document.getElementById('sync-state');
-  if (el) {
-    const [txt, cls] = { sync: ['Synchronizujem…', ''], ok: ['Synchronizované', 'done'], error: [navigator.onLine ? 'Chyba' : 'Offline', 'warn'], choose: ['Čaká na výber', 'warn'] }[st] || ['Pripájam…', ''];
-    el.textContent = txt;
-    el.className = `badge ${cls}`;
-  }
+  if (el) { const [txt, cls] = syncBadge(); el.textContent = txt; el.className = `badge ${cls}`; }
+  const last = document.getElementById('sync-last');
+  if (last) last.textContent = syncLastText();
   const why = document.getElementById('sync-why');
   if (why) why.textContent = syncError && navigator.onLine ? `Dôvod: ${syncError}. Skúsi sa to znova automaticky.` : '';
   const choose = document.getElementById('sync-choose');
@@ -2588,11 +2619,13 @@ function accountCard() {
   }
   const hasPw = u.providers.includes('password');
   return `<section class="card" id="account-card">
-    <div class="card-head"><h2>Účet</h2><span class="badge" id="sync-state">…</span></div>
+    <div class="card-head"><h2>Účet</h2><span class="badge ${syncBadge()[1]}" id="sync-state">${syncBadge()[0]}</span></div>
     <p class="muted" style="margin-top:-6px">Prihlásený ako <b>${esc(u.email || u.name || 'účet')}</b>. Klienti, tréningy, plány, financie a nastavenia sa synchronizujú medzi všetkými zariadeniami, kde si prihlásený. Fotky v galérii klienta ostávajú len v zariadení.</p>
-    <p class="muted" id="sync-why" style="margin:0 0 10px;color:var(--warn)"></p>
+    <p class="muted" id="sync-last" style="margin:0 0 4px">${syncLastText()}</p>
+    <p class="muted" id="sync-why" style="margin:0 0 10px;color:var(--warn)">${syncError && navigator.onLine ? `Dôvod: ${esc(syncError)}. Skúsi sa to znova automaticky.` : ''}</p>
     <div class="row">
       <button class="btn primary" data-action="sync-choose" id="sync-choose"${syncStatus === 'choose' ? '' : ' style="display:none"'}>Vybrať, ktoré dáta ponechať</button>
+      <button class="btn" data-action="sync-now">Synchronizovať teraz</button>
       <button class="btn" data-action="set-password">${hasPw ? 'Zmeniť heslo pre mobil' : 'Nastaviť heslo pre mobil'}</button>
       <button class="btn" data-action="logout">Odhlásiť</button>
     </div>
@@ -2712,7 +2745,7 @@ window.addEventListener('cloud-ready', () => {
     }
   });
 });
-window.addEventListener('online', () => { syncPauseUntil = 0; scheduleCloudPush(); });
+window.addEventListener('online', () => { syncPauseUntil = 0; syncNow(); });
 
 /* =========================================================
    Akcie
@@ -3315,6 +3348,7 @@ const actions = {
   'set-password': openSetPassword,
   'logout': logout,
   'sync-choose': () => firstSync(),
+  'sync-now': () => { syncNow(); toast('Synchronizujem…'); },
   'import': () => document.getElementById('import-file').click(),
   'demo': loadDemo,
   'add-test': addTestClients,
