@@ -1230,6 +1230,14 @@ function burst(x, y) {
 // Prepínanie obrazoviek ako v natívnej aplikácii: záložky v menu okamžite (bez blikania),
 // otvorenie detailu (klient, plán) jemne vkĺzne sprava – animuje sa len posun, nie jas
 let prevHash = location.hash || '#/';
+// smer animácie medzi obrazovkami nastavení: up = otvorenie, down = zatvorenie, fwd/back = podstránka
+function settingsDir(from, to) {
+  const lvl = (h) => (h.startsWith('#/settings/') ? 2 : h.startsWith('#/settings') ? 1 : 0);
+  const a = lvl(from), b = lvl(to);
+  if (a === b) return '';
+  if (b > a) return a === 0 ? 'up' : 'fwd';
+  return b === 0 ? 'down' : 'back';
+}
 // Koliesko nastavení funguje ako prepínač: druhé ťuknutie nastavenia zavrie a vráti na predchádzajúcu obrazovku
 let beforeSettings = '#/';
 document.querySelector('.topbar-btn[data-nav="settings"]')?.addEventListener('click', (e) => {
@@ -1246,7 +1254,26 @@ window.addEventListener('hashchange', () => {
   const hash = location.hash || '#/';
   const isDetail = (h) => /^#\/(client|plan)\//.test(h);
   const push = isDetail(hash) && !isDetail(prevHash);
+  const dir = settingsDir(prevHash, hash);
   prevHash = hash;
+  // Nastavenia: otvorenie/zatvorenie ako okno – odchádzajúca obrazovka odíde, nová príde (View Transitions)
+  if (dir && !reduceMotion.matches) {
+    main.classList.remove('push', 'tab-in');
+    const swap = () => { render(); window.scrollTo(0, 0); };
+    if (document.startViewTransition) {
+      document.documentElement.dataset.vt = dir;
+      const t = document.startViewTransition(swap);
+      t.finished.finally(() => { if (document.documentElement.dataset.vt === dir) delete document.documentElement.dataset.vt; });
+    } else {
+      swap();
+      main.classList.remove('vt-up', 'vt-down', 'vt-fwd', 'vt-back');
+      void main.offsetWidth;
+      main.classList.add(`vt-${dir}`);
+      clearTimeout(main.vtT);
+      main.vtT = setTimeout(() => main.classList.remove(`vt-${dir}`), 500);
+    }
+    return;
+  }
   render();
   window.scrollTo(0, 0);
   if (push && !reduceMotion.matches) {
