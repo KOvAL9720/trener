@@ -903,6 +903,8 @@ function viewSettings() {
   return `
   <div class="page-head"><h1>Nastavenia</h1></div>
   ${accountCard()}
+  ${workHoursCard()}
+  ${notifyCard()}
   <section class="card">
     <div class="card-head"><h2>Predvolené hodnoty tréningu</h2><button class="btn small" data-action="edit-defaults">Upraviť</button></div>
     <dl class="kv">
@@ -2192,6 +2194,102 @@ function sendShare(cid) {
   copyShare(cid);
 }
 
+/* ---------- Pracovné hodiny (voľné termíny v klientskej zóne) a upozornenia na žiadosti ---------- */
+const WEEK = [['1', 'Pondelok'], ['2', 'Utorok'], ['3', 'Streda'], ['4', 'Štvrtok'], ['5', 'Piatok'], ['6', 'Sobota'], ['0', 'Nedeľa']];
+const workHours = () => (db.settings.workHours && typeof db.settings.workHours === 'object' ? db.settings.workHours : {});
+const hasWorkHours = () => Object.values(workHours()).some((r) => Array.isArray(r) && r.length);
+// klient vidí len to, kedy je tréner obsadený (bez mien) – na 3 týždne dopredu
+function availabilitySnapshot() {
+  const t = today(), end = addDays(t, 21);
+  const busy = db.sessions.filter((x) => x.status === 'planned' && x.date >= t && x.date <= end && x.time)
+    .map((x) => [x.date, x.time, Number(x.duration) || Number(db.settings.defaultDuration) || 60])
+    .sort((a, b) => (a[0] + a[1]).localeCompare(b[0] + b[1]));
+  return { hours: workHours(), duration: Number(db.settings.defaultDuration) || 60, step: 30, days: 14, busy };
+}
+function hoursText(r) { return Array.isArray(r) && r.length ? r.map(([a, b]) => `${a} – ${b}`).join(', ') : 'voľno'; }
+
+function workHoursCard() {
+  const h = workHours();
+  return `<section class="card">
+    <div class="card-head"><h2>Pracovné hodiny</h2><button class="btn small" data-action="edit-hours">Upraviť</button></div>
+    <p class="muted" style="margin-top:-6px">${hasWorkHours() ? 'Klienti v klientskej zóne vidia len voľné termíny v týchto hodinách (obsadené tréningy sa vynechajú).' : 'Nastav, kedy trénuješ – klienti potom pri žiadosti o tréning uvidia len voľné termíny.'}</p>
+    ${hasWorkHours() ? `<dl class="kv">${WEEK.map(([k, l]) => `<dt>${l}</dt><dd>${h[k]?.length ? esc(hoursText(h[k])) : '<span class="muted">voľno</span>'}</dd>`).join('')}</dl>` : ''}
+  </section>`;
+}
+
+function openHoursForm() {
+  const h = workHours();
+  const values = {};
+  WEEK.forEach(([k]) => { const r = h[k]?.[0]; values['f' + k] = r?.[0] || ''; values['t' + k] = r?.[1] || ''; });
+  openForm({
+    title: 'Pracovné hodiny',
+    values,
+    fields: WEEK.flatMap(([k, l]) => [
+      { name: 'f' + k, label: `${l} od`, type: 'time', half: true },
+      { name: 't' + k, label: 'do', type: 'time', half: true }
+    ]),
+    submitLabel: 'Uložiť',
+    onSubmit: (v) => {
+      const out = {};
+      for (const [k, l] of WEEK) {
+        const a = v['f' + k], b = v['t' + k];
+        if (!a && !b) continue;
+        if (!a || !b || a >= b) { notify(`${l}: vyplň čas od aj do (od musí byť skôr ako do). Deň bez práce nechaj prázdny.`); return false; }
+        out[k] = [[a, b]];
+      }
+      db.settings.workHours = out;
+      db.settings.shareDirty = true;
+      toast(Object.keys(out).length ? 'Pracovné hodiny uložené' : 'Pracovné hodiny vypnuté');
+    }
+  });
+}
+
+const NTFY = 'https://ntfy.sh/';
+function notifyCard() {
+  const topic = db.settings.ntfyTopic;
+  return `<section class="card">
+    <div class="card-head"><h2>Upozornenia na žiadosti</h2>${topic ? '<span class="badge done">Zapnuté</span>' : ''}</div>
+    ${topic ? `<p class="muted" style="margin-top:-6px">Keď klient pošle žiadosť o tréning, príde ti upozornenie do appky <b>ntfy</b> v telefóne.</p>
+      <ol class="steps">
+        <li>Nainštaluj si appku <b>ntfy</b> (App Store / Google Play).</li>
+        <li>V appke ťukni na <b>+</b> a ako názov (topic) zadaj:<div class="share-code ntfy-topic">${esc(topic)}</div></li>
+        <li>Ťukni na <b>Subscribe</b> a povoľ upozornenia.</li>
+      </ol>
+      <div class="row">
+        <button class="btn primary" data-action="ntfy-test">Poslať skúšobné upozornenie</button>
+        <button class="btn" data-action="ntfy-copy">Kopírovať názov</button>
+        <button class="btn danger" data-action="ntfy-off">Vypnúť</button>
+      </div>`
+    : `<p class="muted" style="margin-top:-6px">Keď klient v klientskej zóne pošle žiadosť o tréning, hneď ti príde upozornenie na telefón – aj keď je appka zavretá. Zadarmo, cez appku ntfy.</p>
+      <button class="btn primary" data-action="ntfy-on">Zapnúť upozornenia</button>`}
+  </section>`;
+}
+function ntfyOn() {
+  const a = new Uint8Array(10); crypto.getRandomValues(a);
+  db.settings.ntfyTopic = 'trener-' + [...a].map((b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+  db.settings.shareDirty = true;
+  save(); render();
+  toast('Upozornenia zapnuté – nastav si appku ntfy');
+}
+async function ntfyOff() {
+  if (!(await askConfirm('Vypnúť upozornenia na žiadosti?', { ok: 'Vypnúť', danger: true }))) return;
+  delete db.settings.ntfyTopic;
+  db.settings.shareDirty = true;
+  save(); render();
+}
+// jednoduchá požiadavka (text + parametre v adrese) – prehliadač ju pošle bez CORS predletu
+function ntfySend(topic, title, message) {
+  const q = new URLSearchParams({ title, tags: 'calendar', click: location.origin + location.pathname });
+  return fetch(`${NTFY}${encodeURIComponent(topic)}?${q}`, { method: 'POST', body: message });
+}
+async function ntfyTest() {
+  try {
+    const r = await ntfySend(db.settings.ntfyTopic, 'Tréner – skúška', 'Upozornenia fungujú 👍');
+    if (!r.ok) throw new Error(r.status);
+    toast('Odoslané – pozri telefón');
+  } catch (e) { notify('Upozornenie sa nepodarilo odoslať. Skontroluj internet.'); }
+}
+
 // Čo klient vidí: jeho tréningy (bez cien a poznámok trénera), plány a cviky, ktoré používa, merania
 function shareSnapshot(c) {
   const sessions = clientSessions(c.id).map((s) => ({
@@ -2210,7 +2308,9 @@ function shareSnapshot(c) {
     clientId: c.id,
     client: { name: c.name, goal: c.goal || '', since: c.createdAt || '', ...(photoOf(c) ? { photo: photoOf(c) } : {}) },
     trainer: { name: db.settings.trainerName || '', phone: db.settings.trainerPhone || '' },
-    sessions, plans, exercises, measurements
+    sessions, plans, exercises, measurements,
+    ...(hasWorkHours() ? { availability: availabilitySnapshot() } : {}),
+    ...(db.settings.ntfyTopic ? { notify: { ntfy: db.settings.ntfyTopic } } : {})
   };
 }
 
@@ -3197,6 +3297,11 @@ const actions = {
     ],
     onSubmit: (v) => { Object.assign(db.settings, v); db.settings.shareDirty = true; toast('Nastavenia uložené'); }
   }),
+  'edit-hours': openHoursForm,
+  'ntfy-on': ntfyOn,
+  'ntfy-off': ntfyOff,
+  'ntfy-test': ntfyTest,
+  'ntfy-copy': async () => { try { await navigator.clipboard.writeText(db.settings.ntfyTopic); toast('Skopírované'); } catch (e) { notify(db.settings.ntfyTopic); } },
   'req-accept': (d) => answerRequest(d.code, d.id, true),
   'req-decline': (d) => answerRequest(d.code, d.id, false),
   'share-create': (d) => createShare(d.id),
