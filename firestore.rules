@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isDate(v) { return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+    function isTime(v) { return v is string && v.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'); }
+    function shortText(d, f, n) { return !(f in d) || (d[f] is string && d[f].size() <= n); }
+    function okNum(d, f, lo, hi) { return !(f in d) || (d[f] is number && d[f] >= lo && d[f] <= hi); }
+    function scale(d, f) { return !(f in d) || (d[f] is int && d[f] >= 1 && d[f] <= 5); }
+
+    // Dáta trénera – len on sám
+    match /trainers/{uid}/{doc=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Klientska zóna – dáta klienta pod jeho kódom; zapisuje len tréner, ktorý ich vlastní
+    match /shared/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn() && code.matches('^[A-Z0-9]{8}$') && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      // Žiadosti klientov o tréning – len presný tvar (dátum, čas, krátka poznámka)
+      match /requests/{id} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['date', 'time', 'note', 'clientName', 'ownerUid', 'status', 'createdAt'])
+          && request.resource.data.status == 'new'
+          && request.resource.data.ownerUid == get(/databases/$(database)/documents/shared/$(code)).data.ownerUid
+          && isDate(request.resource.data.date)
+          && isTime(request.resource.data.time)
+          && shortText(request.resource.data, 'note', 300)
+          && shortText(request.resource.data, 'clientName', 80);
+        allow update: if signedIn() && resource.data.ownerUid == request.auth.uid;
+        allow delete: if signedIn()
+          && (resource.data.ownerUid == request.auth.uid || resource.data.status == 'new');
+      }
+
+      // Vlastné zápisy klienta (meranie, tréning sám) – tréner ich vidí vo svojej appke
+      match /entries/{id} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['type', 'date', 'weight', 'bodyFat', 'waist', 'hips', 'log', 'note', 'by', 'ownerUid', 'createdAt'])
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.ownerUid == get(/databases/$(database)/documents/shared/$(code)).data.ownerUid
+          && request.resource.data.type in ['measure', 'workout']
+          && isDate(request.resource.data.date)
+          && shortText(request.resource.data, 'note', 300)
+          && okNum(request.resource.data, 'weight', 20, 400)
+          && okNum(request.resource.data, 'bodyFat', 1, 80)
+          && okNum(request.resource.data, 'waist', 30, 250)
+          && okNum(request.resource.data, 'hips', 30, 250)
+          && (!('log' in request.resource.data) || (request.resource.data.log is list && request.resource.data.log.size() <= 30));
+        allow delete: if signedIn()
+          && (resource.data.by == request.auth.uid || resource.data.ownerUid == request.auth.uid);
+      }
+
+      // Správy a týždenný check-in medzi klientom a trénerom
+      match /messages/{id} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['from', 'kind', 'text', 'checkin', 'by', 'ownerUid', 'createdAt'])
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.ownerUid == get(/databases/$(database)/documents/shared/$(code)).data.ownerUid
+          && (request.resource.data.from == 'client'
+              || (request.resource.data.from == 'trainer' && request.auth.uid == request.resource.data.ownerUid))
+          && ((request.resource.data.kind == 'text'
+                && request.resource.data.text is string
+                && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 2000
+                && !('checkin' in request.resource.data))
+              || (request.resource.data.kind == 'checkin'
+                && request.resource.data.from == 'client'
+                && request.resource.data.checkin is map
+                && request.resource.data.checkin.keys().hasOnly(['weight', 'sleep', 'energy', 'diet', 'stress', 'note'])
+                && okNum(request.resource.data.checkin, 'weight', 20, 400)
+                && scale(request.resource.data.checkin, 'sleep')
+                && scale(request.resource.data.checkin, 'energy')
+                && scale(request.resource.data.checkin, 'diet')
+                && scale(request.resource.data.checkin, 'stress')
+                && shortText(request.resource.data.checkin, 'note', 600)
+                && !('text' in request.resource.data)));
+        allow delete: if signedIn()
+          && (resource.data.by == request.auth.uid || resource.data.ownerUid == request.auth.uid);
+      }
+    }
+
+    // Zablokované termíny (žiadosť poslaná, tréner ešte nerozhodol) – len dátum a čas, bez mien
+    match /holds/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['ownerUid', 'date', 'time', 'duration', 'by', 'createdAt'])
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.ownerUid is string
+        && isDate(request.resource.data.date)
+        && isTime(request.resource.data.time)
+        && request.resource.data.duration is int && request.resource.data.duration >= 5 && request.resource.data.duration <= 480
+        && id == request.resource.data.ownerUid + '_' + request.resource.data.date + '_' + request.resource.data.time.replace(':', '');
+      allow delete: if signedIn()
+        && (resource.data.by == request.auth.uid || resource.data.ownerUid == request.auth.uid);
+    }
+
+    // všetko ostatné je zakázané
+  }
+}
