@@ -1293,13 +1293,23 @@ document.addEventListener('touchstart', () => { navState.touching = true; }, { p
 ['touchend', 'touchcancel'].forEach((t) => document.addEventListener(t, (e) => { if (!e.touches.length) { navState.touching = false; navState.touchEnd = Date.now(); } }, { passive: true, capture: true }));
 // krok späť/dopredu v histórii spoznáme podľa značky v history.state (nový odkaz ju ešte nemá)
 window.addEventListener('popstate', (e) => { if (e.state?.nav) navState.pop = Date.now(); });
-if (!history.state?.nav) history.replaceState({ nav: 1 }, '');
+// vlastný zoznam histórie (index v history.state) – gesto späť vie, ktorú obrazovku ukázať pod prstom
+try { navState.stack = JSON.parse(sessionStorage.getItem('nav-stack') || '[]'); } catch (e) { navState.stack = []; }
+const navMark = () => {
+  const h = location.hash || '#/';
+  if (history.state?.nav && Number.isInteger(history.state.i)) navState.i = history.state.i;
+  else { navState.i = history.state?.nav ? 0 : (navState.i ?? -1) + 1; navState.stack.length = navState.i; history.replaceState({ nav: 1, i: navState.i }, ''); }
+  navState.stack[navState.i] = h;
+  try { sessionStorage.setItem('nav-stack', JSON.stringify(navState.stack.slice(-50))); } catch (e) { /* ok */ }
+};
+navMark();
+const navPrev = () => (navState.i > 0 ? navState.stack[navState.i - 1] || null : null);
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const nativeBack = () => Date.now() - navState.pop < 400 && (navState.touching || Date.now() - navState.touchEnd < 1200);
 window.addEventListener('hashchange', () => {
   if (!prevHash.startsWith('#/settings')) beforeSettings = prevHash;
   navState.scroll.set(prevHash, window.scrollY);
-  if (!history.state?.nav) history.replaceState({ nav: 1 }, '');
+  navMark();
   if (modal.open) modal.close();
   const cf = document.getElementById('confirm');
   if (cf?.open) cf.close();
@@ -3830,33 +3840,50 @@ document.addEventListener('input', (e) => {
 // iPhone: zablokovať priblíženie dvoma prstami (Safari inak ignoruje user-scalable=no)
 ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
 
-// Podstránka nastavení: potiahnutím prstom doprava späť do Nastavení (obrazovka ide za prstom ako v iPhone)
+// Potiahnutie prstom doprava = späť (obrazovka ide za prstom ako v iPhone, pod ňou je vidieť tá, kam sa vraciaš).
+// Systémové gesto iPhonu od ľavého okraja ukazuje pri tejto apke pod stránkou prázdnu plochu, preto ho
+// zastavíme a od okraja robí to isté apka sama. V Nastaveniach sa dá ťahať odkiaľkoľvek.
 let swipedBack = false;
+const viewHtml = (h) => {
+  for (const [re, view] of routes) { const m = h.match(re); if (m) { try { return view(...m.slice(1)); } catch (e) { return ''; } } }
+  return '';
+};
 (() => {
   let g = null;
-  const back = () => (/^#\/settings\/[a-z]+$/.test(location.hash) ? '#/settings' : null);
+  const EDGE = 20;
+  // cieľ: predchádzajúca obrazovka v histórii; podstránka nastavení bez histórie (napr. po obnovení) → Nastavenia
+  const target = () => navPrev() || (/^#\/settings\/[a-z]+$/.test(location.hash) ? '#/settings' : null);
+  const blocked = (t) => t.closest?.('input, textarea, select, .chips, .nav, .topbar, .days, .cal-wrap, [data-no-swipe]');
   document.addEventListener('touchstart', (e) => {
     g = null;
-    if (e.touches.length !== 1 || !back() || reduceMotion.matches || e.touches[0].clientX < 28 || document.querySelector('dialog[open]') || e.target.closest?.('input, textarea, select, .chips, .nav, .topbar')) return;
-    g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), on: false, dx: 0 };
-  }, { passive: true });
+    if (e.touches.length !== 1 || document.querySelector('dialog[open]')) return;
+    const x = e.touches[0].clientX;
+    const edge = x < EDGE;
+    const to = target();
+    if (!to) return;
+    if (edge && e.cancelable) e.preventDefault(); // zastaví systémové gesto späť
+    if (reduceMotion.matches || (!edge && (!location.hash.startsWith('#/settings') || blocked(e.target)))) {
+      if (edge) g = { tapOnly: true, el: e.target, x, y: e.touches[0].clientY };
+      return;
+    }
+    g = { x, y: e.touches[0].clientY, t: Date.now(), on: false, dx: 0, to, edge, el: e.target };
+  }, { passive: false });
   document.addEventListener('touchmove', (e) => {
-    if (!g) return;
+    if (!g || g.tapOnly) return;
     const dx = e.touches[0].clientX - g.x, dy = e.touches[0].clientY - g.y;
     if (!g.on) {
       if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { g = null; return; } // posúvanie nahor/nadol
       if (dx < 12) return;
       g.on = true; g.x += 12; g.t = Date.now();
       main.classList.add('swiping');
-      // pod stránkou sú vidieť Nastavenia, kam sa vraciaš
       const r = main.getBoundingClientRect(), cs = getComputedStyle(main);
       const under = document.createElement('div');
       under.className = 'swipe-under';
-      under.innerHTML = viewSettings();
+      under.innerHTML = viewHtml(g.to);
       under.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
       Object.assign(under.style, { left: `${r.left}px`, width: `${r.width}px`, top: `${main.offsetTop}px`, padding: cs.padding });
       main.before(under);
-      under.scrollTop = navState.scroll.get('#/settings') || 0;
+      under.scrollTop = navState.scroll.get(g.to) || 0;
       g.under = under;
     }
     if (e.cancelable) e.preventDefault();
@@ -3864,11 +3891,20 @@ let swipedBack = false;
     main.style.transform = `translate3d(${g.dx}px, 0, 0)`;
     g.under.style.setProperty('--p', String(Math.min(1, g.dx / innerWidth)));
   }, { passive: false });
-  const end = () => {
-    if (!g?.on) { g = null; return; }
+  const end = (e) => {
+    if (!g) return;
+    // ťuknutie pri okraji: systémové gesto sme zastavili, tak ťuknutie odošleme sami
+    if (!g.on) {
+      const p = e.changedTouches?.[0];
+      if (g.edge || g.tapOnly) if (e.type === 'touchend' && p && Math.hypot(p.clientX - g.x, p.clientY - g.y) < 10) {
+        const el = g.el.closest?.('input, textarea, select') ? g.el : null;
+        if (el) el.focus(); else g.el.click?.();
+      }
+      g = null; return;
+    }
     const speed = g.dx / Math.max(1, Date.now() - g.t);
     const go = g.dx > innerWidth * 0.33 || (speed > 0.3 && g.dx > 50);
-    const under = g.under;
+    const under = g.under, to = g.to;
     g = null;
     main.classList.remove('swiping');
     main.classList.add('swipe-settle');
@@ -3877,7 +3913,9 @@ let swipedBack = false;
     under.style.setProperty('--p', go ? '1' : '0');
     setTimeout(() => {
       main.classList.remove('swipe-settle');
-      if (go) { swipedBack = under; navigator.vibrate?.(8); location.hash = back() || '#/settings'; } else under.remove();
+      if (!go) { under.remove(); return; }
+      swipedBack = under; navigator.vibrate?.(8);
+      if (navPrev() === to) history.back(); else location.hash = to;
     }, 230);
   };
   document.addEventListener('touchend', end, { passive: true });
