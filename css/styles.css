@@ -1986,3 +1986,28 @@ html.live-on, html.live-on body { overflow: hidden; }
 dialog { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--surface); }
 dialog::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
 .live-rest { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--surface); }
+
+/* ===== Ikonky cvikov – moderné, s jemným tyrkysovým nádychom =====
+   postavička vo farbe textu (plná hlava), náradie a podlaha tyrkysové, podklad s jemným tyrkysovým prechodom */
+.ex-pic, .ex-pic.big, .sum-list .ex-pic, .live-tab .ex-pic {
+  color: var(--text);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 18%, var(--surface)) 0%, var(--surface) 78%);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 6px 16px -12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.ex-thumb .hd { fill: currentColor; stroke: none; }
+.ex-thumb .eq { stroke: var(--accent); }
+.ex-thumb .eq .pl { fill: var(--accent); stroke: none; }
+.ex-thumb .fl { stroke: var(--accent); opacity: .4; }
+/* prechod farieb: postavička z farby textu do tyrkysovej, náradie tyrkysovým prechodom */
+.exg-b0 { stop-color: var(--text); }
+.exg-b1 { stop-color: var(--accent); }
+.exg-e0 { stop-color: var(--accent); }
+.exg-e1 { stop-color: color-mix(in srgb, var(--accent) 55%, var(--text)); }
+.ex-thumb { stroke: url(#exg-body); }
+.ex-thumb .hd { fill: url(#exg-body); }
+.ex-thumb .eq, .ex-thumb .fl { stroke: url(#exg-eq); }
+.ex-thumb .eq .pl { fill: url(#exg-eq); }
+.ex-pic, .ex-pic.big, .sum-list .ex-pic, .live-tab .ex-pic {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 26%, var(--surface)) 0%, color-mix(in srgb, var(--accent) 6%, var(--surface)) 55%, var(--surface) 100%);
+}
