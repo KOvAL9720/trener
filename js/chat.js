@@ -57,7 +57,7 @@ function chatNotice() {
   if (!list.length) return '';
   const names = list.map((c) => `${esc(firstName(c))}${chatUnread(c.share.code) > 1 ? ` (${chatUnread(c.share.code)})` : ''}`).join(', ');
   const id = list.length === 1 ? list[0].id : '';
-  return `<button type="button" class="notice notice-chat" id="chat-notice" data-action="${id ? 'open-chat' : 'chat-pick'}" data-id="${id}"><span>💬 Nové správy: <b>${names}</b></span><span class="chev" aria-hidden="true">›</span></button>`;
+  return `<button type="button" class="notice notice-chat" id="chat-notice" data-action="${id ? 'open-chat' : 'chat-pick'}" data-id="${id}"><span>${ciIc('chat')} Nové správy: <b>${names}</b></span><span class="chev" aria-hidden="true">›</span></button>`;
 }
 function chatPlaceNotice(html) {
   const hero = main.querySelector('.hero');
@@ -81,20 +81,33 @@ function chatDecorate() {
   const m = hash.match(/^#\/client\/([\w-]+)$/);
   const c = m && getClient(m[1]);
   const actions = main.querySelector('.client-actions');
-  if (c?.share && actions) actions.insertAdjacentHTML('afterbegin', `<button class="btn btn-chat" data-action="open-chat" data-id="${c.id}">💬 Správy${chatBadge(c.share.code)}</button>`);
+  if (c?.share && actions) actions.insertAdjacentHTML('afterbegin', `<button class="btn btn-chat" data-action="open-chat" data-id="${c.id}">${ciIc('chat')} Správy${chatBadge(c.share.code)}</button>`);
   chatBadges();
 }
+
+// ikonky check-inu a správ (čiarové, tyrkysové – namiesto emoji)
+const CI_SVG = {
+  weight: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.3 11a3.7 3.7 0 0 1 7.4 0"/><path d="M12 11l1.6-2.2"/>',
+  sleep: '<path d="M19.5 14.6A7.8 7.8 0 1 1 9.4 4.5a6.3 6.3 0 0 0 10.1 10.1z"/>',
+  energy: '<path d="M13 3L5.5 13.5H11l-1 7.5 7.5-10.5H12z"/>',
+  diet: '<path d="M12 7.5c-1.6-1.5-5.2-1.5-6.6 1.3-1.5 3 .2 8.6 3.2 10.8 1.2.9 2.2.5 3.4.1 1.2.4 2.2.8 3.4-.1 3-2.2 4.7-7.8 3.2-10.8-1.4-2.8-5-2.8-6.6-1.3z"/><path d="M12 7.5c0-2 .9-3.6 3-4.5"/>',
+  stress: '<circle cx="12" cy="12" r="8.5"/><path d="M8.6 13.8a4 4 0 0 0 6.8 0"/><path d="M9.3 9.6h.01M14.7 9.6h.01" stroke-width="2.6"/>',
+  checkin: '<rect x="5.5" y="4.5" width="13" height="16" rx="2.5"/><path d="M9.5 3.5h5v3h-5z"/><path d="M9 11.5l1.8 1.8L15 9.5M9 16.5h6"/>',
+  note: '<path d="M4.5 19.5h4l10-10-4-4-10 10z"/><path d="M12.8 7.2l4 4"/>',
+  chat: '<path d="M20.5 12a8.5 8.5 0 0 1-12.3 7.6L3.5 21l1.4-4.6A8.5 8.5 0 1 1 20.5 12z"/>'
+};
+const ciIc = (k) => `<span class="ci-ic" aria-hidden="true"><svg viewBox="0 0 24 24">${CI_SVG[k]}</svg></span>`;
 
 /* ---------- Okno s rozhovorom ---------- */
 const chatTime = (t) => new Date(t).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
 const chatDay = (t) => { const d = new Date(t); return fmtDay(isoDate(d)); };
 const chatDots = (v) => (Number.isInteger(v) && v >= 1 && v <= 5 ? `<span class="ci-dots" aria-label="${v} z 5">${'●'.repeat(v)}<i>${'●'.repeat(5 - v)}</i></span>` : '–');
-const CHECKIN_ROWS = [['sleep', '😴 Spánok'], ['energy', '⚡ Energia'], ['diet', '🥗 Strava'], ['stress', '🧠 Pohoda']];
+const CHECKIN_ROWS = [['sleep', 'Spánok'], ['energy', 'Energia'], ['diet', 'Strava'], ['stress', 'Pohoda']];
 function chatCheckinHtml(ci = {}) {
-  return `<b class="ci-title">📋 Týždenný check-in</b>
+  return `<b class="ci-title">${ciIc('checkin')} Týždenný check-in</b>
     <div class="ci-grid">
-      ${typeof ci.weight === 'number' ? `<span>⚖️ Váha</span><b>${fmtNum(ci.weight)} kg</b>` : ''}
-      ${CHECKIN_ROWS.map(([k, label]) => `<span>${label}</span>${chatDots(ci[k])}`).join('')}
+      ${typeof ci.weight === 'number' ? `<span class="ci-lbl">${ciIc('weight')} Váha</span><b>${fmtNum(ci.weight)} kg</b>` : ''}
+      ${CHECKIN_ROWS.map(([k, label]) => `<span class="ci-lbl">${ciIc(k)} ${label}</span>${chatDots(ci[k])}`).join('')}
     </div>
     ${ci.note ? `<p class="ci-note">${esc(ci.note)}</p>` : ''}`;
 }
@@ -177,7 +190,7 @@ function chatPick() {
   modal.showModal();
   chatBadges();
 }
-const chatPreview = (code) => { const m = chatList(code).filter((x) => x.from === 'client').pop(); return !m ? '' : m.kind === 'checkin' ? '📋 Týždenný check-in' : (m.text || '').slice(0, 80); };
+const chatPreview = (code) => { const m = chatList(code).filter((x) => x.from === 'client').pop(); return !m ? '' : m.kind === 'checkin' ? 'Týždenný check-in' : (m.text || '').slice(0, 80); };
 
 /* ---------- Nastavenia → Správy a check-in ---------- */
 function chatSettingsView() {
@@ -185,7 +198,7 @@ function chatSettingsView() {
   return `<a class="back-link" href="#/settings">‹ Nastavenia</a><div class="page-head"><h1>Správy a check-in</h1></div>
   <section class="card">
     <div class="card-head"><h2>Správy</h2></div>
-    <p class="muted" style="margin-top:-6px">Klienti s prístupom do klientskej zóny ti môžu písať priamo v zóne (záložka <b>Správy</b>). Odpovedáš v detaile klienta tlačidlom <b>💬 Správy</b>; nové správy uvidíš aj na Prehľade a v menu pri <b>Klientoch</b>. Ak máš zapnuté upozornenia (ntfy), príde ti aj upozornenie do mobilu.</p>
+    <p class="muted" style="margin-top:-6px">Klienti s prístupom do klientskej zóny ti môžu písať priamo v zóne (záložka <b>Správy</b>). Odpovedáš v detaile klienta tlačidlom <b>Správy</b>; nové správy uvidíš aj na Prehľade a v menu pri <b>Klientoch</b>. Ak máš zapnuté upozornenia (ntfy), príde ti aj upozornenie do mobilu.</p>
   </section>
   <section class="card">
     <div class="card-head"><h2>Týždenný check-in</h2></div>
