@@ -63,11 +63,22 @@ async function gcalAuthorize(consent = false) {
   });
 }
 
-async function gcalFetch(path, opt = {}) {
+const gcalSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Google obmedzuje počet zmien za sekundu – pri „spomaľ“ (403 rateLimitExceeded / 429) počkať a skúsiť znova
+async function gcalFetch(path, opt = {}, attempt = 0) {
   const res = await fetch(GCAL_API + path, {
     ...opt,
     headers: { Authorization: `Bearer ${gcal.token}`, 'Content-Type': 'application/json', ...(opt.headers || {}) }
   });
+  if (res.status === 429 || res.status === 403) {
+    const body = await res.clone().json().catch(() => ({}));
+    const reason = body?.error?.errors?.[0]?.reason || '';
+    if ((res.status === 429 || /rateLimitExceeded|userRateLimitExceeded|quotaExceeded/.test(reason)) && attempt < 6) {
+      await gcalSleep(Math.min(32000, 1000 * 2 ** attempt) + Math.random() * 500);
+      return gcalFetch(path, opt, attempt + 1);
+    }
+    if (res.status === 429 || /rateLimit/.test(reason)) throw Object.assign(new Error('Google dočasne obmedzil počet zmien – zvyšok sa dokončí o chvíľu.'), { code: 429 });
+  }
   if (res.status === 401) { gcal.token = null; gcal.exp = 0; gcalKeep(); throw Object.assign(new Error('Pripojenie ku Google vypršalo – ťukni na Synchronizovať.'), { code: 401 }); }
   if (res.status === 204) return null;
   const body = await res.json().catch(() => ({}));
@@ -147,14 +158,26 @@ async function gcalListAll(calId) {
   return items;
 }
 
-// po pár naraz – Google nemá rád desiatky požiadaviek naraz
-async function gcalPool(tasks, n = 4) {
-  let i = 0;
+// po dvoch naraz s krátkou pauzou – Google nemá rád desiatky požiadaviek naraz
+async function gcalPool(tasks, n = 2) {
+  let i = 0, done = 0;
   const errs = [];
+  gcal.progress = tasks.length > 10 ? [0, tasks.length] : null;
   await Promise.all(Array.from({ length: Math.min(n, tasks.length) }, async () => {
-    while (i < tasks.length) { const t = tasks[i++]; try { await t(); } catch (e) { errs.push(e); } }
+    while (i < tasks.length) {
+      const t = tasks[i++];
+      try { await t(); } catch (e) { errs.push(e); if (e.code === 401) { i = tasks.length; break; } }
+      done++;
+      if (gcal.progress) { gcal.progress = [done, tasks.length]; gcalProgressUi(); }
+      if (tasks.length > 10) await gcalSleep(150);
+    }
   }));
-  if (errs.length) throw errs[0];
+  gcal.progress = null;
+  if (errs.length) throw errs.find((e) => e.code === 401) || errs[0];
+}
+function gcalProgressUi() {
+  const el = document.getElementById('gcal-state');
+  if (el && gcal.progress) el.textContent = `Synchronizujem… ${gcal.progress[0]}/${gcal.progress[1]}`;
 }
 
 async function gcalSync({ manual = false } = {}) {
@@ -190,6 +213,8 @@ async function gcalSync({ manual = false } = {}) {
   } catch (e) {
     gcal.error = e.message || 'Synchronizácia zlyhala';
     if (manual) toast(gcal.error);
+    // limit Google: dokončiť automaticky o minútu (kým platí pripojenie)
+    if (e.code === 429) { clearTimeout(gcal.retry); gcal.retry = setTimeout(() => { if (gcalTokenOk()) gcalSync(); }, 60000); }
   } finally {
     gcal.busy = false;
     gcalUi();
@@ -208,7 +233,8 @@ function gcalSchedule() {
 /* ---------- Nastavenia → Google kalendár ---------- */
 function gcalStatus() {
   if (!gcal.on) return ['Vypnuté', ''];
-  if (gcal.busy) return ['Synchronizujem…', ''];
+  if (gcal.busy) return [gcal.progress ? `Synchronizujem… ${gcal.progress[0]}/${gcal.progress[1]}` : 'Synchronizujem…', ''];
+  if (gcal.error && /obmedzil/.test(gcal.error)) return ['Dokončí sa o chvíľu', 'warn'];
   if (gcal.error) return ['Treba obnoviť', 'warn'];
   if (!gcalTokenOk()) return ['Treba obnoviť', 'warn'];
   return ['Zapnuté', 'done'];
