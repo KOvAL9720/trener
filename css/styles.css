@@ -2020,3 +2020,6 @@ dialog::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
 .ex-thumb .sil .sk { stroke: url(#exg-body); }
 .ex-thumb .sil.far { opacity: .45; }
 .ex-pic .ex-thumb { width: 46px; height: 46px; }
+/* siluety jednofarebné ako na fitness plagátoch (čierne vo svetlom, biele v tmavom režime) */
+.ex-thumb .sil { fill: var(--text); }
+.ex-thumb .sil .sk { stroke: var(--text); }
