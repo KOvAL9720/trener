@@ -966,6 +966,7 @@ const SI = {
   spark: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
   phone: '<svg class="i" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18.5h2"/></svg>',
   info: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg>',
+  gcal: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>',
   trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   chev: '<svg class="i set-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
 };
@@ -992,7 +993,8 @@ function viewSettings() {
   ${setGroup('Tréningy', [
     setRow({ icon: 'tag', title: 'Predvolený tréning', sub: 'Cena, dĺžka a text pripomienky', val: `${fmtMoney(sessionPrice())} · ${db.settings.defaultDuration || 60} min`, action: 'edit-defaults' }),
     setRow({ icon: 'clock', title: 'Pracovné hodiny', sub: 'Voľné termíny pre klientov', val: days ? cnt(days, 'deň', 'dni', 'dní') + ' / týž.' : 'Nenastavené', href: '#/settings/hours' }),
-    setRow({ icon: 'bell', title: 'Upozornenia', sub: 'Žiadosti klientov cez ntfy', val: db.settings.ntfyTopic ? 'Zapnuté' : 'Vypnuté', href: '#/settings/notify' })
+    setRow({ icon: 'bell', title: 'Upozornenia', sub: 'Žiadosti klientov cez ntfy', val: db.settings.ntfyTopic ? 'Zapnuté' : 'Vypnuté', href: '#/settings/notify' }),
+    setRow({ icon: 'gcal', title: 'Google kalendár', sub: 'Tréningy sa prenášajú do Google', val: db.settings.gcalOn ? 'Zapnuté' : 'Vypnuté', href: '#/settings/gcal' })
   ])}
   ${setGroup('Klientska zóna', [
     setRow({ icon: 'globe', title: 'Klientska zóna', sub: shared ? `${cnt(shared, 'klient má', 'klienti majú', 'klientov má')} prístup` : 'Zatiaľ nemá prístup žiadny klient', val: '<span class="badge" id="cloud-state">…</span>', href: '#/settings/zone' })
@@ -1052,7 +1054,7 @@ const routes = [
   [/^#\/plan\/([\w-]+)$/, viewPlan],
   [/^#\/exercises$/, viewExercises],
   [/^#\/settings$/, viewSettings],
-  [/^#\/settings\/(hours|notify|zone|install)$/, viewSettingsSub],
+  [/^#\/settings\/(hours|notify|zone|install|gcal)$/, viewSettingsSub],
   [/^#\/finance(?:\/(\d{4}-\d{2}))?$/, viewFinance]
 ];
 

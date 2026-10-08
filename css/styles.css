@@ -1987,3 +1987,4 @@ html.live-on, html.live-on body { overflow: hidden; }
   .mc-list { display: none; }
   .mc-dots { display: flex; }
 }
+.btn:disabled, .btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
