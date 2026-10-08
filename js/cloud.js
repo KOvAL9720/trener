@@ -5,7 +5,7 @@
    ========================================================= */
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getAuth, initializeAuth, inMemoryPersistence, signInAnonymously, onAuthStateChanged, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, GoogleAuthProvider, EmailAuthProvider, linkWithPopup, signInWithPopup, signInWithCredential, linkWithCredential, updatePassword, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { getFirestore, doc, setDoc, deleteDoc, updateDoc, collection, getDocs, query, where, serverTimestamp, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { getFirestore, doc, setDoc, deleteDoc, updateDoc, collection, getDocs, query, where, orderBy, limit, addDoc, serverTimestamp, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB3E6qCv4VFGeyHHvFClqjJXSkzyvnObjg',
@@ -164,6 +164,20 @@ const cloud = {
   async deleteEntry(code, id) {
     await ready;
     await deleteDoc(doc(fs, 'shared', code, 'entries', id));
+  },
+  // správy a check-iny s klientom – shared/{kód}/messages (posledných 150, od najstaršej)
+  watchMessages(code, cb, onError) {
+    return onSnapshot(query(collection(fs, 'shared', code, 'messages'), orderBy('createdAt', 'desc'), limit(150)), (snap) => {
+      cb(snap.docs.map((d) => { const { createdAt, ...m } = d.data(); return { id: d.id, ...m, at: createdAt?.toMillis ? createdAt.toMillis() : Date.now() }; }).reverse());
+    }, onError);
+  },
+  async sendMessage(code, text) {
+    await ready;
+    await addDoc(collection(fs, 'shared', code, 'messages'), { from: 'trainer', kind: 'text', text, by: uid, ownerUid: uid, createdAt: serverTimestamp() });
+  },
+  async deleteMessage(code, id) {
+    await ready;
+    await deleteDoc(doc(fs, 'shared', code, 'messages', id));
   },
   // termín zablokovaný žiadosťou klienta (holds/{tréner}_{dátum}_{čas}) – po vybavení žiadosti sa uvoľní
   async releaseHold(date, time) {
