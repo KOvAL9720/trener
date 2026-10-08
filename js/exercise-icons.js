@@ -60,6 +60,15 @@ const EXERCISE_ICONS = (() => {
   };
   const generic = bar(9, 24, 39, 24) + eq('<path d="M14 18v12M34 18v12" stroke-width="2.8"/>');
   const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  // prechody farieb (gradient) – definované raz v dokumente, súradnice v rámčeku 48 × 48
+  // (userSpaceOnUse: funguje aj pre vodorovné/zvislé čiary, ktoré nemajú výšku/šírku)
+  const defs = () => {
+    if (typeof document === 'undefined' || !document.body || document.getElementById('exg-defs')) return;
+    document.body.insertAdjacentHTML('beforeend', `<svg id="exg-defs" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+      <linearGradient id="exg-body" gradientUnits="userSpaceOnUse" x1="0" y1="8" x2="0" y2="40"><stop offset="0" class="exg-b0"/><stop offset="1" class="exg-b1"/></linearGradient>
+      <linearGradient id="exg-eq" gradientUnits="userSpaceOnUse" x1="6" y1="4" x2="42" y2="44"><stop offset="0" class="exg-e0"/><stop offset="1" class="exg-e1"/></linearGradient>
+    </defs></svg>`);
+  };
   const svg = (inner) => `<svg class="ex-thumb" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
-  return (exercise) => svg(icons[fold(exercise?.name)] || categories[fold(exercise?.category)] || generic);
+  return (exercise) => (defs(), svg(icons[fold(exercise?.name)] || categories[fold(exercise?.category)] || generic));
 })();
