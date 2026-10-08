@@ -3,9 +3,10 @@
 /* =========================================================
    Správy a týždenný check-in s klientmi (cez klientsku zónu)
    Správy sú v cloude pod kódom klienta: shared/{kód}/messages.
-   Appka počúva správy všetkých klientov s prístupom do zóny; neprečítané
-   (od klienta, novšie než posledné otvorenie chatu) ukazuje v menu,
-   na Prehľade, v zozname klientov a v detaile klienta.
+   Appka počúva správy všetkých klientov s prístupom do zóny. Záložka Správy
+   v menu = zoznam rozhovorov (#/messages) a rozhovor s klientom (#/messages/{id}).
+   Neprečítané (od klienta, novšie než posledné otvorenie rozhovoru) ukazuje
+   v menu, na Prehľade, v zozname klientov a v detaile klienta.
    ========================================================= */
 const CHAT_SEEN_KEY = window.DEMO ? 'trener-chat-seen-demo' : 'trener-chat-seen';
 const chat = { msgs: new Map(), subs: new Map(), seen: {}, open: null, uid: null };
@@ -34,9 +35,12 @@ function chatWatch() {
   }
 }
 function chatUpdated(code) {
-  if (chat.open === code && modal.open) { chatMarkSeen(code); chatThreadUi(); }
+  if (chatOpenCode() === code) { chatMarkSeen(code); chatThreadUi(); }
+  if ((location.hash || '') === '#/messages') chatInboxUi();
   chatBadges();
 }
+// kód klienta, ktorého rozhovor je práve otvorený (#/messages/{id})
+const chatOpenCode = () => { const m = (location.hash || '').match(/^#\/messages\/([\w-]+)$/); const c = m && getClient(m[1]); return c?.share ? c.share.code : null; };
 
 /* ---------- Odznaky s počtom neprečítaných ---------- */
 function chatBadges() {
@@ -56,8 +60,8 @@ function chatNotice() {
   const list = chatUnreadClients();
   if (!list.length) return '';
   const names = list.map((c) => `${esc(firstName(c))}${chatUnread(c.share.code) > 1 ? ` (${chatUnread(c.share.code)})` : ''}`).join(', ');
-  const id = list.length === 1 ? list[0].id : '';
-  return `<button type="button" class="notice notice-chat" id="chat-notice" data-action="${id ? 'open-chat' : 'chat-pick'}" data-id="${id}"><span>${ciIc('chat')} Nové správy: <b>${names}</b></span><span class="chev" aria-hidden="true">›</span></button>`;
+  const href = list.length === 1 ? `#/messages/${list[0].id}` : '#/messages';
+  return `<a class="notice notice-chat" id="chat-notice" href="${href}"><span>${ciIc('chat')} Nové správy: <b>${names}</b></span><span class="chev" aria-hidden="true">›</span></a>`;
 }
 function chatPlaceNotice(html) {
   const hero = main.querySelector('.hero');
@@ -68,8 +72,6 @@ const chatBadge = (k) => `<span class="chat-count" data-chat-badge="${esc(k)}" h
 // po každom prekreslení doplniť tlačidlá a odznaky na správne miesta
 function chatDecorate() {
   chatWatch();
-  const navA = document.querySelector('.nav a[data-nav="clients"]');
-  if (navA && !navA.querySelector('[data-chat-badge]')) navA.insertAdjacentHTML('beforeend', chatBadge('all'));
   const hash = location.hash || '#/';
   if (/^#?\/?$/.test(hash)) { const n = chatNotice(); if (n) chatPlaceNotice(n); }
   if (hash === '#/clients') {
@@ -81,7 +83,9 @@ function chatDecorate() {
   const m = hash.match(/^#\/client\/([\w-]+)$/);
   const c = m && getClient(m[1]);
   const actions = main.querySelector('.client-actions');
-  if (c?.share && actions) actions.insertAdjacentHTML('afterbegin', `<button class="btn btn-chat" data-action="open-chat" data-id="${c.id}">${ciIc('chat')} Správy${chatBadge(c.share.code)}</button>`);
+  if (c?.share && actions) actions.insertAdjacentHTML('afterbegin', `<a class="btn btn-chat" href="#/messages/${c.id}">${ciIc('chat')} Správy${chatBadge(c.share.code)}</a>`);
+  const code = chatOpenCode();
+  if (code) { chatMarkSeen(code); chatScrollEnd(); }
   chatBadges();
 }
 
@@ -130,67 +134,85 @@ function chatThreadHtml(code) {
 }
 function chatThreadUi() {
   const el = document.getElementById('chat-thread');
-  if (!el || !chat.open) return;
-  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-  el.innerHTML = chatThreadHtml(chat.open);
-  if (atBottom) el.scrollTop = el.scrollHeight;
+  const code = chatOpenCode();
+  if (!el || !code) return;
+  const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 140;
+  el.innerHTML = chatThreadHtml(code);
+  if (atBottom) chatScrollEnd();
+}
+const chatScrollEnd = () => requestAnimationFrame(() => window.scrollTo(0, document.documentElement.scrollHeight));
+
+/* ---------- Záložka Správy: zoznam rozhovorov ---------- */
+const chatPreview = (code) => {
+  const m = chatList(code).at(-1);
+  if (!m) return '';
+  const t = m.kind === 'checkin' ? 'Týždenný check-in' : (m.text || '').replace(/\s+/g, ' ').slice(0, 90);
+  return m.from === 'trainer' ? `Ty: ${t}` : t;
+};
+const chatWhen = (t) => { const d = new Date(t); return isoDate(d) === today() ? chatTime(t) : fmtShort(isoDate(d)); };
+function chatInboxHtml() {
+  const list = db.clients.filter((c) => c.share && !c.archived)
+    .map((c) => ({ c, last: chatList(c.share.code).at(-1) }))
+    .sort((a, b) => (b.last?.at || 0) - (a.last?.at || 0) || byName(a.c, b.c));
+  if (!list.length) return '<p class="empty">Správy fungujú cez klientsku zónu. Klientovi vytvor prístup v jeho detaile (tlačidlo „Klientska zóna“) a potom si môžete písať.</p>';
+  return `<ul class="list chat-inbox">${list.map(({ c, last }) => `<li><a class="list-item chat-item${chatUnread(c.share.code) ? ' unread' : ''}" href="#/messages/${c.id}">
+    ${avatar(c)}
+    <span class="info"><strong>${esc(c.name)}</strong><small>${last ? esc(chatPreview(c.share.code)) : 'Zatiaľ žiadne správy – napíš ako prvý'}</small></span>
+    <span class="chat-meta">${last ? `<time>${chatWhen(last.at)}</time>` : ''}${chatBadge(c.share.code)}</span>
+  </a></li>`).join('')}</ul>`;
+}
+function chatInboxUi() {
+  const el = document.getElementById('chat-inbox');
+  if (el) { el.innerHTML = chatInboxHtml(); chatBadges(); }
+}
+function viewMessages() {
+  const off = window.DEMO ? 'V ukážkovej verzii sú správy vypnuté – nič sa neposiela na internet.'
+    : !window.cloud ? 'Správy sa načítavajú z cloudu – ak sa nič nezobrazí, skontroluj internet.' : '';
+  return `<div class="page-head"><div><h1>Správy</h1><p class="muted" style="margin:0">Rozhovory s klientmi z klientskej zóny</p></div>
+    <a class="btn small" href="#/settings/chat">${ciIc('checkin')} Check-in</a></div>
+  ${off ? `<p class="notice">${off}</p>` : ''}
+  <section class="card" id="chat-inbox">${chatInboxHtml()}</section>`;
 }
 
+/* ---------- Rozhovor s klientom ---------- */
+function viewThread(id) {
+  const c = getClient(id);
+  if (!c) return '<a class="back-link" href="#/messages">‹ Správy</a><p class="empty">Klient neexistuje.</p>';
+  if (!c.share) return `<a class="back-link" href="#/messages">‹ Správy</a><p class="empty">${esc(c.name)} ešte nemá prístup do klientskej zóny. Vytvor ho v <a href="#/client/${c.id}">detaile klienta</a> a potom si môžete písať.</p>`;
+  return `<a class="back-link" href="#/messages">‹ Správy</a>
+  <div class="page-head chat-head"><a class="chat-who" href="#/client/${c.id}">${avatar(c)}<span><h1>${esc(c.name)}</h1><small>Profil klienta ›</small></span></a></div>
+  <section class="card chat-card"><div class="chat-thread" id="chat-thread">${chatThreadHtml(c.share.code)}</div></section>
+  <form class="chat-compose" id="chat-compose">
+    <textarea id="chat-input" rows="1" maxlength="2000" placeholder="Napíš správu…" aria-label="Správa"></textarea>
+    <button type="submit" class="btn primary chat-send" aria-label="Odoslať"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button>
+  </form>`;
+}
+document.addEventListener('submit', async (e) => {
+  if (e.target.id !== 'chat-compose') return;
+  e.preventDefault();
+  const code = chatOpenCode();
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!code || !text) return;
+  if (window.DEMO) { notify(DEMO_OFF); return; }
+  if (cloudMissing()) return;
+  input.value = ''; input.style.height = '';
+  try { await window.cloud.sendMessage(code, text); chatScrollEnd(); } catch (err) {
+    input.value = text;
+    toast(err?.code === 'permission-denied' ? 'Správu sa nepodarilo odoslať – skontroluj pravidlá cloudu.' : 'Správu sa nepodarilo odoslať – skontroluj internet.');
+  }
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'chat-input') { const t = e.target; t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 140)}px`; }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.target.id === 'chat-input' && e.key === 'Enter' && !e.shiftKey && matchMedia('(hover: hover)').matches) { e.preventDefault(); e.target.form.requestSubmit(); }
+});
+// otvorenie rozhovoru z iného miesta appky
 function openChat(clientId) {
   const c = getClient(clientId);
-  if (!c) return;
-  if (window.DEMO) { notify(DEMO_OFF); return; }
-  if (!c.share) { notify('Správy fungujú cez klientsku zónu. Najprv klientovi vytvor prístup (v detaile klienta tlačidlo „Klientska zóna“).'); return; }
-  if (cloudMissing()) return;
-  chatWatch();
-  const code = c.share.code;
-  chat.open = code;
-  chatMarkSeen(code);
-  modalForm.innerHTML = `
-    <header class="modal-head"><h2>${avatar(c, 'sm')} ${esc(c.name)}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
-    <div class="modal-body chat-thread" id="chat-thread">${chatThreadHtml(code)}</div>
-    <footer class="modal-foot chat-foot">
-      <textarea id="chat-input" rows="1" maxlength="2000" placeholder="Napíš správu…" aria-label="Správa"></textarea>
-      <button type="submit" class="btn primary chat-send" aria-label="Odoslať"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button>
-    </footer>`;
-  modal.classList.add('chat-modal');
-  const input = modalForm.querySelector('#chat-input');
-  const grow = () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 140)}px`; };
-  input.addEventListener('input', grow);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && matchMedia('(hover: hover)').matches) { e.preventDefault(); modalForm.requestSubmit(); }
-  });
-  modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
-  modalForm.onsubmit = async (e) => {
-    e.preventDefault();
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = ''; grow();
-    try { await window.cloud.sendMessage(code, text); } catch (err) {
-      input.value = text; grow();
-      toast(err?.code === 'permission-denied' ? 'Správu sa nepodarilo odoslať – treba doplniť pravidlá cloudu (Nastavenia → Správy a check-in).' : 'Správu sa nepodarilo odoslať – skontroluj internet.');
-    }
-  };
-  modal.addEventListener('close', () => { chat.open = null; modal.classList.remove('chat-modal'); chatBadges(); }, { once: true });
-  modal.showModal();
-  const th = document.getElementById('chat-thread');
-  th.scrollTop = th.scrollHeight;
-  if (matchMedia('(hover: hover)').matches) input.focus();
+  if (c) location.hash = `#/messages/${c.id}`;
 }
-
-// viac klientov s novými správami – vybrať, komu odpovedať
-function chatPick() {
-  const list = chatUnreadClients();
-  if (list.length === 1) { openChat(list[0].id); return; }
-  modalForm.innerHTML = `
-    <header class="modal-head"><h2>Nové správy</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
-    <div class="modal-body"><ul class="list" style="width:100%">${list.map((c) => `<li><button type="button" class="list-item" data-pick="${c.id}">${avatar(c)}<span class="info"><strong>${esc(c.name)}</strong><small>${esc(chatPreview(c.share.code))}</small></span>${chatBadge(c.share.code)}</button></li>`).join('')}</ul></div>`;
-  modalForm.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => modal.close(); });
-  modalForm.querySelectorAll('[data-pick]').forEach((b) => { b.onclick = () => { modal.close(); openChat(b.dataset.pick); }; });
-  modal.showModal();
-  chatBadges();
-}
-const chatPreview = (code) => { const m = chatList(code).filter((x) => x.from === 'client').pop(); return !m ? '' : m.kind === 'checkin' ? 'Týždenný check-in' : (m.text || '').slice(0, 80); };
 
 /* ---------- Nastavenia → Správy a check-in ---------- */
 function chatSettingsView() {
@@ -198,7 +220,7 @@ function chatSettingsView() {
   return `<a class="back-link" href="#/settings">‹ Nastavenia</a><div class="page-head"><h1>Správy a check-in</h1></div>
   <section class="card">
     <div class="card-head"><h2>Správy</h2></div>
-    <p class="muted" style="margin-top:-6px">Klienti s prístupom do klientskej zóny ti môžu písať priamo v zóne (záložka <b>Správy</b>). Odpovedáš v detaile klienta tlačidlom <b>Správy</b>; nové správy uvidíš aj na Prehľade a v menu pri <b>Klientoch</b>. Ak máš zapnuté upozornenia (ntfy), príde ti aj upozornenie do mobilu.</p>
+    <p class="muted" style="margin-top:-6px">Klienti s prístupom do klientskej zóny ti môžu písať priamo v zóne (záložka <b>Správy</b>). Odpovedáš v detaile klienta v záložke <b>Správy</b> v menu alebo tlačidlom <b>Správy</b> v detaile klienta; nové správy uvidíš aj na Prehľade. Ak máš zapnuté upozornenia (ntfy), príde ti aj upozornenie do mobilu.</p>
   </section>
   <section class="card">
     <div class="card-head"><h2>Týždenný check-in</h2></div>
@@ -212,10 +234,9 @@ function chatSettingsView() {
     <p class="muted" style="margin-top:-6px">Správy potrebujú jednorazové doplnenie pravidiel vo Firebase (Firestore → Rules). Ak sa správa nedá odoslať, pravidlá ešte nie sú doplnené.</p>
   </section>`;
 }
-routes.push([/^#\/settings\/chat$/, chatSettingsView]);
+routes.push([/^#\/settings\/chat$/, chatSettingsView], [/^#\/messages$/, viewMessages], [/^#\/messages\/([\w-]+)$/, viewThread]);
 
 actions['open-chat'] = (d) => openChat(d.id);
-actions['chat-pick'] = () => chatPick();
 actions['checkin-day'] = (d) => {
   db.settings.checkinDay = Number(d.day);
   db.settings.shareDirty = true;
@@ -227,5 +248,12 @@ actions['checkin-day'] = (d) => {
 // cloud sa načíta neskôr – po prihlásení začať počúvať
 window.addEventListener('cloud-ready', () => { window.cloud?.onChange?.(() => { chatWatch(); }); });
 const renderWithoutChat = render;
-render = function (...args) { const r = renderWithoutChat.apply(this, args); chatDecorate(); return r; };
+render = function (...args) {
+  const draft = document.getElementById('chat-input')?.value || '';   // rozpísaná správa prežije obnovenie obrazovky
+  const r = renderWithoutChat.apply(this, args);
+  const input = document.getElementById('chat-input');
+  if (input && draft) input.value = draft;
+  chatDecorate();
+  return r;
+};
 chatDecorate();

@@ -1099,7 +1099,8 @@ function render(animate = false) {
         : hash.startsWith('#/calendar') ? 'calendar'
         : hash.startsWith('#/plan') || hash.startsWith('#/exercises') ? 'plans'
         : hash.startsWith('#/settings') ? 'settings'
-        : hash.startsWith('#/finance') ? 'finance' : 'home';
+        : hash.startsWith('#/finance') ? 'finance'
+        : hash.startsWith('#/messages') ? 'messages' : 'home';
       document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === section));
       if (flashId) {
         main.querySelectorAll(`[data-id="${flashId}"]`).forEach((el) => el.closest('.session')?.classList.add('flash'));
