@@ -281,6 +281,7 @@ actions['gcal-cid'] = () => {
   db.settings.gcalClientId = v; save(); render(); toast(v ? 'Client ID uložené' : 'Client ID vymazané');
 };
 actions['gcal-on'] = async () => {
+  if (window.DEMO) { notify(DEMO_OFF); return; }
   try {
     await gcalAuthorize(true);
     db.settings.gcalOn = true; save();

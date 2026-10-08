@@ -6,7 +6,7 @@
    oslava rekordu a zhrnutie na konci. Stav sa ukladá do zariadenia,
    takže tréning prežije aj zatvorenie appky.
    ========================================================= */
-const LIVE_KEY = 'trener-live-v1';
+const LIVE_KEY = window.DEMO ? 'trener-live-demo' : 'trener-live-v1';
 let live = null;          // { sid, start, cur, ex: [...], rest: { until, total } | null, summary }
 let liveTick = 0;
 let wakeLock = null;

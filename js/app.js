@@ -15,7 +15,7 @@
   if (!document.getElementById('main')) add('<main id="main" tabindex="-1"></main>');
 })();
 
-const STORAGE_KEY = 'trainer-app-v1';
+const STORAGE_KEY = window.DEMO ? 'trainer-demo-v1' : 'trainer-app-v1';
 // AI asistent bol z aplikácie odstránený – zmazať jeho API kľúč a konverzáciu z tohto zariadenia
 try { localStorage.removeItem('trainer-ai-key'); localStorage.removeItem('trainer-ai-chat'); } catch (e) { /* úložisko nedostupné */ }
 // Permanentky sú zatiaľ vypnuté – každý tréning sa platí zvlášť (dáta balíkov ostávajú uložené)
@@ -1892,7 +1892,7 @@ document.getElementById('photo-file').addEventListener('change', async (e) => {
 const photoDB = (() => {
   let conn;
   const open = () => (conn ||= new Promise((resolve, reject) => {
-    const r = indexedDB.open('trener-photos', 1);
+    const r = indexedDB.open(window.DEMO ? 'trener-photos-demo' : 'trener-photos', 1);
     r.onupgradeneeded = () => r.result.createObjectStore('photos', { keyPath: 'id' }).createIndex('clientId', 'clientId');
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
@@ -2435,6 +2435,7 @@ function shareCard(c) {
 function createShare(cid) {
   const c = getClient(cid);
   if (!c || c.share) return;
+  if (window.DEMO) { notify(DEMO_OFF); return; }
   c.share = { code: makeCode(), createdAt: today(), hash: '' };
   db.settings.shareDirty = true;
   save();
@@ -2637,13 +2638,13 @@ function updateCloudBadge() {
   const el = document.getElementById('cloud-state');
   if (!el) return;
   const st = window.cloud?.state();
-  const txt = !window.cloud ? (window.cloudError ? 'Nedostupné' : 'Načítavam…') : !navigator.onLine ? 'Offline' : st?.error ? 'Chyba prihlásenia' : st?.uid ? 'Pripojené' : 'Pripájam…';
+  const txt = window.DEMO ? 'V ukážke vypnuté' : !window.cloud ? (window.cloudError ? 'Nedostupné' : 'Načítavam…') : !navigator.onLine ? 'Offline' : st?.error ? 'Chyba prihlásenia' : st?.uid ? 'Pripojené' : 'Pripájam…';
   el.textContent = txt;
   el.title = window.cloudError || st?.error || '';
   const why = document.getElementById('cloud-why');
   if (why) {
-    why.textContent = window.cloudError ? 'Nepodarilo sa pripojiť na cloud (slabý signál alebo výpadok internetu). ' : st?.error ? `Dôvod: ${st.error}` : '';
-    if (window.cloudError) why.insertAdjacentHTML('beforeend', '<button class="btn small" data-action="reload-app">Načítať znova</button>');
+    why.textContent = window.DEMO ? 'V ukážkovej verzii sa nič neposiela na internet.' : window.cloudError ? 'Nepodarilo sa pripojiť na cloud (slabý signál alebo výpadok internetu). ' : st?.error ? `Dôvod: ${st.error}` : '';
+    if (window.cloudError && !window.DEMO) why.insertAdjacentHTML('beforeend', '<button class="btn small" data-action="reload-app">Načítať znova</button>');
   }
   el.className = `badge ${txt === 'Pripojené' ? 'done' : txt === 'Pripájam…' ? '' : 'warn'}`;
 }
@@ -2656,7 +2657,7 @@ window.addEventListener('online', () => { db.settings.shareDirty = true; schedul
    porovná sa stav v zariadení, stav v cloude a stav pri poslednej synchronizácii – zmení sa len to,
    čo sa naozaj zmenilo (pri súčasnej zmene toho istého záznamu vyhrá toto zariadenie).
    ========================================================= */
-const SYNC_KEY = 'trainer-sync-v1';
+const SYNC_KEY = window.DEMO ? 'trainer-demo-sync-v1' : 'trainer-sync-v1';
 const SYNC_COLLS = ['clients', 'sessions', 'packages', 'measurements', 'exercises', 'plans'];
 const LOCAL_SETTINGS = ['shareDirty'];
 let sync = (() => {
@@ -2949,8 +2950,10 @@ function loginError(e) {
   notify(msg || `Prihlásenie sa nepodarilo (${code || e?.message || 'neznáma chyba'}).${isStandaloneIos() ? ' Na iPhone v appke z plochy použi „Prihlásiť e-mailom“.' : ''}`);
 }
 
+const DEMO_OFF = 'V ukážkovej verzii je to vypnuté – nič sa neposiela na internet. V skutočnej appke to funguje.';
 const cloudMissing = () => {
   if (window.cloud) return false;
+  if (window.DEMO) { notify(DEMO_OFF); return true; }
   if (window.cloudError) {
     askConfirm('Nepodarilo sa pripojiť na cloud – pravdepodobne slabý signál alebo výpadok internetu. Skontroluj pripojenie a načítaj appku znova.', { ok: 'Načítať znova', cancel: 'Zavrieť' })
       .then((yes) => { if (yes) location.reload(); });
@@ -3677,6 +3680,12 @@ const actions = {
   'sync-now': () => { syncNow(); toast('Synchronizujem…'); },
   'import': () => document.getElementById('import-file').click(),
   'demo': loadDemo,
+  'demo-info': async () => {
+    const yes = await askConfirm('Toto je ukážková verzia appky s vymyslenými klientmi. Skúšaj čokoľvek – pridávaj, maž, presúvaj. Nič sa neuloží do skutočných dát a nič sa neposiela na internet (prihlásenie, klientska zóna a Google kalendár sú vypnuté).', { ok: 'Začať odznova', cancel: 'Zavrieť' });
+    if (!yes) return;
+    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem('trener-live-demo'); } catch (e) { /* ok */ }
+    location.reload();
+  },
   'add-test': addTestClients,
   'remove-test': removeTestClients,
   'wipe': async () => {
@@ -3873,6 +3882,11 @@ const bgReady = new Promise((resolve) => {
 }).then(() => document.body.classList.add('bg-ready'));
 // Teplý štart (appka bola otvorená pred menej než 10 min, napr. iPhone ju len obnovil): obsah hneď,
 // bez úvodnej čiary a animácií – inak by sa ukázal posledný stav, potom tma a znova obsah (blikanie)
+// Ukážková verzia: pri prvom otvorení sa načítajú vymyslení klienti; odznak „Ukážka“ vedľa názvu
+if (window.DEMO) {
+  if (!db.clients.length) loadDemo();
+  document.querySelector('.topbar .brand')?.insertAdjacentHTML('afterend', '<button type="button" class="demo-badge" data-action="demo-info">Ukážka</button>');
+}
 const LAST_SHOWN_KEY = 'trener-last-shown';
 let warmStart = false;
 try { warmStart = Date.now() - Number(localStorage.getItem(LAST_SHOWN_KEY) || 0) < 10 * 60 * 1000; } catch (e) { /* ok */ }
