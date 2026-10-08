@@ -2542,7 +2542,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 /* =========================================================
    Klientska zóna – zdieľanie dát klienta cez cloud (js/cloud.js)
    ========================================================= */
-const CLIENT_ZONE_URL = 'https://koval9720.github.io/Novy-web/app/';
+const CLIENT_ZONE_URL = 'https://koval9720.github.io/web/zona/';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const makeCode = () => { const a = new Uint8Array(8); crypto.getRandomValues(a); return [...a].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join(''); };
 const fmtCode = (code) => `${code.slice(0, 4)}-${code.slice(4)}`;
