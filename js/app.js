@@ -2389,6 +2389,7 @@ async function deleteClientEntry(cid, id) {
 
 async function loadRequests(force = false) {
   if (!window.cloud || !navigator.onLine) return;
+  watchRequestsLive();
   if (!force && Date.now() - requestsAt < 60 * 1000) return;
   const codes = db.clients.filter((c) => c.share).map((c) => c.share.code);
   if (!codes.length) { pendingRequests = []; return; }
@@ -2432,6 +2433,42 @@ async function answerRequest(code, id, accept) {
     window.cloud.releaseHold?.(r.date, r.time); // termín je znova voľný pre ostatných klientov
   }
 }
+// Žiadosti naživo: appka počúva žiadosti všetkých klientov so zónou – nová sa hneď objaví
+// na Prehľade aj v kalendári (s upozornením), zrušená klientom hneď zmizne
+const reqLive = { subs: new Map(), lists: new Map(), seen: new Set(), ready: new Set() };
+const validRequest = (r) => typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.date >= today() && typeof r.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(r.time) && /^[\w-]{1,64}$/.test(r.id);
+function watchRequestsLive() {
+  if (!window.cloud?.watchRequests || !window.cloud.state?.().uid) return;
+  const codes = new Set(db.clients.filter((c) => c.share).map((c) => c.share.code));
+  for (const [code, un] of reqLive.subs) if (!codes.has(code)) { un(); reqLive.subs.delete(code); reqLive.lists.delete(code); reqLive.ready.delete(code); }
+  for (const code of codes) {
+    if (reqLive.subs.has(code)) continue;
+    reqLive.subs.set(code, window.cloud.watchRequests(code, (list) => {
+      reqLive.lists.set(code, list);
+      // prvé načítanie klienta = existujúce žiadosti, upozorniť len na tie, ktoré prídu potom
+      if (!reqLive.ready.has(code)) { reqLive.ready.add(code); list.forEach((r) => reqLive.seen.add(r.id)); }
+      requestsLiveUpdate();
+    }, () => {}));
+  }
+}
+function requestsLiveUpdate() {
+  const all = [...reqLive.lists.values()].flat().filter(validRequest)
+    .map((r) => ({ ...r, note: String(r.note || '').slice(0, 300), clientName: String(r.clientName || '').slice(0, 80) }));
+  const fresh = all.filter((r) => !reqLive.seen.has(r.id));
+  all.forEach((r) => reqLive.seen.add(r.id));
+  const changed = all.length !== pendingRequests.length || all.some((r) => !pendingRequests.find((x) => x.id === r.id));
+  pendingRequests = all;
+  requestsAt = Date.now();
+  if (fresh.length) {
+    const r = fresh[0];
+    toast(`Nová žiadosť o tréning · ${firstName(clientByCode(r.code) || { name: r.clientName || 'Klient' })} ${fmtDay(r.date)} ${r.time}`);
+  }
+  if (changed) {
+    const h = location.hash || '#/';
+    if ((/^#\/?$/.test(h) || h.startsWith('#/calendar')) && !document.querySelector('dialog[open]')) render();
+  }
+}
+window.addEventListener('cloud-ready', () => { window.cloud?.onChange?.(() => watchRequestsLive()); });
 window.addEventListener('cloud-ready', () => { if (window.cloud) { window.cloud.ready.then(() => loadRequests(true)); setInterval(() => { if (document.visibilityState === 'visible') loadRequests(); }, 3 * 60 * 1000); } });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadRequests(); });
 
@@ -2654,7 +2691,7 @@ async function runSync() {
       changed = true;
     }
     db.settings.shareDirty = false;
-  } finally { syncing = false; }
+  } finally { syncing = false; watchRequestsLive(); }
   if (changed) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { /* ignorovať */ }
     const card = document.getElementById('sec-share');
