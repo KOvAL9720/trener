@@ -2062,3 +2062,19 @@ dialog.chat-modal .modal-head .avatar { width: 34px; height: 34px; font-size: .8
 @media (prefers-color-scheme: light) {
   .msg.mine .bubble, .ci-pick.on, .chat-count { color: #fff; }
 }
+
+/* ikonky check-inu a správ – čiarové tyrkysové v jemnom krúžku (namiesto emoji) */
+.ci-ic { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); vertical-align: -6px; }
+.ci-ic svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ci-lbl { display: inline-flex; align-items: center; gap: 8px; }
+.ci-title { display: flex !important; align-items: center; gap: 8px; }
+.ci-title .ci-ic { width: 28px; height: 28px; border-radius: 9px; }
+.ci-title .ci-ic svg { width: 17px; height: 17px; }
+.ci-grid { row-gap: 7px !important; }
+.notice-chat > span:first-child, .btn-chat, .chat-head .btn, .checkin-form h2, .checkin-form .field > span, .ci-row > span { display: inline-flex; align-items: center; gap: 8px; }
+.ci-row > span { flex-wrap: wrap; }
+.ci-row > span small { flex-basis: 100%; }
+.btn-chat .ci-ic, .chat-head .btn .ci-ic { background: transparent; width: 18px; height: 18px; color: inherit; }
+.btn-chat .ci-ic svg, .chat-head .btn .ci-ic svg { width: 18px; height: 18px; }
+
+@media (prefers-color-scheme: light) { .msg.checkin .bubble { color: var(--text); } }
