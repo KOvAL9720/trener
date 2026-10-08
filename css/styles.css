@@ -2015,3 +2015,8 @@ dialog::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
 .ex-thumb .t { stroke-width: 5.4; }
 .ex-thumb .far { opacity: .5; }
 .ex-thumb .eq { stroke-width: 2.4; }
+/* siluety: plná výplň s prechodom (bez obrysu) */
+.ex-thumb .sil { fill: url(#exg-body); stroke: none; }
+.ex-thumb .sil .sk { stroke: url(#exg-body); }
+.ex-thumb .sil.far { opacity: .45; }
+.ex-pic .ex-thumb { width: 46px; height: 46px; }

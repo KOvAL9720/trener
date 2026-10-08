@@ -9,16 +9,48 @@
    ========================================================= */
 const EXERCISE_ICONS = (() => {
   // rámček 48 × 48, body zadávané ako [x, y]
-  const P = ([x, y]) => `${x} ${y}`;
-  const limb = (from, [mid, end]) => `<path d="M${P(from)}L${P(mid)}L${P(end)}"/>`;
-  // postava: h hlava, n ramená, p panva; a1/l1 bližšia ruka/noha [lakeť/koleno, dlaň/chodidlo], a2/l2 vzdialenejšia
-  // front: pohľad spredu – obe strany rovnako výrazné
-  const fig = ({ h, n, p, a1, a2, l1, l2, front = false }) => {
-    const back = (a2 ? limb(n, a2) : '') + (l2 ? limb(p, l2) : '');
-    return (back ? (front ? back : `<g class="far">${back}</g>`) : '')
-      + `<path class="t" d="M${P(n)}L${P(p)}"/>`
-      + (l1 ? limb(p, l1) : '') + (a1 ? limb(n, a1) : '')
-      + `<circle class="hd" cx="${h[0]}" cy="${h[1]}" r="4"/>`;
+  // Postava je plná silueta: časti tela sú zúžené „kapsuly“ (hrubšie stehno, tenšie lýtko…),
+  // ktoré sa prekrývajú do jedného tvaru – ako siluety na fitness plagátoch.
+  const r1 = (v) => Math.round(v * 10) / 10;
+  const dot = ([x, y], r) => `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r}"/>`;
+  const cap = (a, b, ra, rb) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 0.001;
+    const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+    const s = Math.max(-0.95, Math.min(0.95, (ra - rb) / L)), c = Math.sqrt(1 - s * s);
+    const pt = (o, r, sg) => [r1(o[0] + r * (sg * nx * c + ux * s)), r1(o[1] + r * (sg * ny * c + uy * s))];
+    const [a1, b1, b2, a2] = [pt(a, ra, 1), pt(b, rb, 1), pt(b, rb, -1), pt(a, ra, -1)];
+    // lichobežník medzi dotyčnicami + kruhy na koncoch (zaoblené kĺby)
+    return `<path d="M${a1}L${b1}L${b2}L${a2}Z"/>`.replace(/,/g, ' ') + dot(a, ra) + dot(b, rb);
+  };
+  const add = (p, dx, dy) => [p[0] + dx, p[1] + dy];
+  const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  // ruka: rameno → lakeť → dlaň (ramenný sval, predlaktie, päsť)
+  const arm = (s, [e, hnd]) => cap(s, e, 2.3, 1.7) + cap(e, hnd, 1.7, 1.25) + dot(hnd, 1.6);
+  // noha: bedro → koleno → členok + chodidlo smerom „dopredu“
+  const leg = (hp, [k, f], dir) => {
+    const ux = f[0] - k[0], uy = f[1] - k[1], L = Math.hypot(ux, uy) || 1;
+    const toe = Math.abs(uy / L) > 0.6 ? [f[0] + dir * 3.4, f[1] + 0.4] : [f[0] + (ux / L) * 2.6, f[1] + 1.8];
+    return cap(hp, k, 3.1, 2.1) + cap(k, f, 2.1, 1.25) + cap(f, toe, 1.25, 1.05);
+  };
+  // postava: h hlava, n ramená (krk), p panva; a1/l1 bližšia ruka/noha [lakeť/koleno, dlaň/chodidlo], a2/l2 vzdialenejšia
+  // front: pohľad spredu (a1/l1 = ľavá strana obrázka); dir: kam smerujú chodidlá pri pohľade zboku
+  const fig = ({ h, n, p, a1, a2, l1, l2, front = false, dir }) => {
+    const d = dir || (h[0] >= p[0] ? 1 : -1);
+    let body = '', back = '';
+    const neck = cap(n, lerp(n, h, 0.6), 1.9, 1.6) + `<ellipse cx="${h[0]}" cy="${h[1]}" rx="3.5" ry="3.9"/>`;
+    if (front) {
+      const sl = add(n, -5, 1), sr = add(n, 5, 1), hl = add(p, -3, 0.5), hr = add(p, 3, 0.5);
+      const waist = lerp(n, p, 0.72);
+      body = `<path d="M${sl}L${sr}L${add(waist, 3.2, 0)}L${hr}L${hl}L${add(waist, -3.2, 0)}Z" stroke-width="3.2" stroke-linejoin="round" class="sk"/>`.replace(/,/g, ' ')
+        + dot(sl, 2.2) + dot(sr, 2.2)
+        + (l1 ? leg(hl, l1, -1) : '') + (l2 ? leg(hr, l2, 1) : '') + (a1 ? arm(sl, a1) : '') + (a2 ? arm(sr, a2) : '');
+    } else {
+      const chest = lerp(n, p, 0.3);
+      back = (a2 ? arm(add(n, 0, 1), a2) : '') + (l2 ? leg(p, l2, d) : '');
+      body = cap(n, chest, 3.3, 3.9) + cap(chest, p, 3.9, 3.5) + dot(p, 3.6)
+        + (l1 ? leg(p, l1, d) : '') + (a1 ? arm(add(n, 0, 1), a1) : '');
+    }
+    return (back ? `<g class="sil far">${back}</g>` : '') + `<g class="sil">${body}${neck}</g>`;
   };
   const eq = (inner) => `<g class="eq">${inner}</g>`;
   const plate = (x, y, r = 5) => eq(`<circle class="pl" cx="${x}" cy="${y}" r="${r}"/>`);            // činka zboku (kotúč)
