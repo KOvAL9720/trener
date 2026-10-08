@@ -1321,12 +1321,11 @@ window.addEventListener('hashchange', () => {
   prevHash = hash;
   // návrat potiahnutím prstom: stará obrazovka už odišla doprava, Nastavenia len prídu zľava
   if (swipedBack) {
-    const under = swipedBack;
     swipedBack = false;
+    const y = window.scrollY;
     render();
-    window.scrollTo(0, navState.scroll.get(hash) || 0);
+    window.scrollTo(0, y);
     main.style.transform = '';
-    under.remove?.();
     main.classList.remove('push', 'tab-in', 'vt-back');
     return;
   }
@@ -3914,7 +3913,13 @@ const viewHtml = (h) => {
     setTimeout(() => {
       main.classList.remove('swipe-settle');
       if (!go) { under.remove(); return; }
-      swipedBack = under; navigator.vibrate?.(8);
+      // cieľovú obrazovku ukážeme hneď v tom istom snímku (iPhone by inak medzi koncom gesta
+      // a zmenou adresy na okamih ukázal prázdnu plochu); adresa sa zmení hneď potom
+      swipedBack = true; navigator.vibrate?.(8);
+      main.innerHTML = viewHtml(to);
+      main.style.transform = '';
+      window.scrollTo(0, navState.scroll.get(to) || 0);
+      under.remove();
       if (navPrev() === to) history.back(); else location.hash = to;
     }, 230);
   };
