@@ -8,7 +8,7 @@
    upravuje tie isté udalosti. Zrušené a vymazané tréningy sa z kalendára odstránia.
    ========================================================= */
 // OAuth Client ID z Google Cloud konzoly (projekt trener-31965) – verejný údaj, nie je to heslo
-const GCAL_CLIENT_ID = '';
+const GCAL_CLIENT_ID = '828584673508-3gtav39ed4hplaf2c4tnt53951nlpjal.apps.googleusercontent.com';
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created';
 const GCAL_API = 'https://www.googleapis.com/calendar/v3';
 const GCAL_TZ = 'Europe/Bratislava';
