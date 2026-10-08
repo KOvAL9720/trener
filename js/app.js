@@ -123,11 +123,18 @@ const fmtDay = (s) => {
   if (diff === -1) return 'Včera';
   return `${DAYS[weekday(s)]} ${fmtShort(s)}${parseDate(s).getFullYear() !== new Date().getFullYear() ? ' ' + parseDate(s).getFullYear() : ''}`;
 };
-const fmtMoney = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('sk-SK', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 }));
+// formátovače sa vytvoria raz (toLocaleString s nastaveniami ich vytvára pri každom volaní – pomalé)
+const MONEY_FMT = new Intl.NumberFormat('sk-SK', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtMoney = (n) => (n == null || n === '' ? '' : MONEY_FMT.format(Number(n)));
 const MONTHS = ['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl', 'august', 'september', 'október', 'november', 'december'];
 const monthKey = (y, m) => { const d = new Date(y, m - 1, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
 const monthLabel = (key) => { const [y, m] = key.split('-').map(Number); const n = MONTHS[m - 1]; return `${n[0].toUpperCase()}${n.slice(1)} ${y}`; };
-const fmtNum = (n, digits = 1) => (n == null || n === '' ? '–' : Number(n).toLocaleString('sk-SK', { maximumFractionDigits: digits }));
+const NUM_FMT = new Map();
+const fmtNum = (n, digits = 1) => {
+  if (n == null || n === '') return '–';
+  if (!NUM_FMT.has(digits)) NUM_FMT.set(digits, new Intl.NumberFormat('sk-SK', { maximumFractionDigits: digits }));
+  return NUM_FMT.get(digits).format(Number(n));
+};
 const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';
 const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 86400000);
@@ -1097,8 +1104,8 @@ function render(animate = false) {
         flashId = null;
       }
       if (animate && !reduceMotion.matches) animateEnter();
-      moveNavInd();
       if (!reduceMotion.matches) revealOnScroll();
+      if (render.section !== section || !document.querySelector('.nav.has-ind')) { render.section = section; moveNavInd(); }
       const grid = main.querySelector('#photo-grid');
       if (grid) fillPhotoGrid(grid.dataset.client);
       updateCloudBadge();
@@ -1159,9 +1166,13 @@ const revealIO = 'IntersectionObserver' in window ? new IntersectionObserver((en
 function revealOnScroll() {
   if (!revealIO) return;
   const limit = innerHeight;
-  main.querySelectorAll(':scope > .card, :scope > section, .stats > .stat, .days > .day, .card .list > li').forEach((el) => {
-    if (el.closest('.rv')) return;
-    if (el.getBoundingClientRect().top > limit) { el.classList.add('rv'); revealIO.observe(el); }
+  const els = [...main.querySelectorAll(':scope > .card, :scope > section, .stats > .stat, .days > .day, .card .list > li')];
+  // najprv len merania, potom zápisy – inak by každá trieda vynútila nový prepočet rozloženia
+  const below = els.map((el) => el.getBoundingClientRect().top > limit);
+  els.forEach((el, i) => {
+    if (!below[i] || el.closest('.rv')) return;
+    el.classList.add('rv');
+    revealIO.observe(el);
   });
 }
 
@@ -1241,6 +1252,29 @@ function settingsDir(from, to) {
   if (b > a) return a === 0 ? 'up' : 'fwd';
   return b === 0 ? 'down' : 'back';
 }
+function pageSlide(dir) {
+  const root = document.documentElement;
+  document.querySelector('.vt-ghost')?.remove();
+  clearTimeout(pageSlide.t);
+  const r = main.getBoundingClientRect(), cs = getComputedStyle(main);
+  const ghost = document.createElement('div');
+  ghost.className = 'vt-ghost';
+  ghost.setAttribute('aria-hidden', 'true');
+  ghost.inert = true;
+  const inner = document.createElement('div');
+  inner.style.cssText = `position:absolute;left:0;right:0;top:${r.top}px;padding:${cs.padding}`;
+  inner.append(...main.childNodes);
+  inner.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+  ghost.append(inner);
+  Object.assign(ghost.style, { left: `${r.left}px`, width: `${r.width}px` });
+  document.body.append(ghost);
+  delete root.dataset.vt;
+  void ghost.offsetWidth;
+  root.dataset.vt = dir;
+  render();
+  window.scrollTo(0, 0);
+  pageSlide.t = setTimeout(() => { ghost.remove(); if (root.dataset.vt === dir) delete root.dataset.vt; }, 460);
+}
 // Koliesko nastavení funguje ako prepínač: druhé ťuknutie nastavenia zavrie a vráti na predchádzajúcu obrazovku
 let beforeSettings = '#/';
 document.querySelector('.topbar-btn[data-nav="settings"]')?.addEventListener('click', (e) => {
@@ -1270,22 +1304,12 @@ window.addEventListener('hashchange', () => {
     main.classList.remove('push', 'tab-in', 'vt-back');
     return;
   }
-  // Nastavenia: otvorenie/zatvorenie ako okno – odchádzajúca obrazovka odíde, nová príde (View Transitions)
+  // Nastavenia: otvorenie/zatvorenie ako okno – odchádzajúca obrazovka odíde, nová príde.
+  // Stará obrazovka sa len presunie do pevnej vrstvy (bez snímky celej stránky) a animuje sa
+  // iba transform/opacity dvoch vrstiev – plynulé aj na slabšom mobile.
   if (dir && !reduceMotion.matches) {
     main.classList.remove('push', 'tab-in');
-    const swap = () => { render(); window.scrollTo(0, 0); };
-    if (document.startViewTransition) {
-      document.documentElement.dataset.vt = dir;
-      const t = document.startViewTransition(swap);
-      t.finished.finally(() => { if (document.documentElement.dataset.vt === dir) delete document.documentElement.dataset.vt; });
-    } else {
-      swap();
-      main.classList.remove('vt-up', 'vt-down', 'vt-fwd', 'vt-back');
-      void main.offsetWidth;
-      main.classList.add(`vt-${dir}`);
-      clearTimeout(main.vtT);
-      main.vtT = setTimeout(() => main.classList.remove(`vt-${dir}`), 500);
-    }
+    pageSlide(dir);
     return;
   }
   render();
