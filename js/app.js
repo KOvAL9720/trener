@@ -1276,7 +1276,7 @@ function pageSlide(dir) {
   void ghost.offsetWidth;
   root.dataset.vt = dir;
   render();
-  window.scrollTo(0, 0);
+  window.scrollTo(0, dir === 'back' ? navState.scroll.get(location.hash) || 0 : 0);
   pageSlide.t = setTimeout(() => { ghost.remove(); if (root.dataset.vt === dir) delete root.dataset.vt; }, 460);
 }
 // Koliesko nastavení funguje ako prepínač: druhé ťuknutie nastavenia zavrie a vráti na predchádzajúcu obrazovku
@@ -1286,8 +1286,20 @@ document.querySelector('.topbar-btn[data-nav="settings"]')?.addEventListener('cl
   e.preventDefault();
   location.hash = beforeSettings;
 });
+// Systémové gesto „späť“ v iPhone (potiahnutie od ľavého okraja) už stránku animuje samo –
+// apka vtedy nesmie pridať vlastnú animáciu ani skočiť hore, inak sa obrazovky prekrývajú.
+const navState = { touching: false, touchEnd: 0, pop: 0, scroll: new Map() };
+document.addEventListener('touchstart', () => { navState.touching = true; }, { passive: true, capture: true });
+['touchend', 'touchcancel'].forEach((t) => document.addEventListener(t, (e) => { if (!e.touches.length) { navState.touching = false; navState.touchEnd = Date.now(); } }, { passive: true, capture: true }));
+// krok späť/dopredu v histórii spoznáme podľa značky v history.state (nový odkaz ju ešte nemá)
+window.addEventListener('popstate', (e) => { if (e.state?.nav) navState.pop = Date.now(); });
+if (!history.state?.nav) history.replaceState({ nav: 1 }, '');
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+const nativeBack = () => Date.now() - navState.pop < 400 && (navState.touching || Date.now() - navState.touchEnd < 1200);
 window.addEventListener('hashchange', () => {
   if (!prevHash.startsWith('#/settings')) beforeSettings = prevHash;
+  navState.scroll.set(prevHash, window.scrollY);
+  if (!history.state?.nav) history.replaceState({ nav: 1 }, '');
   if (modal.open) modal.close();
   const cf = document.getElementById('confirm');
   if (cf?.open) cf.close();
@@ -1302,10 +1314,17 @@ window.addEventListener('hashchange', () => {
     const under = swipedBack;
     swipedBack = false;
     render();
-    window.scrollTo(0, 0);
+    window.scrollTo(0, navState.scroll.get(hash) || 0);
     main.style.transform = '';
     under.remove?.();
     main.classList.remove('push', 'tab-in', 'vt-back');
+    return;
+  }
+  // po systémovom geste späť: bez animácie, na mieste, kde bola stránka posunutá
+  if (nativeBack()) {
+    main.classList.remove('push', 'tab-in', 'vt-back');
+    render();
+    window.scrollTo(0, navState.scroll.get(hash) || 0);
     return;
   }
   // Nastavenia: otvorenie/zatvorenie ako okno – odchádzajúca obrazovka odíde, nová príde.
@@ -3818,7 +3837,7 @@ let swipedBack = false;
   const back = () => (/^#\/settings\/[a-z]+$/.test(location.hash) ? '#/settings' : null);
   document.addEventListener('touchstart', (e) => {
     g = null;
-    if (e.touches.length !== 1 || !back() || reduceMotion.matches || document.querySelector('dialog[open]') || e.target.closest?.('input, textarea, select, .chips, .nav, .topbar')) return;
+    if (e.touches.length !== 1 || !back() || reduceMotion.matches || e.touches[0].clientX < 28 || document.querySelector('dialog[open]') || e.target.closest?.('input, textarea, select, .chips, .nav, .topbar')) return;
     g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), on: false, dx: 0 };
   }, { passive: true });
   document.addEventListener('touchmove', (e) => {
@@ -3837,6 +3856,7 @@ let swipedBack = false;
       under.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
       Object.assign(under.style, { left: `${r.left}px`, width: `${r.width}px`, top: `${main.offsetTop}px`, padding: cs.padding });
       main.before(under);
+      under.scrollTop = navState.scroll.get('#/settings') || 0;
       g.under = under;
     }
     if (e.cancelable) e.preventDefault();
