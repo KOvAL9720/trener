@@ -1988,3 +1988,11 @@ html.live-on, html.live-on body { overflow: hidden; }
   .mc-dots { display: flex; }
 }
 .btn:disabled, .btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+/* Ukážková verzia – odznak vedľa názvu */
+.demo-badge {
+  margin: 0 auto 0 10px; padding: 4px 10px; border-radius: 999px;
+  font: 600 12px/1.2 inherit; letter-spacing: .02em; text-transform: uppercase;
+  color: var(--accent); background: transparent; border: 1px solid var(--accent); cursor: pointer;
+}
+.demo-badge:active { transform: scale(.95); }

@@ -105,6 +105,8 @@
   <input type="file" id="gallery-file" accept="image/*" multiple hidden>
   <div id="toast" role="status" aria-live="polite"></div>
 
+  <!-- ukážková verzia (?demo): vlastné dáta v zariadení, bez cloudu a Google – na vyskúšanie bez rizika -->
+  <script>window.DEMO = new URLSearchParams(location.search).has('demo'); if (window.DEMO) window.cloudError = 'demo';</script>
   <script src="js/exercise-icons.js" defer></script>
   <!-- cloud (klientska zóna) – samostatný modul, pri výpadku siete appka beží ďalej -->
   <script type="module">
@@ -118,7 +120,7 @@
       window.cloudError = (e && (e.message || String(e))) || 'neznáma chyba';
       window.dispatchEvent(new Event('cloud-ready'));
     });
-    if (document.readyState === 'complete') loadCloud(); else window.addEventListener('load', loadCloud, { once: true });
+    if (window.DEMO) { /* v ukážke sa cloud nenačíta */ } else if (document.readyState === 'complete') loadCloud(); else window.addEventListener('load', loadCloud, { once: true });
   </script>
   <script src="js/app.js" defer></script>
   <!-- živý tréning (časovač, série naživo) -->
