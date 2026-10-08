@@ -22,9 +22,13 @@ const DAY_KEYS = ['1', '2', '3', '4', '5', '6', '0'];
 const CAL_DAYS = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
 
 const calModeSwitch = () => `<div class="seg cal-mode" role="group" aria-label="Zobrazenie kalendára">
-  <button type="button" class="${calMode === 'grid' ? 'active' : ''}" data-cal-mode="grid">Týždeň</button>
-  <button type="button" class="${calMode === 'list' ? 'active' : ''}" data-cal-mode="list">Zoznam</button>
+  ${[['day', 'Deň'], ['grid', 'Týždeň'], ['month', 'Mesiac'], ['list', 'Zoznam']].map(([k, l]) => `<button type="button" class="${calMode === k ? 'active' : ''}" data-cal-mode="${k}">${l}</button>`).join('')}
 </div>`;
+const CAL_MONTHS = MONTHS.map((m) => m[0].toUpperCase() + m.slice(1));
+const monthStart = (d) => `${d.slice(0, 7)}-01`;
+const addMonths = (d, n) => { const x = parseDate(monthStart(d)); x.setMonth(x.getMonth() + n); return isoDate(x); };
+// dátum, na ktorom kalendár stojí (pri prepínaní Deň / Týždeň / Mesiac sa zachová)
+let calFocus = null;
 
 // rozloženie prekrývajúcich sa tréningov do stĺpcov (ako v Google kalendári)
 function layoutDay(items) {
@@ -50,12 +54,16 @@ function layoutDay(items) {
   return evs;
 }
 
-function viewCalendarGrid(weekParam) {
-  if (calMode === 'list') return calListView(weekParam).replace('<div class="week-nav">', `${calModeSwitch()}<div class="week-nav">`);
+function viewCalendarGrid(param) {
   const t = today();
-  const ws = startOfWeek(weekParam || t);
-  const we = addDays(ws, 6);
-  const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
+  if (param) calFocus = param;
+  const focus = param || (calFocus && calFocus !== t ? calFocus : t);
+  if (calMode === 'list') return calListView(param).replace('<div class="week-nav">', `${calModeSwitch()}<div class="week-nav">`);
+  if (calMode === 'month') return calMonthView(focus);
+  const dayMode = calMode === 'day';
+  const ws = dayMode ? focus : startOfWeek(focus);
+  const we = dayMode ? focus : addDays(ws, 6);
+  const days = Array.from({ length: dayMode ? 1 : 7 }, (_, i) => addDays(ws, i));
   const sessions = days.flatMap((d) => idx().sessionsByDate.get(d) || []);
   const reqs = pendingRequests.filter((r) => r.date >= ws && r.date <= we);
   const count = sessions.filter((s) => s.status !== 'cancelled').length;
@@ -93,7 +101,7 @@ function viewCalendarGrid(weekParam) {
     // pozadie mimo pracovných hodín
     let off = '';
     if (hasWh) {
-      const ranges = (wh[DAY_KEYS[i]] || []).map(([a, b]) => [toMin(a), toMin(b)]).filter(([a, b]) => a != null && b != null).sort((a, b) => a[0] - b[0]);
+      const ranges = (wh[DAY_KEYS[weekday(d)]] || []).map(([a, b]) => [toMin(a), toMin(b)]).filter(([a, b]) => a != null && b != null).sort((a, b) => a[0] - b[0]);
       let cur = h0 * 60;
       for (const [a, b] of ranges) { if (a > cur) off += `<i class="cal-off" style="top:${top(cur)}px;height:${top(a) - top(cur)}px"></i>`; cur = Math.max(cur, b); }
       if (cur < h1 * 60) off += `<i class="cal-off" style="top:${top(cur)}px;height:${top(h1 * 60) - top(cur)}px"></i>`;
@@ -102,29 +110,74 @@ function viewCalendarGrid(weekParam) {
     const self = selfOnDate(d);
     const allDay = [...untimed.map((s) => `<button type="button" class="cal-chip st-${s.status}" data-action="edit-session" data-id="${s.id}">${esc(firstName(getClient(s.clientId) || { name: '' }))}</button>`),
       ...self.map((s) => `<a class="cal-chip self" href="#/client/${s.clientId}" title="Cvičil/a sám/sama">${esc(firstName(getClient(s.clientId) || { name: '' }))} · sám</a>`)].join('');
-    return { d, i, head: `<div class="cal-dh${d === t ? ' today' : ''}"><small>${CAL_DAYS[i]}</small><b>${parseDate(d).getDate()}</b>${allDay ? `<div class="cal-allday">${allDay}</div>` : ''}</div>`, col: `<div class="cal-col${d === t ? ' today' : ''}" data-date="${d}">${off}${now}${evs}</div>` };
+    return { d, i, head: `<div class="cal-dh${d === t ? ' today' : ''}"><small>${dayMode ? DAYS_LONG[weekday(d)] : CAL_DAYS[weekday(d)]}</small><b>${parseDate(d).getDate()}</b>${allDay ? `<div class="cal-allday">${allDay}</div>` : ''}</div>`, col: `<div class="cal-col${d === t ? ' today' : ''}" data-date="${d}">${off}${now}${evs}</div>` };
   });
 
   return `
   <div class="page-head cal-page-head">
-    <div><h1>Kalendár</h1><p class="muted" style="margin:0">${nTr(count)} v týždni</p></div>
+    <div><h1>Kalendár</h1><p class="muted" style="margin:0">${nTr(count)} ${dayMode ? (ws === t ? 'dnes' : 'v tento deň') : 'v týždni'}</p></div>
     ${calModeSwitch()}
     <div class="week-nav">
-      <a class="icon-btn" href="#/calendar/${addDays(ws, -7)}" aria-label="Predchádzajúci týždeň">‹</a>
-      <span class="label">${fmtShort(ws)} – ${fmtShort(we)} ${parseDate(we).getFullYear()}</span>
-      <a class="icon-btn" href="#/calendar/${addDays(ws, 7)}" aria-label="Nasledujúci týždeň">›</a>
-      ${ws !== startOfWeek(t) ? '<a class="btn small" href="#/calendar">Dnes</a>' : ''}
-      <button class="btn small primary cal-add" data-action="new-session" data-date="${ws === startOfWeek(t) ? t : ws}">+ Tréning</button>
+      <a class="icon-btn" href="#/calendar/${addDays(ws, dayMode ? -1 : -7)}" aria-label="${dayMode ? 'Predchádzajúci deň' : 'Predchádzajúci týždeň'}">‹</a>
+      <span class="label">${dayMode ? `${DAYS_LONG[weekday(ws)]} ${fmtShort(ws)} ${parseDate(ws).getFullYear()}` : `${fmtShort(ws)} – ${fmtShort(we)} ${parseDate(we).getFullYear()}`}</span>
+      <a class="icon-btn" href="#/calendar/${addDays(ws, dayMode ? 1 : 7)}" aria-label="${dayMode ? 'Nasledujúci deň' : 'Nasledujúci týždeň'}">›</a>
+      ${(dayMode ? ws !== t : ws !== startOfWeek(t)) ? '<a class="btn small" href="#/calendar" data-cal-today>Dnes</a>' : ''}
+      <button class="btn small primary cal-add" data-action="new-session" data-date="${dayMode ? ws : ws === startOfWeek(t) ? t : ws}">+ Tréning</button>
     </div>
   </div>
   <p class="cal-hint muted">${matchMedia('(pointer: coarse)').matches ? 'Podrž tréning a potiahni · spodný okraj = dĺžka · ťuk do prázdna = nový' : 'Tréning presuň myšou · spodný okraj = dĺžka · klik do prázdna = nový tréning'}</p>
-  <div class="cal-wrap" data-week="${ws}" data-h0="${h0}" data-h1="${h1}">
-    <div class="cal-grid" style="--rows:${h1 - h0};--hpx:${HOUR_PX}px">
+  <div class="cal-wrap${dayMode ? ' day' : ''}" data-week="${dayMode ? 'd' : 'w'}${ws}" data-now="${days.includes(t) ? 1 : 0}" data-h0="${h0}" data-h1="${h1}">
+    <div class="cal-grid" style="--rows:${h1 - h0};--hpx:${HOUR_PX}px;--n:${days.length}">
       <div class="cal-corner"></div>
       ${cols.map((c) => c.head).join('')}
       <div class="cal-times">${Array.from({ length: h1 - h0 }, (_, k) => `<span style="top:${k * HOUR_PX}px">${pad(h0 + k)}:00</span>`).join('')}</div>
       ${cols.map((c) => c.col).join('')}
     </div>
+  </div>`;
+}
+
+/* ---------- Mesiac ---------- */
+function calMonthView(focus) {
+  const t = today();
+  const ms = monthStart(focus);
+  const next = addMonths(ms, 1);
+  const gs = startOfWeek(ms);
+  const weeks = Math.ceil((Math.round((parseDate(next) - parseDate(gs)) / 86400000)) / 7);
+  const cells = Array.from({ length: weeks * 7 }, (_, i) => addDays(gs, i));
+  const inMonth = (d) => d >= ms && d < next;
+  const monthSessions = cells.filter(inMonth).flatMap((d) => idx().sessionsByDate.get(d) || []).filter((s) => s.status !== 'cancelled');
+  const reqs = pendingRequests.filter((r) => r.date >= ms && r.date < next);
+  const cell = (d) => {
+    const list = (idx().sessionsByDate.get(d) || []).slice().sort(bySessionTime);
+    const req = reqs.filter((r) => r.date === d);
+    const self = selfOnDate(d);
+    const items = list.map((s) => `<span class="mc-ev st-${s.status}${s.status === 'done' && isDue(s) ? ' due' : ''}"><b>${esc(s.time || '')}</b> ${esc(firstName(getClient(s.clientId) || { name: '' }))}</span>`);
+    req.forEach((r) => items.push(`<span class="mc-ev req"><b>${esc(r.time)}</b> Žiadosť</span>`));
+    self.forEach(() => items.push('<span class="mc-ev self">sám</span>'));
+    const busy = list.filter((s) => s.status !== 'cancelled').length;
+    return `<button type="button" class="mc${inMonth(d) ? '' : ' out'}${d === t ? ' today' : ''}${weekday(d) >= 5 ? ' we' : ''}" data-cal-day="${d}" aria-label="${DAYS_LONG[weekday(d)]} ${fmtShort(d)}${busy ? ` · ${nTr(busy)}` : ''}">
+      <span class="mc-n">${parseDate(d).getDate()}</span>
+      <span class="mc-list">${items.slice(0, 3).join('')}${items.length > 3 ? `<span class="mc-more">+${items.length - 3}</span>` : ''}</span>
+      ${busy ? `<span class="mc-dots" aria-hidden="true">${'<i></i>'.repeat(Math.min(busy, 4))}</span>` : ''}
+    </button>`;
+  };
+  const isThisMonth = ms === monthStart(t);
+  return `
+  <div class="page-head cal-page-head">
+    <div><h1>Kalendár</h1><p class="muted" style="margin:0">${nTr(monthSessions.length)} v mesiaci</p></div>
+    ${calModeSwitch()}
+    <div class="week-nav">
+      <a class="icon-btn" href="#/calendar/${addMonths(ms, -1)}" aria-label="Predchádzajúci mesiac">‹</a>
+      <span class="label">${CAL_MONTHS[parseDate(ms).getMonth()]} ${parseDate(ms).getFullYear()}</span>
+      <a class="icon-btn" href="#/calendar/${addMonths(ms, 1)}" aria-label="Nasledujúci mesiac">›</a>
+      ${isThisMonth ? '' : '<a class="btn small" href="#/calendar" data-cal-today>Dnes</a>'}
+      <button class="btn small primary cal-add" data-action="new-session" data-date="${isThisMonth ? t : ms}">+ Tréning</button>
+    </div>
+  </div>
+  <p class="cal-hint muted">Ťukni na deň – otvorí sa jeho rozvrh</p>
+  <div class="month">
+    <div class="month-head">${CAL_DAYS.map((x) => `<span>${x}</span>`).join('')}</div>
+    <div class="month-grid" style="--weeks:${weeks}">${cells.map(cell).join('')}</div>
   </div>`;
 }
 
@@ -152,7 +205,7 @@ function calRestoreScroll() {
     const t = today();
     const nowH = new Date().getHours();
     const first = [...wrap.querySelectorAll('.cal-ev')].reduce((m, el) => Math.min(m, parseFloat(el.style.top)), Infinity);
-    const target = ws === startOfWeek(t) ? Math.max(0, (Math.max(h0, Math.min(nowH - 1, 20)) - h0) * HOUR_PX) : Number.isFinite(first) ? Math.max(0, first - 40) : (8 - h0) * HOUR_PX;
+    const target = wrap.dataset.now === '1' ? Math.max(0, (Math.max(h0, Math.min(nowH - 1, 20)) - h0) * HOUR_PX) : Number.isFinite(first) ? Math.max(0, first - 40) : (8 - h0) * HOUR_PX;
     wrap.scrollTop = target;
     const tc = wrap.querySelector('.cal-col.today');
     if (tc && wrap.scrollWidth > wrap.clientWidth) wrap.scrollLeft = Math.max(0, tc.offsetLeft - wrap.querySelector('.cal-times').offsetWidth);
@@ -269,13 +322,37 @@ async function calDragEnd(e) {
 document.addEventListener('pointerup', calDragEnd);
 document.addEventListener('pointercancel', calDragEnd);
 
+/* ---------- Deň / mesiac: potiahnutím prstom doľava/doprava ďalší / predchádzajúci ---------- */
+(() => {
+  let sw = null;
+  document.addEventListener('touchstart', (e) => {
+    const area = e.target.closest('.cal-wrap.day, .month');
+    sw = area && e.touches.length === 1 && !e.target.closest('.cal-ev') ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
+  }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (!sw || calDrag?.active) { sw = null; return; }
+    const dx = e.changedTouches[0].clientX - sw.x, dy = e.changedTouches[0].clientY - sw.y;
+    const fast = Date.now() - sw.t < 600;
+    sw = null;
+    if (!fast || Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    const link = document.querySelector(`.week-nav a.icon-btn:${dx < 0 ? 'nth-of-type(2)' : 'first-of-type'}`);
+    if (link) { calSuppressClick = true; setTimeout(() => { calSuppressClick = false; }, 350); location.hash = link.getAttribute('href'); }
+  }, { passive: true });
+})();
+
 /* ---------- Ťuknutia ---------- */
 document.addEventListener('click', async (e) => {
-  if (calSuppressClick && e.target.closest('.cal-wrap')) { e.preventDefault(); e.stopPropagation(); return; }
+  if (calSuppressClick && e.target.closest('.cal-wrap, .month')) { e.preventDefault(); e.stopPropagation(); return; }
+  if (e.target.closest('[data-cal-today]')) calFocus = null;
+  const dayLink = e.target.closest('[data-cal-day]');
+  if (dayLink) { e.preventDefault(); calMode = 'day'; try { localStorage.setItem(CAL_MODE_KEY, calMode); } catch (x) { /* ok */ } calFocus = dayLink.dataset.calDay; location.hash = `#/calendar/${calFocus}`; render(); return; }
   const mode = e.target.closest('[data-cal-mode]');
   if (mode) {
+    // ak je v zobrazení dnešok, nové zobrazenie sa otvorí na dnešku
+    const hasToday = document.querySelector('.cal-wrap[data-now="1"], .mc.today:not(.out)');
     calMode = mode.dataset.calMode;
     try { localStorage.setItem(CAL_MODE_KEY, calMode); } catch (x) { /* ok */ }
+    if (hasToday) { calFocus = null; if (location.hash !== '#/calendar') { location.hash = '#/calendar'; return; } }
     render();
     return;
   }
