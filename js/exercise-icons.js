@@ -1,64 +1,69 @@
 'use strict';
 
 /* =========================================================
-   Miniatúry cvikov – moderné piktogramy (SVG)
-   Postavička je vo farbe textu (plná hlava, zaoblené čiary), náradie (.eq)
-   a podlaha (.fl) majú tyrkysový nádych – farby určuje CSS.
+   Miniatúry cvikov – moderné piktogramy (SVG) v štýle športových piktogramov
+   Postava: plná hlava, hrubý trup, zaoblené končatiny; vzdialenejšia ruka a noha
+   sú priesvitnejšie (hĺbka). Náradie (.eq) a podlaha (.fl) majú tyrkysový prechod.
    Kľúč = názov cviku bez diakritiky a malými písmenami; ak cvik nemá vlastný
    obrázok, použije sa piktogram jeho partie, inak všeobecná činka.
    ========================================================= */
 const EXERCISE_ICONS = (() => {
-  // všetko v rámčeku 48 × 48
-  const head = (x, y) => `<circle class="hd" cx="${x}" cy="${y}" r="3.6"/>`;
+  // rámček 48 × 48, body zadávané ako [x, y]
+  const P = ([x, y]) => `${x} ${y}`;
+  const limb = (from, [mid, end]) => `<path d="M${P(from)}L${P(mid)}L${P(end)}"/>`;
+  // postava: h hlava, n ramená, p panva; a1/l1 bližšia ruka/noha [lakeť/koleno, dlaň/chodidlo], a2/l2 vzdialenejšia
+  // front: pohľad spredu – obe strany rovnako výrazné
+  const fig = ({ h, n, p, a1, a2, l1, l2, front = false }) => {
+    const back = (a2 ? limb(n, a2) : '') + (l2 ? limb(p, l2) : '');
+    return (back ? (front ? back : `<g class="far">${back}</g>`) : '')
+      + `<path class="t" d="M${P(n)}L${P(p)}"/>`
+      + (l1 ? limb(p, l1) : '') + (a1 ? limb(n, a1) : '')
+      + `<circle class="hd" cx="${h[0]}" cy="${h[1]}" r="4"/>`;
+  };
   const eq = (inner) => `<g class="eq">${inner}</g>`;
-  // činka: tyč + kotúče
-  const bar = (x1, y1, x2, y2) => eq(`<path d="M${x1} ${y1}L${x2} ${y2}" stroke-width="2.6"/><rect class="pl" x="${x1 - 2.2}" y="${y1 - 4.2}" width="4.4" height="8.4" rx="1.6"/><rect class="pl" x="${x2 - 2.2}" y="${y2 - 4.2}" width="4.4" height="8.4" rx="1.6"/>`);
-  // jednoručka
-  const db = (x, y) => eq(`<rect class="pl" x="${x - 3.2}" y="${y - 2.2}" width="6.4" height="4.4" rx="1.8"/>`);
-  const floor = '<path class="fl" d="M8 42.5h32"/>';
+  const plate = (x, y, r = 5) => eq(`<circle class="pl" cx="${x}" cy="${y}" r="${r}"/>`);            // činka zboku (kotúč)
+  const dumbbell = (x, y) => eq(`<rect class="pl" x="${x - 3.4}" y="${y - 2.4}" width="6.8" height="4.8" rx="2"/>`);
+  const barFront = (x1, x2, y) => eq(`<path d="M${x1} ${y}H${x2}" stroke-width="2.4"/><rect class="pl" x="${x1 - 2.2}" y="${y - 4.5}" width="4.4" height="9" rx="1.6"/><rect class="pl" x="${x2 - 2.2}" y="${y - 4.5}" width="4.4" height="9" rx="1.6"/>`);
+  const floor = '<path class="fl" d="M6 42.5h36"/>';
+
   const icons = {
     // Nohy
-    'drep': head(24, 9) + '<path d="M24 13v10l-7 8v9M24 23l7 8v9M15 16h18"/>' + bar(10, 16, 38, 16) + floor,
-    'leg press': head(10, 30) + '<path d="M10 34h10l10-8 6 1M20 34l8 6"/>' + eq('<path d="M30 26l6-10M35 13l6-3M35 13l7 5"/>') + floor,
-    'vypady': head(16, 8) + '<path d="M16 12v12l-8 9v8M16 24l10 6 6 10M9 18h14"/>' + db(8, 18) + db(24, 18) + floor,
-    'rumunsky mrtvy tah': head(30, 9) + '<path d="M30 13l-10 10 2 18M22 23l-4 16M20 23l10 4v4"/>' + bar(23, 31, 35, 31) + floor,
+    'drep': plate(20, 17, 4) + fig({ h: [29, 10], n: [25, 16], p: [18, 28], a1: [[21, 21], [21, 16]], a2: [[23, 22], [23, 17]], l1: [[29, 28], [27, 41]], l2: [[27, 30], [24, 41]] }) + floor,
+    'leg press': eq('<path d="M5 39h12L10 22"/><path d="M34 13l5 19M37 22l7 5" />') + fig({ h: [8, 17], n: [11, 22], p: [16, 34], a1: [[13, 30], [17, 34]], l1: [[24, 23], [35, 22]], l2: [[25, 26], [36, 26]] }) + floor,
+    'vypady': fig({ h: [22, 9], n: [22, 15], p: [21, 27], a1: [[23, 21], [23, 27]], a2: [[21, 21], [21, 27]], l1: [[31, 28], [31, 41]], l2: [[15, 37], [7, 40]] }) + dumbbell(23, 28) + floor,
+    'rumunsky mrtvy tah': fig({ h: [35, 15], n: [30, 18], p: [18, 24], a1: [[30, 25], [29, 31]], a2: [[28, 25], [27, 31]], l1: [[20, 33], [19, 41]], l2: [[22, 33], [22, 41]] }) + plate(29, 32, 4.8) + floor,
     // Zadok
-    'hip thrust': eq('<path d="M6 36v-10h7"/>') + head(10, 22) + '<path d="M14 26l12-2 10 2 6 12M26 24l-2 10M30 26l-4 8"/>' + bar(17, 22, 31, 22) + floor,
+    'hip thrust': eq('<path d="M3 30h11v12"/>') + fig({ h: [8, 24], n: [12, 28], p: [25, 25], a1: [[18, 24], [24, 21]], l1: [[34, 26], [34, 41]], l2: [[32, 27], [31, 41]] }) + plate(24, 19.5, 4.6) + floor,
     // Chrbát
-    'mrtvy tah': head(24, 11) + '<path d="M24 15l-6 10v10M24 15l6 10v10M18 25l6-2 6 2M19 34v-9M29 34v-9"/>' + bar(13, 34, 35, 34) + floor,
-    'pritahy na hrazde': eq('<path d="M7 7h34" stroke-width="2.8"/>') + head(24, 16) + '<path d="M24 20v11l-4 9M24 31l4 9M16 7l8 12 8-12"/>',
-    'veslovanie s cinkou': head(32, 11) + '<path d="M32 15l-12 8-4 18M20 23l-2 18M20 23l8 2 2 7"/>' + db(30, 33) + floor,
-    'stiahnutie kladky': eq('<path d="M24 3v6M15 9h18" stroke-width="2.8"/>') + head(24, 20) + '<path d="M24 24v8l-6 10M24 32l6 10M15 9l9 11 9-11"/>' + floor,
+    'mrtvy tah': fig({ h: [31, 12], n: [27, 17], p: [17, 26], a1: [[27, 26], [26, 34]], a2: [[25, 26], [24, 34]], l1: [[24, 31], [22, 41]], l2: [[22, 32], [20, 41]] }) + plate(26, 37, 5.2) + floor,
+    'pritahy na hrazde': eq('<path d="M5 5.5h38" stroke-width="2.8"/>') + fig({ front: true, h: [24, 13], n: [24, 19], p: [24, 31], a1: [[14, 14], [16, 6]], a2: [[34, 14], [32, 6]], l1: [[21, 38], [23, 45]], l2: [[27, 38], [29, 45]] }),
+    'veslovanie s cinkou': eq('<path d="M4 31h15M7 31v11M16 31v11"/>') + fig({ h: [9, 16], n: [15, 20], p: [29, 21], a1: [[23, 15], [22, 25]], a2: [[12, 25], [12, 30]], l1: [[29, 31], [30, 41]], l2: [[33, 31], [35, 41]] }) + dumbbell(22, 26) + floor,
+    'stiahnutie kladky': eq('<path d="M24 1.5v5.5M11 7.5h26" stroke-width="2.6"/><path d="M14 34h20"/>') + fig({ front: true, h: [24, 15], n: [24, 21], p: [24, 33], a1: [[13, 16], [14, 8]], a2: [[35, 16], [34, 8]], l1: [[18, 37], [18, 44]], l2: [[30, 37], [30, 44]] }),
     // Hrudník
-    'bench press': eq('<path d="M9 32h30M14 32v9M34 32v9"/>') + head(13, 27) + '<path d="M17 28h19M24 28v-11"/>' + bar(14, 16, 34, 16),
-    'kliky': head(38, 21) + '<path d="M35 25L12 33l-4 8M20 30l-3 10M12 33l-4-1"/>' + floor,
+    'bench press': eq('<path d="M7 33.5h33M12 33.5v8.5M35 33.5v8.5"/>') + fig({ h: [10, 28], n: [15, 30], p: [28, 30], a1: [[18, 23], [18, 15]], a2: [[20, 23], [20, 15]], l1: [[35, 31], [37, 42]], l2: [[33, 32], [34, 42]] }) + plate(19, 12.5, 4.8),
+    'kliky': fig({ h: [40, 20], n: [35, 24], p: [18, 30], a1: [[34, 32], [34, 40]], a2: [[32, 32], [32, 40]], l1: [[12, 35], [6, 40]], l2: [[13, 36], [8, 41]] }) + floor,
     // Ramená
-    'tlaky nad hlavu': head(24, 14) + '<path d="M24 18v11l-6 12M24 29l6 12M24 21l-8-7M24 21l8-7"/>' + bar(11, 10, 37, 10) + floor,
-    'upazovanie': head(24, 11) + '<path d="M24 15v14l-5 12M24 29l5 12M24 19H12M24 19h12"/>' + db(10, 19) + db(38, 19) + floor,
+    'tlaky nad hlavu': barFront(8, 40, 5) + fig({ front: true, h: [24, 12], n: [24, 18], p: [24, 30], a1: [[15, 14], [15, 6]], a2: [[33, 14], [33, 6]], l1: [[20, 36], [19, 42]], l2: [[28, 36], [29, 42]] }) + floor,
+    'upazovanie': fig({ front: true, h: [24, 10], n: [24, 16], p: [24, 29], a1: [[16, 17], [9, 17]], a2: [[32, 17], [39, 17]], l1: [[21, 35], [20, 42]], l2: [[27, 35], [28, 42]] }) + dumbbell(8, 17) + dumbbell(40, 17) + floor,
     // Ruky
-    'bicepsovy zdvih': head(24, 11) + '<path d="M24 15v14l-5 12M24 29l5 12M24 20l-7 8-2-6M24 20l7 8 2-6"/>' + db(15, 21) + db(33, 21) + floor,
-    'tricepsove stlacenie': eq('<path d="M24 3v4M17 7h14" stroke-width="2.8"/>') + head(24, 15) + '<path d="M24 19v12l-5 10M24 31l5 10M24 23l-6 4 2 6M24 23l6 4-2 6"/>' + eq('<path d="M18 33h12" stroke-width="2.8"/>') + floor,
+    'bicepsovy zdvih': fig({ front: true, h: [24, 10], n: [24, 16], p: [24, 29], a1: [[18, 24], [15, 17]], a2: [[30, 24], [33, 17]], l1: [[21, 35], [20, 42]], l2: [[27, 35], [28, 42]] }) + dumbbell(14.5, 16) + dumbbell(33.5, 16) + floor,
+    'tricepsove stlacenie': eq('<path d="M32 2v4M31 6L29 25" stroke-width="2.2"/><path d="M26 26h6" stroke-width="2.8"/>') + fig({ h: [21, 10], n: [21, 16], p: [20, 29], a1: [[23, 23], [29, 26]], a2: [[21, 23], [27, 27]], l1: [[22, 35], [22, 42]], l2: [[19, 35], [18, 42]] }) + floor,
     // Core
-    'plank': head(40, 25) + '<path d="M36 28L12 32l-4 8M12 32v8M30 29v11"/>' + floor,
-    'dead bug': head(8, 33) + '<path d="M12 34h17M19 34l6-12M29 34l-2-12M14 34l3-14M26 34l10-6"/>' + floor,
+    'plank': fig({ h: [39, 25], n: [34, 28], p: [18, 30], a1: [[33, 39], [40, 39]], a2: [[31, 39], [37, 40]], l1: [[11, 35], [5, 40]], l2: [[12, 36], [7, 41]] }) + floor,
+    'dead bug': fig({ h: [8, 36], n: [13, 37], p: [26, 37], a1: [[14, 29], [15, 21]], a2: [[8, 31], [3, 27]], l1: [[27, 28], [35, 28]], l2: [[34, 35], [43, 34]] }) + floor,
     // Celé telo
-    'kettlebell swing': head(24, 11) + '<path d="M24 15v12l-6 14M24 27l6 14M24 18l9-6"/>' + eq('<circle class="pl" cx="36" cy="10" r="4"/><path d="M33.5 6.5a2.6 2.6 0 0 1 5 0"/>') + floor,
-    'burpees': '<g opacity=".45">' + head(24, 7) + '<path d="M24 11v8M18 14l6 5 6-5M24 19l-5 9M24 19l5 9"/></g>' + head(41, 29) + '<path d="M37 31L20 35l-6 6M20 35l2 6"/>' + floor,
+    'kettlebell swing': fig({ h: [21, 10], n: [21, 16], p: [20, 28], a1: [[28, 18], [35, 19]], a2: [[27, 19], [34, 20]], l1: [[23, 35], [23, 42]], l2: [[19, 35], [17, 42]] }) + eq('<circle class="pl" cx="38" cy="23.5" r="4.2"/><path d="M35.2 20a2.8 2.8 0 0 1 5.6 0"/>') + floor,
+    'burpees': fig({ front: true, h: [24, 8], n: [24, 14], p: [24, 26], a1: [[18, 8], [16, 2]], a2: [[30, 8], [32, 2]], l1: [[20, 32], [20, 38]], l2: [[28, 32], [28, 38]] }) + eq('<path d="M15 41.5l-3 2M33 41.5l3 2" opacity=".7"/>') + floor,
     // Kardio
-    'veslovaci trenazer': eq('<path d="M6 38h36M10 38v-4h22"/>') + head(26, 19) + '<path d="M26 23l-8 10M18 33l-6 3M26 25l6-2 4 6"/>' + eq('<path d="M36 29h-4"/>')
+    'veslovaci trenazer': eq('<path d="M4 41h40M39 41V30"/><circle cx="40" cy="26" r="4.2"/><path d="M17 25L36 26" stroke-width="1.8" opacity=".8"/>') + fig({ h: [11, 16], n: [12, 22], p: [14, 35], a1: [[9, 28], [17, 25]], l1: [[24, 26], [33, 34]], l2: [[25, 28], [34, 36]] })
   };
+  const run = fig({ h: [27, 8], n: [26, 14], p: [22, 26], a1: [[31, 18], [35, 14]], a2: [[19, 20], [14, 17]], l1: [[30, 31], [28, 40]], l2: [[16, 33], [10, 30]] }) + floor;
   const categories = {
-    'nohy': head(24, 9) + '<path d="M24 13v10l-7 8v9M24 23l7 8v9"/>' + floor,
-    'zadok': head(10, 22) + '<path d="M14 26l12-2 10 2 6 12M26 24l-2 10"/>' + floor,
-    'chrbat': head(24, 11) + '<path d="M24 15l-6 10v10M24 15l6 10v10M18 25h12"/>' + floor,
-    'hrudnik': head(24, 11) + '<path d="M24 15v14l-6 12M24 29l6 12M12 20l12 2 12-2"/>' + floor,
-    'ramena': head(24, 11) + '<path d="M24 15v14l-6 12M24 29l6 12M24 19l-10-6M24 19l10-6"/>' + floor,
-    'ruky': head(24, 11) + '<path d="M24 15v14l-6 12M24 29l6 12M24 20l-8 6M24 20l8 6"/>' + floor,
-    'core': head(40, 25) + '<path d="M36 28L12 32l-4 8M12 32v8"/>' + floor,
-    'cele telo': head(24, 9) + '<path d="M24 13v12l-7 14M24 25l7 14M24 16l-10 6M24 16l10 6"/>' + floor,
-    'kardio': head(28, 9) + '<path d="M28 13l-6 10 4 8-6 10M22 23l-8-2M26 31l8 4M28 13l8 6"/>' + floor
+    'nohy': icons['drep'], 'zadok': icons['hip thrust'], 'chrbat': icons['mrtvy tah'], 'hrudnik': icons['bench press'],
+    'ramena': icons['tlaky nad hlavu'], 'ruky': icons['bicepsovy zdvih'], 'core': icons['plank'],
+    'cele telo': icons['kettlebell swing'], 'kardio': run
   };
-  const generic = bar(9, 24, 39, 24) + eq('<path d="M14 18v12M34 18v12" stroke-width="2.8"/>');
+  const generic = barFront(8, 40, 24) + eq('<path d="M13 17v14M35 17v14" stroke-width="3"/>');
   const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   // prechody farieb (gradient) – definované raz v dokumente, súradnice v rámčeku 48 × 48
   // (userSpaceOnUse: funguje aj pre vodorovné/zvislé čiary, ktoré nemajú výšku/šírku)
@@ -69,6 +74,6 @@ const EXERCISE_ICONS = (() => {
       <linearGradient id="exg-eq" gradientUnits="userSpaceOnUse" x1="6" y1="4" x2="42" y2="44"><stop offset="0" class="exg-e0"/><stop offset="1" class="exg-e1"/></linearGradient>
     </defs></svg>`);
   };
-  const svg = (inner) => `<svg class="ex-thumb" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+  const svg = (inner) => `<svg class="ex-thumb" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
   return (exercise) => (defs(), svg(icons[fold(exercise?.name)] || categories[fold(exercise?.category)] || generic));
 })();
