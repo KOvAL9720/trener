@@ -109,3 +109,39 @@ const EXERCISE_ICONS = (() => {
   const svg = (inner) => `<svg class="ex-thumb" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
   return (exercise) => (defs(), svg(icons[fold(exercise?.name)] || categories[fold(exercise?.category)] || generic));
 })();
+
+/* =========================================================
+   Technika cvikov – krátke rady pre základné cviky (keď tréner nenapísal vlastný popis)
+   Kľúč = názov cviku bez diakritiky a malými písmenami.
+   ========================================================= */
+const EXERCISE_TIPS = {
+  'drep': ['Chodidlá na šírku ramien, špičky mierne von.', 'Zadok dozadu a dole, kolená idú v smere špičiek.', 'Chrbát rovný, hrudník hore, päty celý čas na zemi.', 'Choď aspoň do paralely, hore sa odraz celým chodidlom.'],
+  'leg press': ['Chodidlá na plošine na šírku ramien, celé chodidlo na plošine.', 'Spúšťaj pomaly, kým stehná nie sú zhruba v pravom uhle.', 'Driek ostáva pritlačený k operadlu.', 'Hore nezamykaj kolená úplne.'],
+  'vypady': ['Krok dopredu dlhší, trup vzpriamený.', 'Zadné koleno ide kolmo dole takmer k zemi.', 'Predné koleno nad členkom, nepadá dovnútra.', 'Odraz cez pätu prednej nohy.'],
+  'rumunsky mrtvy tah': ['Kolená len mierne pokrčené, celý čas rovnako.', 'Pohyb ide z bokov – zadok tlač dozadu.', 'Činka tesne pri stehnách, chrbát rovný.', 'Choď len kým cítiš ťah v zadnej strane stehien.'],
+  'hip thrust': ['Lopatky opreté o lavičku, chodidlá na šírku bokov.', 'Bradu drž pri hrudi, rebrá dole.', 'Hore zatni zadok, boky v jednej línii s kolenami a ramenami.', 'Neprehýbaj sa v driekovej chrbtici.'],
+  'mrtvy tah': ['Činka nad stredom chodidla, ramená mierne pred činkou.', 'Pred ťahom napni chrbát a „odlomi“ činku zo zeme.', 'Činka ide tesne po holeniach a stehnách.', 'Hore vystri boky, nezakláňaj sa.'],
+  'pritahy na hrazde': ['Úchop trochu širší ako ramená.', 'Začni stiahnutím lopatiek dole a k sebe.', 'Ťahaj lakte k bokom, brada nad hrazdu.', 'Spúšťaj sa kontrolovane do takmer vystretých rúk.'],
+  'veslovanie s cinkou': ['Opri sa rukou a kolenom o lavičku, chrbát rovno.', 'Ťahaj lakeť dozadu k boku, nie hore k uchu.', 'Hore stiahni lopatku, chvíľu podrž.', 'Neotáčaj trup, pohyb ide len z ruky a lopatky.'],
+  'stiahnutie kladky': ['Úchop trochu širší ako ramená, sed vzpriamene.', 'Ťahaj tyč k hornej časti hrudníka.', 'Lakte smerujú dole k bokom, lopatky dole.', 'Nezakláňaj sa a nehojdaj trupom.'],
+  'bench press': ['Lopatky stiahnuté a pritlačené k lavičke.', 'Chodidlá pevne na zemi, malý oblúk v chrbte je v poriadku.', 'Činka ide na spodnú časť hrudníka, lakte asi 45° od tela.', 'Tlač hore a mierne k hlave.'],
+  'kliky': ['Ruky trochu širšie ako ramená, telo v jednej línii.', 'Zatni brucho a zadok, boky nepadajú.', 'Lakte smerujú šikmo dozadu, nie do strán.', 'Hrudník ide takmer k zemi.'],
+  'tlaky nad hlavu': ['Zatni brucho a zadok, nezakláňaj sa.', 'Činka ide tesne okolo tváre rovno hore.', 'Hore sú ruky vedľa uší, hlava mierne vpred.', 'Spúšťaj kontrolovane k hornej časti hrudníka.'],
+  'upazovanie': ['Mierne pokrčené lakte, ramená dole od uší.', 'Dvíhaj do strán len po výšku ramien.', 'Vedie lakeť, nie dlaň.', 'Spúšťaj pomaly, bez hojdania.'],
+  'bicepsovy zdvih': ['Lakte pri tele, nehýbu sa dopredu.', 'Zdvihni s výdychom, hore zatni biceps.', 'Spúšťaj pomaly do takmer vystretých rúk.', 'Nehojdaj trupom.'],
+  'tricepsove stlacenie': ['Lakte pri bokoch, nehýbu sa.', 'Tlač dole až do vystretých rúk.', 'Dole chvíľu podrž, hore pomaly.', 'Trup mierne naklonený, ramená dole.'],
+  'plank': ['Lakte pod ramenami, telo v jednej línii.', 'Zatni brucho a zadok, boky nepadajú ani netrčia.', 'Hlava v predĺžení chrbta, pozeraj do zeme.', 'Dýchaj pokojne, nezadržiavaj dych.'],
+  'dead bug': ['Ľahni na chrbát, ruky hore, kolená nad bokmi v 90°.', 'Driek pritlačený k zemi celý čas.', 'Pomaly vystri opačnú ruku a nohu.', 'Vráť sa a vymeň strany, s výdychom.'],
+  'kettlebell swing': ['Pohyb ide z bokov, nie z drepu.', 'Kettlebell pošli dozadu medzi nohy, chrbát rovný.', 'Výbušne vystri boky a zatni zadok.', 'Ruky len vedú, kettlebell letí do výšky hrudníka.'],
+  'burpees': ['Z drepu polož ruky na zem a vyskoč do kliku.', 'Telo v kliku rovné, boky nepadajú.', 'Nohy vráť k rukám a vyskoč s rukami hore.', 'Dopadaj mäkko na celé chodidlá.'],
+  'veslovaci trenazer': ['Poradie: nohy – trup – ruky, späť naopak.', 'Odraz nohami, trup mierne dozadu.', 'Ťahaj rukoväť k spodným rebrám.', 'Chrbát rovný, ramená dole.']
+};
+const EXERCISE_TIP_KEY = (name) => String(name ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const exerciseTips = (exercise) => EXERCISE_TIPS[EXERCISE_TIP_KEY(exercise?.name)] || null;
+// odkaz na video: YouTube → adresa na vloženie (bez sledovacích cookies), iné https odkazy ostanú odkazom
+function exerciseVideo(url) {
+  const u = String(url || '').trim();
+  if (!/^https:\/\/[^\s"'<>]+$/.test(u)) return null;
+  const m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+  return m ? { embed: `https://www.youtube-nocookie.com/embed/${m[1]}`, url: u } : { embed: '', url: u };
+}

@@ -54,6 +54,22 @@ service cloud.firestore {
           && (resource.data.by == request.auth.uid || resource.data.ownerUid == request.auth.uid);
       }
 
+      // Denné návyky klienta (kroky, voda, spánok) – jeden dokument na deň, ID = dátum
+      match /habits/{day} {
+        allow read: if signedIn();
+        allow create, update: if signedIn()
+          && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.keys().hasOnly(['date', 'steps', 'water', 'sleep', 'by', 'ownerUid', 'updatedAt'])
+          && request.resource.data.date == day
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.ownerUid == get(/databases/$(database)/documents/shared/$(code)).data.ownerUid
+          && okNum(request.resource.data, 'steps', 0, 100000)
+          && okNum(request.resource.data, 'water', 0, 10)
+          && okNum(request.resource.data, 'sleep', 0, 24);
+        allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      }
+
       // Správy a týždenný check-in medzi klientom a trénerom
       match /messages/{id} {
         allow read: if signedIn();

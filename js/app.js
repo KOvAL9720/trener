@@ -1002,6 +1002,7 @@ function viewSettings() {
     setRow({ icon: 'tag', title: 'Predvolený tréning', sub: 'Cena, dĺžka a text pripomienky', val: `${fmtMoney(sessionPrice())} · ${db.settings.defaultDuration || 60} min`, action: 'edit-defaults' }),
     setRow({ icon: 'clock', title: 'Pracovné hodiny', sub: 'Voľné termíny pre klientov', val: days ? cnt(days, 'deň', 'dni', 'dní') + ' / týž.' : 'Nenastavené', href: '#/settings/hours' }),
     setRow({ icon: 'bell', title: 'Upozornenia', sub: 'Žiadosti klientov cez ntfy', val: db.settings.ntfyTopic ? 'Zapnuté' : 'Vypnuté', href: '#/settings/notify' }),
+    setRow({ icon: 'flask', title: 'Návyky klientov', sub: 'Kroky, voda a spánok v klientskej zóne', val: habitGoals().on ? 'Zapnuté' : 'Vypnuté', href: '#/settings/habits' }),
     setRow({ icon: 'chat', title: 'Správy a check-in', sub: 'Chat s klientmi a týždenný check-in', val: checkinDay() < 0 ? 'Bez check-inu' : `Check-in ${DAYS_LONG[checkinDay()].toLowerCase()}`, href: '#/settings/chat' }),
     setRow({ icon: 'gcal', title: 'Google kalendár', sub: 'Tréningy sa prenášajú do Google', val: db.settings.gcalOn ? 'Zapnuté' : 'Vypnuté', href: '#/settings/gcal' })
   ])}
@@ -1655,9 +1656,14 @@ function openExerciseForm(e) {
     fields: [
       { name: 'name', label: 'Názov', required: true },
       { name: 'category', label: 'Partia / kategória', datalist: cats },
-      { name: 'note', label: 'Popis / technika', type: 'textarea' }
+      { name: 'note', label: 'Popis / technika (klient ju uvidí v zóne)', type: 'textarea', placeholder: exerciseTips(e) ? `Prázdne = základné rady: ${exerciseTips(e).join(' ')}` : 'Na čo si dať pozor, ako cvik správne robiť…' },
+      { name: 'video', label: 'Video – odkaz (YouTube a pod.)', placeholder: 'https://youtu.be/…' }
     ],
-    onSubmit: (d) => { upsert('exercises', e, d); toast('Cvik uložený'); },
+    onSubmit: async (d) => {
+      d.video = String(d.video || '').trim();
+      if (d.video && !exerciseVideo(d.video)) { await notify('Odkaz na video musí začínať https:// (napríklad odkaz z YouTube).'); return false; }
+      upsert('exercises', e, d); db.settings.shareDirty = true; toast('Cvik uložený');
+    },
     onDelete: e && (async () => {
       const used = db.plans.filter((p) => p.items.some((i) => i.exerciseId === e.id));
       if (used.length) {
@@ -2304,6 +2310,8 @@ function openContact(c, session, preferred) {
    ========================================================= */
 let pendingRequests = [];
 let requestsAt = 0;
+// denné návyky klientov: zapnuté a ciele (kroky, voda v litroch, spánok v hodinách)
+const habitGoals = () => { const h = db.settings.habits || {}; return { on: h.on !== false, steps: Number(h.steps) || 8000, water: Number(h.water) || 2, sleep: Number(h.sleep) || 7 }; };
 // deň týždenného check-inu klientov (0 = pondelok … 6 = nedeľa, -1 = vypnutý); predvolene nedeľa
 const checkinDay = () => { const d = db.settings.checkinDay; return Number.isInteger(d) && d >= -1 && d <= 6 ? d : 6; };
 const clientByCode = (code) => db.clients.find((c) => c.share?.code === code);
@@ -2651,7 +2659,8 @@ function shareSnapshot(c) {
   const exIds = new Set();
   plans.forEach((p) => p.items.forEach((i) => exIds.add(i.exerciseId)));
   sessions.forEach((s) => (s.log || []).forEach((e) => exIds.add(e.exerciseId)));
-  const exercises = db.exercises.filter((e) => exIds.has(e.id)).map((e) => ({ id: e.id, name: e.name, category: e.category || '' }));
+  const exercises = db.exercises.filter((e) => exIds.has(e.id)).map((e) => ({ id: e.id, name: e.name, category: e.category || '',
+    ...(e.note ? { note: String(e.note).slice(0, 800) } : {}), ...(exerciseVideo(e.video) ? { video: e.video } : {}) }));
   const measurements = db.measurements.filter((m) => m.clientId === c.id).map((m) => ({ id: m.id, date: m.date, weight: m.weight ?? null, bodyFat: m.bodyFat ?? null, waist: m.waist ?? null, hips: m.hips ?? null }));
   return {
     clientId: c.id,
@@ -2660,7 +2669,8 @@ function shareSnapshot(c) {
     sessions, plans, exercises, measurements,
     ...(hasWorkHours() ? { availability: availabilitySnapshot() } : {}),
     ...(db.settings.ntfyTopic ? { notify: { ntfy: db.settings.ntfyTopic } } : {}),
-    checkin: { day: checkinDay() }
+    checkin: { day: checkinDay() },
+    habits: habitGoals()
   };
 }
 
