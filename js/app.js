@@ -1284,7 +1284,7 @@ let beforeSettings = '#/';
 document.querySelector('.topbar-btn[data-nav="settings"]')?.addEventListener('click', (e) => {
   if (!(location.hash || '').startsWith('#/settings')) return;
   e.preventDefault();
-  location.hash = beforeSettings;
+  navTo(beforeSettings);
 });
 // Systémové gesto „späť“ v iPhone (potiahnutie od ľavého okraja) už stránku animuje samo –
 // apka vtedy nesmie pridať vlastnú animáciu ani skočiť hore, inak sa obrazovky prekrývajú.
@@ -1297,7 +1297,12 @@ window.addEventListener('popstate', (e) => { if (e.state?.nav) navState.pop = Da
 try { navState.stack = JSON.parse(sessionStorage.getItem('nav-stack') || '[]'); } catch (e) { navState.stack = []; }
 const navMark = () => {
   const h = location.hash || '#/';
-  if (history.state?.nav && Number.isInteger(history.state.i)) navState.i = history.state.i;
+  if (navState.replacing) {
+    navState.replacing = false;
+    navState.i = navState.i ?? 0;
+    navState.stack.length = navState.i;
+    history.replaceState({ nav: 1, i: navState.i }, '');
+  } else if (history.state?.nav && Number.isInteger(history.state.i)) navState.i = history.state.i;
   else { navState.i = history.state?.nav ? 0 : (navState.i ?? -1) + 1; navState.stack.length = navState.i; history.replaceState({ nav: 1, i: navState.i }, ''); }
   navState.stack[navState.i] = h;
   try { sessionStorage.setItem('nav-stack', JSON.stringify(navState.stack.slice(-50))); } catch (e) { /* ok */ }
@@ -1305,8 +1310,34 @@ const navMark = () => {
 navMark();
 const navPrev = () => (navState.i > 0 ? navState.stack[navState.i - 1] || null : null);
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-const nativeBack = () => Date.now() - navState.pop < 400 && (navState.touching || Date.now() - navState.touchEnd < 1200);
+const nativeBack = () => Date.now() - navState.prog > 1500 && Date.now() - navState.pop < 400 && (navState.touching || Date.now() - navState.touchEnd < 1200);
+// Spodné menu a zatvorenie nastavení históriu nepridávajú (ako v appkách v iPhone): vrátime sa na prvý
+// záznam a ten nahradíme – na hlavných obrazovkách tak nie je kam ísť gestom späť.
+navState.prog = 0;
+function navTo(h) {
+  if (h === (location.hash || '#/') && !navState.i) return;
+  navState.prog = Date.now();
+  if (navState.i > 0) { navState.pendingTab = h; history.go(-navState.i); return; }
+  navState.replacing = true;
+  location.replace(h);
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest?.('.nav a[data-nav]');
+  if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
+  e.preventDefault();
+  navTo(a.getAttribute('href'));
+});
 window.addEventListener('hashchange', () => {
+  // medzikrok pri návrate na prvý záznam (spodné menu) – nič nevykresľovať, rovno nahradiť cieľom
+  if (navState.pendingTab) {
+    const t = navState.pendingTab;
+    navState.pendingTab = null;
+    navMark();
+    navState.scroll.set(prevHash, window.scrollY);
+    navState.replacing = true;
+    if ((location.hash || '#/') === t) { navMark(); window.dispatchEvent(new HashChangeEvent('hashchange')); } else location.replace(t);
+    return;
+  }
   if (!prevHash.startsWith('#/settings')) beforeSettings = prevHash;
   navState.scroll.set(prevHash, window.scrollY);
   navMark();
