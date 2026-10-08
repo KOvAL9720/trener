@@ -1,4 +1,4 @@
-const CACHE = 'trener-v101';
+const CACHE = 'trener-v102';
 const ASSETS = [
   './',
   'index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
   'js/exercise-icons.js',
   'js/live.js',
   'js/calendar.js',
+  'js/gcal.js',
   'js/cloud.js',
   'manifest.webmanifest',
   'icons/icon.svg',
