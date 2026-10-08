@@ -2078,3 +2078,22 @@ dialog.chat-modal .modal-head .avatar { width: 34px; height: 34px; font-size: .8
 .btn-chat .ci-ic svg, .chat-head .btn .ci-ic svg { width: 18px; height: 18px; }
 
 @media (prefers-color-scheme: light) { .msg.checkin .bubble { color: var(--text); } }
+
+/* ===== Záložka Správy – zoznam rozhovorov a rozhovor ako stránka ===== */
+.chat-inbox .chat-item .info small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-item.unread .info strong, .chat-item.unread .info small { color: var(--text); font-weight: 750; }
+.chat-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; margin-left: 8px; }
+.chat-meta time { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chat-item.unread .chat-meta time { color: var(--accent); font-weight: 700; }
+.chat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.chat-who { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; min-width: 0; }
+.chat-who .avatar { width: 48px; height: 48px; flex: none; }
+.chat-who h1 { font-size: clamp(1.5rem, 5.5vw, 2rem); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-who small { color: var(--muted); font-size: .8rem; }
+.chat-card { padding: 14px 12px; }
+.chat-card .chat-thread { overflow: visible; padding: 0; flex: none; }
+.chat-compose { position: sticky; bottom: calc(var(--nav-h) + 22px + env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: flex-end; gap: 8px; margin-top: 12px; padding: 8px; border-radius: 26px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .5); }
+.chat-compose textarea { flex: 1; min-width: 0; resize: none; max-height: 140px; border: 0; background: transparent; color: var(--text); padding: 10px 12px; line-height: 1.35; font: inherit; outline: none; box-shadow: none; }
+@media (min-width: 900px) { .chat-compose { bottom: 16px; } }
+a.notice.notice-chat { text-decoration: none; }
+@media (min-width: 900px) { .nav a > .chat-count { position: static; margin-left: auto; box-shadow: none; } }
