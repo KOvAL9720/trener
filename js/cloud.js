@@ -151,6 +151,12 @@ const cloud = {
     const qs = await getDocs(query(collection(fs, 'shared', code, 'requests'), where('status', '==', 'new')));
     return qs.docs.map((d) => { const { createdAt, ...r } = d.data(); return { id: d.id, code, ...r, createdAt: createdAt?.toMillis ? createdAt.toMillis() : 0 }; });
   },
+  // nové žiadosti klienta naživo (bez čakania na obnovenie)
+  watchRequests(code, cb, onError) {
+    return onSnapshot(query(collection(fs, 'shared', code, 'requests'), where('status', '==', 'new')), (snap) => {
+      cb(snap.docs.map((d) => { const { createdAt, ...r } = d.data(); return { id: d.id, code, ...r, createdAt: createdAt?.toMillis ? createdAt.toMillis() : 0 }; }));
+    }, onError);
+  },
   async answerRequest(code, id, status, extra = {}) {
     await ready;
     await updateDoc(doc(fs, 'shared', code, 'requests', id), { status, ...extra, answeredAt: serverTimestamp() });
