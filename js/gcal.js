@@ -93,6 +93,7 @@ function gcalDesired() {
   for (const s of db.sessions) {
     if (s.status === 'cancelled' || !s.time || s.date < from || !/^\d{1,2}:\d{2}$/.test(s.time)) continue;
     const c = getClient(s.clientId);
+    if (c?.test) continue;   // testovacích klientov do Google neposielame
     const plan = s.planId ? getPlan(s.planId) : null;
     const [h, m] = s.time.split(':').map(Number);
     const startMin = h * 60 + m;
@@ -252,7 +253,7 @@ function gcalView() {
   <section class="card" id="gcal-card">
     <div class="card-head"><h2>Synchronizácia</h2><span class="badge ${cls}" id="gcal-state">${st}</span></div>
     <p class="muted" style="margin-top:-6px">Tréningy sa automaticky prenášajú do samostatného kalendára <b>Tréningy – Tréner</b> v tvojom Google účte – zobrazia sa v Google kalendári v mobile aj na PC, aj s pripomienkami. Appka má prístup len k tomuto kalendáru, tvoje ostatné kalendáre nevidí.</p>
-    ${gcal.on ? `<p class="muted" style="margin:0 0 4px">${count} ${count === 1 ? 'tréning' : count < 5 ? 'tréningy' : 'tréningov'} (posledných ${GCAL_PAST_DAYS} dní a všetky budúce, bez zrušených).</p>
+    ${gcal.on ? `<p class="muted" style="margin:0 0 4px">${count} ${count === 1 ? 'tréning' : count < 5 ? 'tréningy' : 'tréningov'} (posledných ${GCAL_PAST_DAYS} dní a všetky budúce, bez zrušených a testovacích).</p>
       <p class="muted" id="gcal-last" style="margin:0 0 4px">${gcalLastText()}</p>
       <p class="muted" id="gcal-err" style="margin:0 0 10px;color:var(--warn)">${esc(gcal.error)}</p>
       <div class="row">
