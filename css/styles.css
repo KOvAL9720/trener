@@ -2097,3 +2097,19 @@ dialog.chat-modal .modal-head .avatar { width: 34px; height: 34px; font-size: .8
 @media (min-width: 900px) { .chat-compose { bottom: 16px; } }
 a.notice.notice-chat { text-decoration: none; }
 @media (min-width: 900px) { .nav a > .chat-count { position: static; margin-left: auto; box-shadow: none; } }
+
+/* ===== Návyky klienta (detail klienta, nastavenia) ===== */
+.habits-table { width: 100%; border-collapse: separate; border-spacing: 3px; font-variant-numeric: tabular-nums; }
+.habits-table th, .habits-table td { border: 0; padding: 6px 2px; text-align: center; font-size: .8rem; }
+.habits-table thead th { color: var(--muted); font-size: .68rem; font-weight: 800; text-transform: uppercase; }
+.habits-table thead th small, .habits-table tbody th small { display: block; font-size: .64rem; font-weight: 600; text-transform: none; color: var(--muted); }
+.habits-table thead th.today { color: var(--accent); }
+.habits-table tbody th { text-align: left; font-weight: 750; font-size: .82rem; white-space: nowrap; padding-right: 6px; }
+.habits-table td { border-radius: 8px; font-weight: 700; }
+.hb-ok { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); }
+.hb-low { background: var(--surface-2); color: var(--muted); }
+.hb-empty { color: var(--muted); opacity: .5; }
+.habits-form { display: grid; gap: 12px; }
+.habits-form .field { display: flex; flex-direction: column; gap: 6px; font-weight: 650; }
+.habits-table tbody th { text-transform: none; letter-spacing: 0; color: var(--text); }
+.habits-table tbody th small { letter-spacing: 0; }

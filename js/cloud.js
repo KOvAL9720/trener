@@ -185,6 +185,12 @@ const cloud = {
     await ready;
     await deleteDoc(doc(fs, 'shared', code, 'messages', id));
   },
+  // denné návyky klienta (kroky, voda, spánok) – shared/{kód}/habits/{dátum}
+  async listHabits(code, from) {
+    await ready;
+    const qs = await getDocs(query(collection(fs, 'shared', code, 'habits'), where('date', '>=', from)));
+    return qs.docs.map((d) => { const { updatedAt, ...h } = d.data(); return h; });
+  },
   // termín zablokovaný žiadosťou klienta (holds/{tréner}_{dátum}_{čas}) – po vybavení žiadosti sa uvoľní
   async releaseHold(date, time) {
     await ready;
