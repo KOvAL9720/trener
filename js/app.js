@@ -186,7 +186,7 @@ const PAY = { cash: 'Hotovosť', bank: 'Na účet' };
 const payMethod = (s) => (s.payMethod === 'bank' ? 'bank' : 'cash');
 // platba sa počíta do príjmu len pri tréningu, ktorý nebol zrušený
 const isPaid = (s) => !!s.paid && s.status !== 'cancelled';
-const payButtons = (id) => `<button class="btn small pay-cash" data-action="pay-client" data-method="cash" data-id="${id}">Hotovosť</button><button class="btn small primary" data-action="pay-client" data-method="bank" data-id="${id}">Na účet</button>`;
+const payButtons = (id) => `<button class="btn small pay-qr" data-action="pay-qr" data-id="${id}" title="QR platba" aria-label="QR platba"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h3v4h-3"/></svg>QR</button><button class="btn small pay-cash" data-action="pay-client" data-method="cash" data-id="${id}">Hotovosť</button><button class="btn small primary" data-action="pay-client" data-method="bank" data-id="${id}">Na účet</button>`;
 
 function credits(clientId) {
   const bought = idx().bought.get(clientId) || 0;
@@ -966,6 +966,7 @@ const SI = {
   spark: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
   phone: '<svg class="i" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18.5h2"/></svg>',
   info: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg>',
+  qr: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h3v4h-3"/></svg>',
   gcal: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>',
   trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   chev: '<svg class="i set-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
@@ -994,6 +995,7 @@ function viewSettings() {
     setRow({ icon: 'tag', title: 'Predvolený tréning', sub: 'Cena, dĺžka a text pripomienky', val: `${fmtMoney(sessionPrice())} · ${db.settings.defaultDuration || 60} min`, action: 'edit-defaults' }),
     setRow({ icon: 'clock', title: 'Pracovné hodiny', sub: 'Voľné termíny pre klientov', val: days ? cnt(days, 'deň', 'dni', 'dní') + ' / týž.' : 'Nenastavené', href: '#/settings/hours' }),
     setRow({ icon: 'bell', title: 'Upozornenia', sub: 'Žiadosti klientov cez ntfy', val: db.settings.ntfyTopic ? 'Zapnuté' : 'Vypnuté', href: '#/settings/notify' }),
+    setRow({ icon: 'qr', title: 'QR platby', sub: 'Účet pre platby cez QR kód', val: db.settings.payIban ? 'Nastavené' : 'Nenastavené', href: '#/settings/pay' }),
     setRow({ icon: 'gcal', title: 'Google kalendár', sub: 'Tréningy sa prenášajú do Google', val: db.settings.gcalOn ? 'Zapnuté' : 'Vypnuté', href: '#/settings/gcal' })
   ])}
   ${setGroup('Klientska zóna', [
