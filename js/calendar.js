@@ -19,7 +19,7 @@ const toMin = (t) => (/^\d{1,2}:\d{2}$/.test(t || '') ? Number(t.split(':')[0]) 
 const fromMin = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 const durOf = (s) => Math.max(15, Number(s.duration) || 60);
 const DAY_KEYS = ['1', '2', '3', '4', '5', '6', '0'];
-const CAL_DAYS = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+const CAL_DAYS = trArr(['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne']);
 
 const calModeSwitch = () => `<div class="seg cal-mode" role="group" aria-label="Zobrazenie kalendára">
   ${[['day', 'Deň'], ['grid', 'Týždeň'], ['month', 'Mesiac'], ['list', 'Zoznam']].map(([k, l]) => `<button type="button" class="${calMode === k ? 'active' : ''}" data-cal-mode="${k}">${l}</button>`).join('')}

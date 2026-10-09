@@ -109,8 +109,8 @@ const today = () => isoDate(new Date());
 const parseDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const addDays = (s, n) => { const d = parseDate(s); d.setDate(d.getDate() + n); return isoDate(d); };
 const startOfWeek = (s) => { const d = parseDate(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return isoDate(d); };
-const DAYS = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
-const DAYS_LONG = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa'];
+const DAYS = trArr(['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne']);
+const DAYS_LONG = trArr(['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota', 'Nedeľa']);
 const weekday = (s) => (parseDate(s).getDay() + 6) % 7;
 const fmtShort = (s) => { const d = parseDate(s); return `${d.getDate()}. ${d.getMonth() + 1}.`; };
 const fmtDate = (s) => (s ? `${DAYS[weekday(s)]} ${fmtShort(s)} ${parseDate(s).getFullYear()}` : '');
@@ -126,7 +126,7 @@ const fmtDay = (s) => {
 // formátovače sa vytvoria raz (toLocaleString s nastaveniami ich vytvára pri každom volaní – pomalé)
 const MONEY_FMT = new Intl.NumberFormat('sk-SK', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const fmtMoney = (n) => (n == null || n === '' ? '' : MONEY_FMT.format(Number(n)));
-const MONTHS = ['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl', 'august', 'september', 'október', 'november', 'december'];
+const MONTHS = trArr(['január', 'február', 'marec', 'apríl', 'máj', 'jún', 'júl', 'august', 'september', 'október', 'november', 'december']);
 const monthKey = (y, m) => { const d = new Date(y, m - 1, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
 const monthLabel = (key) => { const [y, m] = key.split('-').map(Number); const n = MONTHS[m - 1]; return `${n[0].toUpperCase()}${n.slice(1)} ${y}`; };
 const NUM_FMT = new Map();
@@ -141,7 +141,7 @@ const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 8640000
 
 
 // Slovenské tvary podľa počtu: 1 tréning, 2–4 tréningy, 0 / 5+ tréningov
-const pl = (n, one, few, many) => (n === 1 ? one : n >= 2 && n <= 4 ? few : many);
+const pl = (n, one, few, many) => (window.LANG === 'en' ? tr(n === 1 ? one : many) : n === 1 ? one : n >= 2 && n <= 4 ? few : many);
 const cnt = (n, one, few, many) => `${n} ${pl(n, one, few, many)}`;
 const nTr = (n) => cnt(n, 'tréning', 'tréningy', 'tréningov');
 const nEx = (n) => cnt(n, 'cvik', 'cviky', 'cvikov');
@@ -1003,7 +1003,7 @@ function viewSettings() {
     setRow({ icon: 'clock', title: 'Pracovné hodiny', sub: 'Voľné termíny pre klientov', val: days ? cnt(days, 'deň', 'dni', 'dní') + ' / týž.' : 'Nenastavené', href: '#/settings/hours' }),
     setRow({ icon: 'bell', title: 'Upozornenia', sub: 'Žiadosti klientov cez ntfy', val: db.settings.ntfyTopic ? 'Zapnuté' : 'Vypnuté', href: '#/settings/notify' }),
     setRow({ icon: 'flask', title: 'Návyky klientov', sub: 'Kroky, voda a spánok v klientskej zóne', val: habitGoals().on ? 'Zapnuté' : 'Vypnuté', href: '#/settings/habits' }),
-    setRow({ icon: 'chat', title: 'Správy a check-in', sub: 'Chat s klientmi a týždenný check-in', val: checkinDay() < 0 ? 'Bez check-inu' : `Check-in ${DAYS_LONG[checkinDay()].toLowerCase()}`, href: '#/settings/chat' }),
+    setRow({ icon: 'chat', title: 'Správy a check-in', sub: 'Chat s klientmi a týždenný check-in', val: checkinDay() < 0 ? 'Bez check-inu' : `Check-in ${window.LANG === 'en' ? DAYS_LONG[checkinDay()] : DAYS_LONG[checkinDay()].toLowerCase()}`, href: '#/settings/chat' }),
     setRow({ icon: 'gcal', title: 'Google kalendár', sub: 'Tréningy sa prenášajú do Google', val: db.settings.gcalOn ? 'Zapnuté' : 'Vypnuté', href: '#/settings/gcal' })
   ])}
   ${setGroup('Klientska zóna', [
@@ -1017,6 +1017,7 @@ function viewSettings() {
   ], syncActive() ? 'Dáta sa ukladajú do tvojho účtu. Záloha do súboru je navyše pre istotu – obsahuje aj fotky z galérie.' : 'Dáta sú uložené iba v tomto zariadení. Pravidelne si ich zálohuj.')}
   ${setGroup('Aplikácia', [
     setRow({ icon: 'phone', title: 'Inštalácia appky', sub: 'iPhone, Android a počítač', href: '#/settings/install' }),
+    setRow({ icon: 'globe', title: 'Jazyk', sub: 'Language', val: window.LANG === 'en' ? 'English' : 'Slovenčina', action: 'lang', chev: false }),
     setRow({ icon: 'info', title: 'Verzia', val: '<b id="app-version">–</b>', chev: false, action: '' })
   ], `${cnt(db.clients.length, 'klient', 'klienti', 'klientov')} · ${nTr(db.sessions.length)} · ${cnt(db.plans.length, 'plán', 'plány', 'plánov')} · ${nEx(db.exercises.length)}`)}
   ${setGroup('', [setRow({ icon: 'trash', title: 'Vymazať všetky dáta', action: 'wipe', danger: true, chev: false })])}`;
@@ -2263,20 +2264,20 @@ async function importPhotos(list) {
 }
 
 function reminderTemplate() {
-  return db.settings.reminderText || 'Ahoj {meno}, pripomínam tréning {datum} o {cas}. Teším sa!';
+  return db.settings.reminderText || tr('Ahoj {meno}, pripomínam tréning {datum} o {cas}. Teším sa!');
 }
 
 const firstName = (c) => c.name.split(' ')[0];
 
 function friendlyDate(date) {
-  if (date === today()) return 'dnes';
-  if (date === addDays(today(), 1)) return 'zajtra';
-  return `${DAYS_LONG[weekday(date)].toLowerCase()} ${fmtShort(date)}`;
+  if (date === today()) return tr('dnes');
+  if (date === addDays(today(), 1)) return tr('zajtra');
+  return `${window.LANG === 'en' ? DAYS_LONG[weekday(date)] : DAYS_LONG[weekday(date)].toLowerCase()} ${fmtShort(date)}`;
 }
 
 function reminderText(c, s) {
   // tréning bez času: vynechať „o {cas}“, aby nevzniklo „zajtra o .“
-  const tpl = s.time ? reminderTemplate() : reminderTemplate().replace(/\s*\bo\s*\{cas\}/gi, '').replace(/\s*\{cas\}/gi, '');
+  const tpl = s.time ? reminderTemplate() : reminderTemplate().replace(/\s*\b(o|at)\s*\{cas\}/gi, '').replace(/\s*\{cas\}/gi, '');
   return tpl
     .replaceAll('{meno}', firstName(c))
     .replaceAll('{datum}', friendlyDate(s.date))
@@ -3760,6 +3761,7 @@ const actions = {
     try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem('trener-live-demo'); } catch (e) { /* ok */ }
     location.reload();
   },
+  'lang': () => window.setLang(window.LANG === 'en' ? 'sk' : 'en'),
   'remove-test': removeTestClients,
   'wipe': async () => {
     if (!(await askConfirm('Naozaj vymazať VŠETKY dáta? Túto akciu nie je možné vrátiť späť.', { ok: 'Vymazať všetko', danger: true }))) return;

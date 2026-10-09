@@ -2113,3 +2113,5 @@ a.notice.notice-chat { text-decoration: none; }
 .habits-form .field { display: flex; flex-direction: column; gap: 6px; font-weight: 650; }
 .habits-table tbody th { text-transform: none; letter-spacing: 0; color: var(--text); }
 .habits-table tbody th small { letter-spacing: 0; }
+/* angličtina: dlhšie popisky v spodnom menu */
+@media (max-width: 899px) { html[lang="en"] .nav a { font-size: .64rem; letter-spacing: -.01em; } }

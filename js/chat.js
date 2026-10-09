@@ -242,7 +242,7 @@ actions['checkin-day'] = (d) => {
   db.settings.shareDirty = true;
   save();
   render();
-  toast(Number(d.day) < 0 ? 'Check-in vypnutý' : `Check-in: ${DAYS_LONG[Number(d.day)].toLowerCase()}`);
+  toast(Number(d.day) < 0 ? 'Check-in vypnutý' : `Check-in: ${(window.LANG === 'en' ? DAYS_LONG[Number(d.day)] : DAYS_LONG[Number(d.day)].toLowerCase())}`);
 };
 
 // cloud sa načíta neskôr – po prihlásení začať počúvať

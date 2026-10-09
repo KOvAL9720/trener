@@ -1,8 +1,10 @@
-const CACHE = 'trener-v126';
+const CACHE = 'trener-v127';
 const ASSETS = [
   './',
   'index.html',
   'css/styles.css',
+  'js/i18n-en.js',
+  'js/i18n.js',
   'js/app.js',
   'js/exercise-icons.js',
   'js/live.js',
