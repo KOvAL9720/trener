@@ -1012,7 +1012,6 @@ function viewSettings() {
   ${setGroup('Dáta', [
     setRow({ icon: 'down', title: 'Stiahnuť zálohu', sub: lb ? `Posledná záloha ${fmtDate(lb)}` : 'Zatiaľ žiadna záloha', action: 'export', chev: false }),
     setRow({ icon: 'up', title: 'Obnoviť zo zálohy', action: 'import', chev: false }),
-    setRow({ icon: 'flask', title: 'Pridať 20 testovacích klientov', sub: 'Vymyslení klienti označení „Test“', action: 'add-test', chev: false }),
     testN ? setRow({ icon: 'trash', title: `Odstrániť testovacích klientov (${testN})`, action: 'remove-test', danger: true, chev: false }) : '',
     setRow({ icon: 'spark', title: 'Načítať ukážkové dáta', action: 'demo', chev: false })
   ], syncActive() ? 'Dáta sa ukladajú do tvojho účtu. Záloha do súboru je navyše pre istotu – obsahuje aj fotky z galérie.' : 'Dáta sú uložené iba v tomto zariadení. Pravidelne si ich zálohuj.')}
@@ -3494,67 +3493,6 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
   }
 });
 
-// 20 testovacích klientov s realistickou históriou (pridajú sa k existujúcim dátam)
-function addTestClients() {
-  const first = ['Adam', 'Barbora', 'Dávid', 'Eva', 'Filip', 'Gabriela', 'Hana', 'Igor', 'Katarína', 'Lukáš', 'Michaela', 'Norbert', 'Oliver', 'Petra', 'Róbert', 'Simona', 'Tomáš', 'Veronika', 'Zuzana', 'Marek'];
-  const last = ['Bartoš', 'Čierna', 'Dudáš', 'Fedorová', 'Gajdoš', 'Hudecová', 'Jurčová', 'Kollár', 'Lacková', 'Mikuš', 'Nemcová', 'Oravec', 'Polák', 'Repková', 'Sloboda', 'Šimková', 'Tóth', 'Urbanová', 'Vargová', 'Zelenák'];
-  const goals = ['Schudnúť 5 kg', 'Silnejší chrbát', 'Lepšia kondícia', 'Príprava na polmaratón', 'Spevniť zadok a nohy', 'Zbaviť sa bolestí chrbta', 'Nabrať svaly', 'Mobilita a flexibilita', 'Po pôrode – návrat do formy', 'Udržiavanie formy'];
-  const notes = ['', '', '', 'Citlivé koleno', 'Bolesti krížov', 'Astma – pozor na intenzitu', 'Po operácii ramena (2024)', 'Ranné tréningy', ''];
-  const times = ['06:30', '07:00', '08:00', '09:00', '10:00', '12:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
-  let seed = Date.now() % 100000;
-  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-  const pick = (a) => a[Math.floor(rnd() * a.length)];
-  const t = today();
-  const taken = new Set(db.sessions.filter((x) => x.status !== 'cancelled').map((x) => x.date + x.time));
-  const plans = db.plans.filter((p) => !p.clientId);
-  for (let i = 0; i < 20; i++) {
-    const name = `${first[i]} ${last[i]}`;
-    const female = /[aá]$/.test(first[i]) && first[i] !== 'Lukáš';
-    const c = {
-      id: uid(), name, test: true, archived: false,
-      phone: `09${pick(['05', '07', '10', '11', '15', '17', '44', '48'])} ${String(100 + Math.floor(rnd() * 900))} ${String(100 + Math.floor(rnd() * 900))}`,
-      email: rnd() < 0.6 ? `${first[i].toLowerCase()}.${last[i].toLowerCase()}@example.com`.normalize('NFD').replace(/[̀-ͯ]/g, '') : '',
-      goal: pick(goals), notes: pick(notes), createdAt: addDays(t, -(30 + Math.floor(rnd() * 90)))
-    };
-    db.clients.push(c);
-    const perWeek = 1 + Math.floor(rnd() * 3);              // 1–3 tréningy týždenne
-    const days = [0, 1, 2, 3, 4, 5].sort(() => rnd() - 0.5).slice(0, perWeek);
-    const time = pick(times);
-    const payer = rnd() < 0.5 ? 'cash' : 'bank';
-    const plan = plans.length && rnd() < 0.5 ? pick(plans).id : '';
-    const start = startOfWeek(addDays(t, -7 * (4 + Math.floor(rnd() * 5))));  // 4–8 týždňov dozadu
-    for (let date = start; date <= addDays(t, 14); date = addDays(date, 7)) {
-      for (const dd of days) {
-        const d = addDays(date, dd);
-        if (d < c.createdAt) continue;
-        let tm = time;
-        for (let k = 0; taken.has(d + tm) && k < times.length; k++) tm = times[(times.indexOf(tm) + 1) % times.length];
-        if (taken.has(d + tm)) continue;
-        taken.add(d + tm);
-        const past = d < t;
-        const status = !past ? 'planned' : rnd() < 0.08 ? 'cancelled' : 'done';
-        const sess = { id: uid(), clientId: c.id, date: d, time: tm, duration: rnd() < 0.8 ? 60 : 45, status, planId: plan, notes: '', price: sessionPrice() };
-        // staršie tréningy väčšinou zaplatené, posledné dni často ešte nie
-        if (status === 'done' && (d < addDays(t, -10) ? rnd() < 0.92 : rnd() < 0.35)) {
-          const pd = addDays(d, Math.floor(rnd() * 3));
-          sess.paid = true; sess.paidDate = pd > t ? t : pd; sess.payMethod = rnd() < 0.8 ? payer : payer === 'cash' ? 'bank' : 'cash';
-        }
-        db.sessions.push(sess);
-      }
-    }
-    // merania
-    const nm = Math.floor(rnd() * 4);
-    let w = (female ? 58 : 75) + Math.round(rnd() * 25);
-    for (let k = 0; k < nm; k++) {
-      db.measurements.push({ id: uid(), clientId: c.id, date: addDays(c.createdAt, k * 21), weight: w, bodyFat: Math.round((female ? 26 : 18) + rnd() * 8 - k), waist: Math.round((female ? 72 : 85) + rnd() * 15 - k), hips: null, note: k === 0 ? 'vstupné meranie' : '' });
-      w = Math.round((w - 0.5 - rnd() * 1.5) * 10) / 10;
-    }
-  }
-  save();
-  render();
-  toast('Pridaných 20 testovacích klientov');
-}
-
 async function removeTestClients() {
   const ids = new Set(db.clients.filter((c) => c.test).map((c) => c.id));
   if (!ids.size || !(await askConfirm(`Odstrániť ${cnt(ids.size, 'testovacieho klienta', 'testovacích klientov', 'testovacích klientov')} vrátane ich tréningov a meraní? Tvoji klienti ostanú.`, { ok: 'Odstrániť', danger: true }))) return;
@@ -3822,7 +3760,6 @@ const actions = {
     try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem('trener-live-demo'); } catch (e) { /* ok */ }
     location.reload();
   },
-  'add-test': addTestClients,
   'remove-test': removeTestClients,
   'wipe': async () => {
     if (!(await askConfirm('Naozaj vymazať VŠETKY dáta? Túto akciu nie je možné vrátiť späť.', { ok: 'Vymazať všetko', danger: true }))) return;
