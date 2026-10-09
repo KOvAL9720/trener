@@ -420,7 +420,7 @@ const IC = {
 function viewDashboard() {
   if (!db.clients.length) {
     return `<section class="empty-hero">
-      <h1>Vitaj v aplikácii Tréner</h1>
+      <h1>Vitaj v Lift Tara</h1>
       <p>Spravuj klientov, rozvrh tréningov, platby, tréningové plány aj merania progresu. Všetko na jednom mieste, aj offline.</p>
       <div class="row">
         <button class="btn primary" data-action="new-client">Pridať prvého klienta</button>
@@ -1069,12 +1069,12 @@ const routes = [
 ];
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-// vľavo hore pod „Tréner“ meno trénera (nastavenie „Meno pre klientov“, predvolene z Google účtu)
+// vľavo hore pod „Lift Tara“ meno trénera (nastavenie „Meno pre klientov“, predvolene z Google účtu)
 function updateBrand() {
   const brand = document.querySelector('.topbar .brand');
   if (!brand) return;
   const name = String(db.settings.trainerName || '').trim();
-  const html = `<img src="icons/icon.svg" alt="" width="28" height="28"><span class="brand-text">Tréner${name ? `<small>${esc(name)}</small>` : ''}</span>`;
+  const html = `<img src="icons/icon.svg" alt="" width="28" height="28"><span class="brand-text">Lift Tara${name ? `<small>${esc(name)}</small>` : ''}</span>`;
   if (brand.dataset.name !== name) { brand.innerHTML = html; brand.dataset.name = name; }
 }
 let flashId = null;
