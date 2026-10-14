@@ -1,3 +1,5 @@
+@font-face { font-family: 'Alfa Slab One'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/alfaslab-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Alfa Slab One'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/alfaslab-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 /* Písmo Poppins – uložené v appke (funguje offline, nič sa neposiela na Google) */
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/poppins-400-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/poppins-400-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
@@ -2260,3 +2262,57 @@ html body .set-title,
 html body .stat span,
 html body .sum-stats span,
 html body th { letter-spacing: .06em !important; }
+
+/* =========================================================
+   Lift Tara – rozbité retro: zrnitý papier, ošúchané okraje,
+   plagátové písmo a pečiatky (nad Greta dizajnom)
+   ========================================================= */
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .93 0 0 0 0 .82 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --scratch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .85 0 0 -1.2 0 .62'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+  --display: "Alfa Slab One", "Rockwell", "Georgia", serif;
+  --hard: 4px 4px 0 rgba(0, 0, 0, .55);
+}
+@media (prefers-color-scheme: light) { :root { --hard: 4px 4px 0 rgba(60, 35, 20, .22); } }
+
+/* zrno a viněta cez celú obrazovku */
+html body::after {
+  content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background: var(--grain), radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0, 0, 0, .35) 100%);
+  opacity: .16; mix-blend-mode: overlay;
+}
+@media (prefers-color-scheme: light) { html body::after { opacity: .22; mix-blend-mode: multiply; background: var(--grain), radial-gradient(120% 90% at 50% 40%, transparent 60%, rgba(90, 60, 30, .18) 100%); } }
+
+/* plagátové nadpisy */
+html body h1, html body .hero h1, html body .hero-title, html body .brand, html body .set-who h2 { font-family: var(--display); font-weight: 400; letter-spacing: .01em !important; }
+html body h1 { text-shadow: 3px 3px 0 rgba(198, 42, 60, .45); }
+@media (prefers-color-scheme: light) { html body h1 { text-shadow: 2px 2px 0 rgba(178, 34, 52, .25); } }
+.hero h1, .hero-title { text-shadow: 3px 3px 0 rgba(0, 0, 0, .55); }
+
+/* karty: ošúchaný povrch, hranatejšie, tvrdý tieň */
+.card, .stat, .set-list, .set-profile, .greta .greta-bubble {
+  background-image: var(--scratch), var(--grain);
+  background-blend-mode: overlay, soft-light;
+  background-size: 300px 300px, 180px 180px;
+}
+.card, .set-list, .set-profile { border: 1.5px solid rgba(246, 236, 220, .14); border-radius: 14px; box-shadow: var(--hard); }
+.stat { border-radius: 12px; }
+@media (prefers-color-scheme: light) { .card, .set-list, .set-profile { border-color: rgba(60, 35, 20, .16); } }
+
+/* tlačidlá ako staré smaltované cedule */
+.btn.primary, .btn.cta { font-family: var(--display); font-weight: 400; letter-spacing: .03em !important; border-radius: 12px; box-shadow: 0 4px 0 #7d1422, 0 8px 18px -10px rgba(0, 0, 0, .7) !important; }
+.btn.primary:active, .btn.cta:active { transform: translateY(3px); box-shadow: 0 1px 0 #7d1422 !important; }
+.chip.active { box-shadow: 0 3px 0 #7d1422; }
+
+/* pečiatky */
+.badge, .count-pill { border: 1.5px solid currentColor; border-radius: 6px; font-weight: 700; transform: rotate(-2deg); }
+.eyebrow { font-weight: 700; }
+
+/* Greta ako stará fotka */
+.greta img { filter: sepia(.35) contrast(1.06) saturate(.9); border: 3px solid #f6ecdc; box-shadow: 3px 3px 0 rgba(0, 0, 0, .45); transform: rotate(-3deg); }
+.greta .greta-bubble { border: 1.5px solid rgba(246, 236, 220, .18); border-radius: 4px 14px 14px 14px; box-shadow: var(--hard); }
+.greta .greta-bubble b { font-family: var(--display); font-weight: 400; color: var(--gold); }
+@media (prefers-color-scheme: light) { .greta img { border-color: #fffaf2; } .greta .greta-bubble { border-color: rgba(60, 35, 20, .18); } }
+
+/* fotka v úvode trochu vybledne ako stará pohľadnica */
+.hero::before, .hero-bg { filter: sepia(.28) contrast(1.05) saturate(.85); }
