@@ -3,32 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="color-scheme" content="dark light">
-  <style>html, body { background: #0b0b0c; } @media (prefers-color-scheme: light) { html, body { background: #eceef1; } }</style>
+  <style>html, body { background: #15100e; } @media (prefers-color-scheme: light) { html, body { background: #eceef1; } }</style>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Lift Tara Tréner</title>
   <meta name="description" content="Správa klientov, rozvrh tréningov, tréningové plány a progres.">
-  <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#eceef1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#15100e" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f7f1e6" media="(prefers-color-scheme: light)">
   <!-- Náhľad odkazu v WhatsApp / Messenger / iMessage -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Lift Tara">
   <meta property="og:title" content="Lift Tara Tréner">
   <meta property="og:description" content="Správa klientov, rozvrh tréningov, tréningové plány a progres.">
   <meta property="og:url" content="https://koval9720.github.io/trener/">
-  <meta property="og:image" content="https://koval9720.github.io/trener/icons/icon-512.png?v=3">
+  <meta property="og:image" content="https://koval9720.github.io/trener/icons/icon-512.png?v=4">
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
   <meta property="og:image:alt" content="Logo aplikácie Lift Tara">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:image" content="https://koval9720.github.io/trener/icons/icon-512.png?v=3">
+  <meta name="twitter:image" content="https://koval9720.github.io/trener/icons/icon-512.png?v=4">
   <!-- fotka pozadia sa sťahuje hneď, aby bola pri skrytí úvodnej obrazovky už pripravená -->
   <link rel="preload" as="image" href="icons/bg-gym.jpg">
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon.svg?v=3" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/icon-192.png?v=3">
+  <link rel="icon" href="icons/icon.svg?v=4" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png?v=4">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="LT Tréner">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -44,17 +44,17 @@
   <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="icons/splash/iphone-750x1334.png">
   <style>
     /* Úvodná obrazovka – inline, aby sa ukázala okamžite */
-    html, body { background: #0b0b0c; }
-    @media (prefers-color-scheme: light) { html, body, #splash { background: #eceef1 !important; } }
+    html, body { background: #15100e; }
+    @media (prefers-color-scheme: light) { html, body, #splash { background: #f7f1e6 !important; } }
     /* obsah aplikácie skrytý, kým sa nenačítajú jej štýly – žiadne preskakovanie rozloženia */
     .topbar, .nav, main { visibility: hidden; }
-    #splash { position: fixed; inset: 0; z-index: 1000; background: #0b0b0c; display: grid; place-items: center; transition: opacity .35s ease, visibility .35s; }
+    #splash { position: fixed; inset: 0; z-index: 1000; background: #15100e; display: grid; place-items: center; transition: opacity .35s ease, visibility .35s; }
     #splash.hide { opacity: 0; visibility: hidden; }
-    #splash .line { position: relative; width: 100vw; height: 3px; background: rgba(143, 220, 210, .12); overflow: hidden; }
-    #splash .line::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #b9ebe4, #46b3a7); box-shadow: 0 0 14px #46b3a7; transform-origin: left; animation: splash-fill .55s cubic-bezier(.45, 0, .25, 1) forwards, splash-glow .25s ease-out .55s forwards; }
+    #splash .line { position: relative; width: 100vw; height: 3px; background: rgba(224, 178, 90, .12); overflow: hidden; }
+    #splash .line::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #f0cf8a, #c62a3c); box-shadow: 0 0 14px #c62a3c; transform-origin: left; animation: splash-fill .55s cubic-bezier(.45, 0, .25, 1) forwards, splash-glow .25s ease-out .55s forwards; }
     #splash .line::after { content: ""; position: absolute; top: 0; bottom: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .9), transparent); animation: splash-sheen .55s cubic-bezier(.45, 0, .25, 1) forwards; }
     @keyframes splash-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-    @keyframes splash-glow { 50% { box-shadow: 0 0 26px 4px #46b3a7; } 100% { box-shadow: 0 0 16px 1px #46b3a7; } }
+    @keyframes splash-glow { 50% { box-shadow: 0 0 26px 4px #c62a3c; } 100% { box-shadow: 0 0 16px 1px #c62a3c; } }
     @keyframes splash-sheen { from { transform: translateX(-120%); } to { transform: translateX(280%); } }
     @media (prefers-reduced-motion: reduce) { #splash .line::before, #splash .line::after { animation: none; } }
   </style>
@@ -139,5 +139,6 @@
   <script src="js/chat.js" defer></script>
   <!-- návyky klientov (kroky, voda, spánok) -->
   <script src="js/habits.js" defer></script>
+  <script src="js/greta.js" defer></script>
 </body>
 </html>

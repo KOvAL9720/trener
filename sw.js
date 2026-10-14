@@ -1,4 +1,4 @@
-const CACHE = 'trener-v127';
+const CACHE = 'trener-v128';
 const ASSETS = [
   './',
   'index.html',
@@ -12,6 +12,18 @@ const ASSETS = [
   'js/gcal.js',
   'js/chat.js',
   'js/habits.js',
+  'js/greta.js',
+  'fonts/poppins-400-latin-ext.woff2',
+  'fonts/poppins-400-latin.woff2',
+  'fonts/poppins-500-latin-ext.woff2',
+  'fonts/poppins-500-latin.woff2',
+  'fonts/poppins-600-latin-ext.woff2',
+  'fonts/poppins-600-latin.woff2',
+  'fonts/poppins-700-latin-ext.woff2',
+  'fonts/poppins-700-latin.woff2',
+  'fonts/poppins-800-latin-ext.woff2',
+  'fonts/poppins-800-latin.woff2',
+  'icons/greta/avatar.jpg',
   'js/cloud.js',
   'manifest.webmanifest',
   'icons/icon.svg',
