@@ -2326,3 +2326,25 @@ html body h1 { text-shadow: 3px 3px 0 rgba(198, 42, 60, .45); }
 .lang-pill.corner { position: absolute; top: 14px; right: 14px; margin: 0; }
 .topbar .topbar-btn { flex: none; }
 @media (max-width: 360px) { .lang-pill { margin-right: 6px; } .lang-pill button { min-width: 32px; padding: 0 7px; font-size: .74rem; } }
+
+/* =========================================================
+   Platobná obrazovka (predplatné Lift Tara)
+   ========================================================= */
+.paywall { max-width: 460px; margin: 18px auto 24px; padding: 30px 22px 24px; text-align: center; border-radius: 18px; background: var(--surface); background-image: var(--scratch), var(--grain); background-blend-mode: overlay, soft-light; background-size: 300px 300px, 180px 180px; border: 1.5px solid rgba(246, 236, 220, .14); box-shadow: var(--hard); }
+@media (prefers-color-scheme: light) { .paywall { border-color: rgba(60, 35, 20, .16); } }
+.paywall .pw-logo { display: block; margin: 0 auto 14px; border-radius: 18px; box-shadow: 3px 3px 0 rgba(0, 0, 0, .45); }
+.paywall .pw-stamp { display: inline-block; margin-bottom: 12px; padding: 4px 12px; border: 2px solid var(--accent); border-radius: 6px; color: var(--accent); font-family: var(--display); font-size: .9rem; transform: rotate(-3deg); }
+.paywall h1 { margin: 0 0 10px; font-size: 1.9rem; line-height: 1.1; }
+.paywall .pw-lead { margin: 0 auto 18px; color: var(--muted); max-width: 360px; }
+.paywall .pw-list { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 10px; text-align: left; }
+.paywall .pw-list li { position: relative; padding-left: 30px; }
+.paywall .pw-list li::before { content: ""; position: absolute; left: 0; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff8ee' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 12px no-repeat; }
+.paywall .btn.primary.block { display: flex; width: 100%; justify-content: center; min-height: 54px; font-size: 1.05rem; text-decoration: none; }
+.paywall .pw-key { margin-top: 22px; padding-top: 18px; border-top: 1px dashed var(--border); text-align: left; }
+.paywall .pw-key label { display: block; margin-bottom: 8px; font-weight: 700; }
+.paywall .pw-row { display: flex; gap: 8px; }
+.paywall .pw-row input { flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: 600 .95rem var(--font); }
+.paywall .pw-row .btn { flex: none; }
+.paywall .pw-err { min-height: 1.2em; margin: 8px 0 0; color: var(--danger, #e5484d); font-size: .9rem; }
+.paywall .pw-foot { margin: 14px 0 0; color: var(--muted); font-size: .88rem; }
+.paywall .pw-foot a { color: var(--text); text-decoration: underline; }

@@ -998,6 +998,7 @@ function viewSettings() {
   return `
   <div class="page-head"><h1>Nastavenia</h1></div>
   ${accountCard()}
+  ${typeof licenseGroup === 'function' ? licenseGroup() : ''}
   ${setGroup('Tréningy', [
     setRow({ icon: 'tag', title: 'Predvolený tréning', sub: 'Cena, dĺžka a text pripomienky', val: `${fmtMoney(sessionPrice())} · ${db.settings.defaultDuration || 60} min`, action: 'edit-defaults' }),
     setRow({ icon: 'clock', title: 'Pracovné hodiny', sub: 'Voľné termíny pre klientov', val: days ? cnt(days, 'deň', 'dni', 'dní') + ' / týž.' : 'Nenastavené', href: '#/settings/hours' }),

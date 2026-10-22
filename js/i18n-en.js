@@ -1004,7 +1004,34 @@ window.I18N_EN = {
 "Čísla nepustia. Ani ja.": "Numbers don't lie. Neither do I.",
 "Každý kilogram navyše na činke je jedna výhovorka menej.": "Every extra kilo on the bar is one less excuse.",
 "Vidíš? Vravela som, že to pôjde.": "See? I told you you could do it.",
-"Zadaj kód od trénera. Ja zatiaľ upečiem koláč.": "Enter the code from your trainer. I'll bake a cake meanwhile."
+"Zadaj kód od trénera. Ja zatiaľ upečiem koláč.": "Enter the code from your trainer. I'll bake a cake meanwhile.",
+"dní zadarmo": "days free",
+"Lift Tara pre trénerov": "Lift Tara for trainers",
+"Tvoje predplatné skončilo. Dáta máš uložené – po obnovení predplatného sa všetko vráti.": "Your subscription has ended. Your data is saved – renew your subscription and everything comes back.",
+"Klienti, kalendár a platby na jednom mieste": "Clients, calendar and payments in one place",
+"Tréningové plány a zápisy výkonov": "Training plans and workout logs",
+"Klientska zóna a správy pre tvojich klientov": "Client zone and messages for your clients",
+"Synchronizácia medzi mobilom a počítačom": "Sync between phone and computer",
+"Obnoviť predplatné": "Renew subscription",
+"Ďakujeme! Licenčný kľúč ti prišiel e-mailom.": "Thank you! Your license key has been sent to your email.",
+"Už máš licenčný kľúč?": "Already have a license key?",
+"Licenčný kľúč": "License key",
+"Odomknúť": "Unlock",
+"Máš už účet na inom zariadení?": "Already have an account on another device?",
+"Prihlás sa v Nastaveniach": "Sign in in Settings",
+"Chceš sa najprv pozrieť?": "Want to look around first?",
+"Otvoriť ukážku": "Open the demo",
+"Predplatné": "Subscription",
+"Bez obmedzenia": "Unlimited",
+"Bez predplatného": "No subscription",
+"Aktívne": "Active",
+"Neaktívne": "Inactive",
+"Otvoriť stránku predplatného? Tam zmeníš kartu alebo predplatné zrušíš.": "Open the subscription page? You can change your card or cancel your subscription there.",
+"Zadaj licenčný kľúč z e-mailu.": "Enter the license key from your email.",
+"Tento kľúč už neplatí – predplatné skončilo.": "This key is no longer valid – the subscription has ended.",
+"Tento kľúč nepoznáme. Skontroluj, či si ho skopíroval celý.": "We don't recognize this key. Check that you copied all of it.",
+"Nepodarilo sa overiť kľúč. Skontroluj pripojenie na internet a skús znova.": "Couldn't verify the key. Check your internet connection and try again.",
+"Apka je odomknutá. Vitaj v Lift Tara!": "The app is unlocked. Welcome to Lift Tara!"
 },
 "rules": [
 [
@@ -1670,6 +1697,26 @@ window.I18N_EN = {
 [
 "{0} séria",
 "{0} set"
+],
+[
+"Vyskúšaj appku {0} dní zadarmo, potom {1} mesačne. Zrušiť môžeš kedykoľvek.",
+"Try the app free for {0} days, then {1} per month. Cancel anytime."
+],
+[
+"Vyskúšať {0} dní zadarmo",
+"Try {0} days free"
+],
+[
+"{0} dní zadarmo",
+"{0} days free"
+],
+[
+"Kľúč …{0}",
+"Key …{0}"
+],
+[
+"{0} mesačne. Predplatné spravuješ na stránke Lemon Squeezy.",
+"{0} per month. You manage your subscription on the Lemon Squeezy page."
 ]
 ]
 };
