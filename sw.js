@@ -1,4 +1,4 @@
-const CACHE = 'trener-v130';
+const CACHE = 'trener-v131';
 const ASSETS = [
   './',
   'index.html',
@@ -13,6 +13,7 @@ const ASSETS = [
   'js/chat.js',
   'js/habits.js',
   'js/greta.js',
+  'js/license.js',
   'fonts/alfaslab-latin.woff2',
   'fonts/alfaslab-latin-ext.woff2',
   'fonts/poppins-400-latin-ext.woff2',
