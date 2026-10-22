@@ -2316,3 +2316,13 @@ html body h1 { text-shadow: 3px 3px 0 rgba(198, 42, 60, .45); }
 
 /* fotka v úvode trochu vybledne ako stará pohľadnica */
 .hero::before, .hero-bg { filter: sepia(.28) contrast(1.05) saturate(.85); }
+
+/* prepínač jazyka SK | EN */
+.lang-pill { display: inline-flex; flex: none; margin: 0 10px 0 auto; padding: 3px; border-radius: 999px; background: var(--surface-2, #2c221d); border: 1px solid var(--border, rgba(246, 236, 220, .1)); }
+.lang-pill button { min-width: 38px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--muted, #b4a594); font: 700 .8rem/1 var(--font, inherit); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.lang-pill button.on { background: var(--accent, #c62a3c); color: #fff8ee; }
+.lang-pill button:not(.on):active { transform: scale(.94); }
+.login-box { position: relative; }
+.lang-pill.corner { position: absolute; top: 14px; right: 14px; margin: 0; }
+.topbar .topbar-btn { flex: none; }
+@media (max-width: 360px) { .lang-pill { margin-right: 6px; } .lang-pill button { min-width: 32px; padding: 0 7px; font-size: .74rem; } }

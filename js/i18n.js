@@ -24,6 +24,36 @@
   };
   // polia názvov dní a mesiacov v appke sa v angličtine preložia celé
   window.trArr = (a) => (lang === 'en' ? a.map((x) => window.tr(x)) : a);
+
+  // prepínač SK | EN hneď viditeľný: v hornej lište a na prihlasovacej obrazovke
+  const pill = (cls) => `<div class="lang-pill${cls}" data-no-tr role="group" aria-label="Jazyk / Language">`
+    + ['sk', 'en'].map((l) => `<button type="button" data-lang="${l}"${l === lang ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"'}>${l.toUpperCase()}</button>`).join('') + '</div>';
+  function addPills() {
+    document.querySelectorAll('.topbar').forEach((bar) => {
+      if (bar.querySelector('.lang-pill')) return;
+      const gear = bar.querySelector('.topbar-btn[data-nav="settings"]');
+      if (gear) gear.insertAdjacentHTML('beforebegin', pill(''));
+    });
+    const box = document.querySelector('.login-box');
+    if (box && !box.querySelector('.lang-pill')) box.insertAdjacentHTML('afterbegin', pill(' corner'));
+  }
+  let pillQueued = false;
+  function startPills() {
+    addPills();
+    new MutationObserver(() => {
+      if (pillQueued) return;
+      pillQueued = true;
+      requestAnimationFrame(() => { pillQueued = false; addPills(); });
+    }).observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest?.('.lang-pill [data-lang]');
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      if (b.dataset.lang !== lang) window.setLang(b.dataset.lang);
+    }, true);
+  }
+  if (document.body) startPills(); else document.addEventListener('DOMContentLoaded', startPills);
+
   if (lang !== 'en') { window.tr = (s) => s; return; }
 
   document.documentElement.lang = 'en';
