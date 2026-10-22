@@ -10,10 +10,10 @@
    Kým nie je vyplnený odkaz na platbu, zamykanie je vypnuté.
    ========================================================= */
 const LT_PAY = {
-  checkout: '',   // odkaz na platbu z Lemon Squeezy (Share → Checkout URL)
-  portal: '',     // stránka zákazníka na zrušenie predplatného (https://<obchod>.lemonsqueezy.com/billing)
-  storeId: 0,     // číslo obchodu – kľúč z iného obchodu neplatí
-  productId: 0,   // číslo produktu Lift Tara
+  checkout: 'https://liftara.lemonsqueezy.com/checkout/buy/15fb9ba1-bfda-470a-a7e2-52a8c8c64b66',   // odkaz na platbu z Lemon Squeezy (Share → Checkout URL)
+  portal: 'https://liftara.lemonsqueezy.com/billing',     // stránka zákazníka na zrušenie predplatného (https://<obchod>.lemonsqueezy.com/billing)
+  storeId: 504347,     // číslo obchodu – kľúč z iného obchodu neplatí
+  productId: 1462756,   // číslo produktu Lift Tara
   price: '15 €',
   trialDays: 7
 };
