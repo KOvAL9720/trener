@@ -468,10 +468,10 @@ function viewDashboard() {
 
   <section class="card today-card">
     <div class="card-head"><h2>Dnes</h2><a class="btn small" href="#/calendar">Kalendár ›</a></div>
-    ${sessionList(todays, { showDate: false }, 'Dnes nemáš naplánovaný žiadny tréning. 🙌')}
+    ${sessionList(todays, { showDate: false }, 'Dnes nemáš naplánovaný žiadny tréning.')}
   </section>
 
-  ${(() => { const due = db.sessions.filter(isDue); return due.length ? `<a class="notice notice-money" href="#/finance"><span>💰 Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span><span class="chev" aria-hidden="true">›</span></a>` : ''; })()}
+  ${(() => { const due = db.sessions.filter(isDue); return due.length ? `<a class="notice notice-money" href="#/finance"><span>Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span><span class="chev" aria-hidden="true">›</span></a>` : ''; })()}
 
   ${overdue.length ? `<section class="card">
     <div class="card-head"><h2>Na vyhodnotenie</h2><span class="badge warn">${overdue.length}</span></div>
@@ -590,8 +590,8 @@ function viewClient(id) {
       </div>
     </div>
     <div class="row client-actions">
-      ${c.phone || c.email ? `<button class="btn" data-action="contact" data-id="${c.id}">💬 Napísať</button>` : ''}
-      <button class="btn" data-action="edit-client" data-id="${c.id}">✏️ Upraviť</button>
+      ${c.phone || c.email ? `<button class="btn" data-action="contact" data-id="${c.id}">Napísať</button>` : ''}
+      <button class="btn" data-action="edit-client" data-id="${c.id}">Upraviť</button>
       <button class="btn primary" data-action="new-session" data-client="${c.id}">+ Tréning</button>
     </div>
   </div>
@@ -636,7 +636,7 @@ function viewClient(id) {
         ${due.length ? `<div class="due-row">
           <span>Nezaplatené: <b>${nTr(due.length)} · ${fmtMoney(sumPrice(due))}</b></span>
           <span class="row">${payButtons(id)}</span>
-        </div>` : '<p class="muted" style="margin:12px 0 0">Všetko zaplatené. 👌</p>'}`;
+        </div>` : '<p class="muted" style="margin:12px 0 0">Všetko zaplatené.</p>'}`;
       })()}
     </section>
   </div>
@@ -738,7 +738,7 @@ function recordsCard(c) {
         ${chartSummary(sel.points, sel.unit, sel.name)}
         ${chartHtml(sel.points, sel.unit)}` : ''}
       <ul class="list records">${recs.map((r) => `<li><button class="list-item${r === sel ? ' sel' : ''}" ${r.points.length >= 2 ? `data-action="chart" data-client="${c.id}" data-kind="x" data-val="${esc(r.exerciseId)}"` : 'disabled'}>
-        <span class="pr-icon" aria-hidden="true">🏆</span>
+        <span class="pr-icon"><svg class="ei" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg></span>
         <span class="info"><strong>${esc(r.name)}</strong><small>${fmtShort(r.date)} ${parseDate(r.date).getFullYear()}</small></span>
         <b class="pr-val">${fmtSet(r.best)}</b>
       </button></li>`).join('')}</ul>`}
@@ -927,7 +927,7 @@ function viewFinance(monthParam) {
         ${getClient(cid)?.phone || getClient(cid)?.email ? `<button class="icon-btn" title="Pripomenúť platbu" aria-label="Pripomenúť platbu" data-action="remind-pay" data-id="${cid}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3 9.2 10.1M22 3H2l7.2 7.1 2.5 10.2z"/></svg></button>` : ''}
         ${payButtons(cid)}
       </div>
-    </li>`).join('')}</ul>` : '<p class="empty">Všetko je zaplatené. 👌</p>'}
+    </li>`).join('')}</ul>` : '<p class="empty">Všetko je zaplatené.</p>'}
   </section>
 
   <section class="card">
@@ -1836,7 +1836,7 @@ function openLogSheet(s) {
           ${prev ? `<button type="button" class="link-btn" data-copy="${i}">Ako minule</button>` : ''}
           <button type="button" class="icon-btn small" data-rm-ex="${i}" aria-label="Odobrať cvik">✕</button>
         </div>
-        ${prev || best ? `<p class="log-prev">${prev ? `Minule (${fmtShort(prev.session.date)}): ${prev.sets.map(fmtSet).join(' · ')}` : ''}${best ? `${prev ? '<br>' : ''}🏆 Rekord: ${fmtSet(best.set)}` : ''}</p>` : '<p class="log-prev">Prvý zápis tohto cviku</p>'}
+        ${prev || best ? `<p class="log-prev">${prev ? `Minule (${fmtShort(prev.session.date)}): ${prev.sets.map(fmtSet).join(' · ')}` : ''}${best ? `${prev ? '<br>' : ''}Rekord: ${fmtSet(best.set)}` : ''}</p>` : '<p class="log-prev">Prvý zápis tohto cviku</p>'}
         ${e.sets.map((st, j) => `<div class="log-set">
           <span class="set-n">${j + 1}</span>
           <input type="text" inputmode="decimal" autocomplete="off" data-i="${i}" data-j="${j}" data-f="w" value="${esc(st.w)}" placeholder="kg" aria-label="Séria ${j + 1} – váha (kg)">
@@ -1904,7 +1904,7 @@ function openLogSheet(s) {
     if (records.length) {
       burst(btn.left + btn.width / 2, btn.top + btn.height / 2);
       navigator.vibrate?.([15, 60, 15]);
-      toast(`🔥 Nový rekord: ${exName(records[0].e.exerciseId)} ${fmtSet(records[0].top)}${records.length > 1 ? ` (+${records.length - 1})` : ''}`);
+      toast(`Nový rekord: ${exName(records[0].e.exerciseId)} ${fmtSet(records[0].top)}${records.length > 1 ? ` (+${records.length - 1})` : ''}`);
     } else {
       toast(log.length ? `Výkony uložené${markDone ? ' · tréning odtrénovaný' : ''}` : 'Výkony vymazané');
     }
@@ -2701,7 +2701,7 @@ function ntfySend(topic, title, message) {
 }
 async function ntfyTest() {
   try {
-    const r = await ntfySend(db.settings.ntfyTopic, 'Tréner – skúška', 'Upozornenia fungujú 👍');
+    const r = await ntfySend(db.settings.ntfyTopic, 'Tréner – skúška', 'Upozornenia fungujú');
     if (!r.ok) throw new Error(r.status);
     toast('Odoslané – pozri telefón');
   } catch (e) { notify('Upozornenie sa nepodarilo odoslať. Skontroluj internet.'); }

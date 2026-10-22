@@ -1849,7 +1849,7 @@ html.live-on, html.live-on body { overflow: hidden; }
 .live-rest.idle.paused .mini-txt small { color: var(--warn); }
 @keyframes ring-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .live-rest.idle .fg.spin { animation: none; } }
-/* rozbehnutý (zbalený) živý tréning – tlačidlo ▶ svieti */
+/* rozbehnutý (zbalený) živý tréning – tlačidlo svieti */
 .icon-btn.play.on { background: var(--accent); border-color: var(--accent); color: #1d1714; animation: play-pulse 1.8s ease-out infinite; }
 @keyframes play-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 10px transparent; } }
 @media (prefers-reduced-motion: reduce) { .icon-btn.play.on { animation: none; } }
@@ -2348,3 +2348,12 @@ html body h1 { text-shadow: 3px 3px 0 rgba(198, 42, 60, .45); }
 .paywall .pw-err { min-height: 1.2em; margin: 8px 0 0; color: var(--danger, #e5484d); font-size: .9rem; }
 .paywall .pw-foot { margin: 14px 0 0; color: var(--muted); font-size: .88rem; }
 .paywall .pw-foot a { color: var(--text); text-decoration: underline; }
+
+/* ikony namiesto emoji */
+.ei { width: 1em; height: 1em; flex: none; vertical-align: -.14em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ei.fill { fill: currentColor; stroke: none; }
+.pr-icon, .record .medal, .sum-emoji, .lset .n, .live-hint > span { color: var(--gold, #e0b25a); }
+.mini-ic .ei { width: .95rem; height: .95rem; color: var(--text); }
+.sum-emoji .ei { width: 3.4rem; height: 3.4rem; stroke-width: 1.6; margin: 0 auto; display: block; }
+.lset .n .ei { width: 1.1em; height: 1.1em; }
+@media (prefers-color-scheme: light) { .pr-icon, .record .medal, .sum-emoji, .lset .n, .live-hint > span { color: #9a6a18; } }
