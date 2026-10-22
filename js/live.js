@@ -221,13 +221,13 @@ function liveExerciseHtml(s, e) {
       <button type="button" class="icon-btn small" data-l="rm-ex" aria-label="Odobrať cvik z tréningu">✕</button>
     </div>
     ${e.plan.note ? `<p class="live-note">${esc(e.plan.note)}</p>` : ''}
-    ${e.sug.why ? `<p class="live-hint${e.sug.up ? ' up' : ''}"><span aria-hidden="true">${e.sug.up ? '📈' : '💡'}</span> ${esc(e.sug.why)}</p>` : ''}
-    <div class="live-meta">${prev ? `<span>Minule (${fmtShort(prev.session.date)}): ${esc(prev.sets.map(fmtSet).join(' · '))}</span>` : '<span>Prvý zápis tohto cviku</span>'}${best ? `<span>🏆 Rekord: ${esc(fmtSet(best.set))}</span>` : ''}</div>
-    <div class="rest-row"><span>⏱ Pauza medzi sériami</span>${restChips(restOf(e))}</div>
+    ${e.sug.why ? `<p class="live-hint${e.sug.up ? ' up' : ''}"><span aria-hidden="true">${e.sug.up ? '<svg class="ei" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>' : '<svg class="ei" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>'}</span> ${esc(e.sug.why)}</p>` : ''}
+    <div class="live-meta">${prev ? `<span>Minule (${fmtShort(prev.session.date)}): ${esc(prev.sets.map(fmtSet).join(' · '))}</span>` : '<span>Prvý zápis tohto cviku</span>'}${best ? `<span>Rekord: ${esc(fmtSet(best.set))}</span>` : ''}</div>
+    <div class="rest-row"><span>Pauza medzi sériami</span>${restChips(restOf(e))}</div>
     <div class="live-sets">
       <div class="lset head" aria-hidden="true"><span>Séria</span><span>kg</span><span>Opakovania</span><span></span></div>
       ${e.sets.map((st, j) => `<div class="lset${st.done ? ' done' : ''}${j === firstOpen ? ' cur' : ''}${st.pr ? ' pr' : ''}">
-        <span class="n">${st.pr ? '🏆' : j + 1}</span>
+        <span class="n">${st.pr ? '<svg class="ei" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg>' : j + 1}</span>
         <div class="stepper"><button type="button" data-l="dec" data-k="w" data-j="${j}" aria-label="Menej kg">−</button><input type="text" inputmode="decimal" autocomplete="off" data-k="w" data-j="${j}" value="${esc(st.w)}" placeholder="–" aria-label="Séria ${j + 1} – kg"><button type="button" data-l="inc" data-k="w" data-j="${j}" aria-label="Viac kg">+</button></div>
         <div class="stepper"><button type="button" data-l="dec" data-k="r" data-j="${j}" aria-label="Menej opakovaní">−</button><input type="text" inputmode="numeric" autocomplete="off" data-k="r" data-j="${j}" value="${esc(st.r)}" placeholder="–" aria-label="Séria ${j + 1} – opakovania"><button type="button" data-l="inc" data-k="r" data-j="${j}" aria-label="Viac opakovaní">+</button></div>
         <button type="button" class="lcheck" data-l="done" data-j="${j}" aria-pressed="${st.done}" aria-label="${st.done ? 'Séria hotová – zrušiť' : 'Označiť sériu ako hotovú'}"><svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
@@ -247,21 +247,21 @@ function liveRestHtml() {
     const off = !!live.pausedAt;
     const e = live.ex[live.cur];
     return `<div class="live-rest mini idle${off ? ' paused' : ''}">
-      <button type="button" class="ring mini-ring" data-l="clock-toggle" aria-label="${off ? 'Pustiť čas tréningu' : 'Zastaviť čas tréningu'}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg spin" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="22 78"/></svg><span class="mini-ic" aria-hidden="true">${off ? '▶' : '⏸'}</span></button>
+      <button type="button" class="ring mini-ring" data-l="clock-toggle" aria-label="${off ? 'Pustiť čas tréningu' : 'Zastaviť čas tréningu'}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg spin" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="22 78"/></svg><span class="mini-ic" aria-hidden="true">${off ? '<svg class="ei fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>' : '<svg class="ei fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>'}</span></button>
       <button type="button" class="mini-txt" data-l="clock-toggle" aria-label="${off ? 'Pustiť čas tréningu' : 'Zastaviť čas tréningu'}"><small>${off ? 'Tréning zastavený' : 'Čas tréningu'}</small><b id="live-clock-big">${fmtClock(elapsed())}</b></button>
-      ${e ? `<button type="button" class="btn small" data-l="rest-now">⏱ Pauza ${fmtClock(restOf(e))}</button>` : ''}
+      ${e ? `<button type="button" class="btn small" data-l="rest-now">Pauza ${fmtClock(restOf(e))}</button>` : ''}
     </div>`;
   }
   const left = Math.max(0, restLeft());
   const nxt = nextTarget();
   const paused = live.rest.paused != null;
   const off = 100 - (left / live.rest.total) * 100;
-  const nextTxt = nxt ? `Ďalej: <b>${esc(exName(nxt.e.exerciseId))}</b> · séria ${nxt.j + 1}${nxt.e.sets[nxt.j].w || nxt.e.sets[nxt.j].r ? ` · ${esc([nxt.e.sets[nxt.j].w && `${nxt.e.sets[nxt.j].w} kg`, nxt.e.sets[nxt.j].r && `× ${nxt.e.sets[nxt.j].r}`].filter(Boolean).join(' '))}` : ''}` : 'Posledná séria hotová 💪';
+  const nextTxt = nxt ? `Ďalej: <b>${esc(exName(nxt.e.exerciseId))}</b> · séria ${nxt.j + 1}${nxt.e.sets[nxt.j].w || nxt.e.sets[nxt.j].r ? ` · ${esc([nxt.e.sets[nxt.j].w && `${nxt.e.sets[nxt.j].w} kg`, nxt.e.sets[nxt.j].r && `× ${nxt.e.sets[nxt.j].r}`].filter(Boolean).join(' '))}` : ''}` : 'Posledná séria hotová';
   const ring = (big) => `<svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg"${big ? ' id="rest-ring"' : ' id="rest-ring-mini"'} cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${off}"/></svg>`;
   // zbalená pauza – tenká lišta dole, cvik a série ostávajú celé viditeľné
   if (live.restMin) {
     return `<div class="live-rest mini${paused ? ' paused' : ''}" role="timer" aria-live="polite" data-drag="rest">
-      <button type="button" class="ring mini-ring" data-l="rest-toggle" aria-label="${paused ? 'Pustiť odpočet' : 'Zastaviť odpočet'}">${ring(false)}<span class="mini-ic" aria-hidden="true">${paused ? '▶' : '⏸'}</span></button>
+      <button type="button" class="ring mini-ring" data-l="rest-toggle" aria-label="${paused ? 'Pustiť odpočet' : 'Zastaviť odpočet'}">${ring(false)}<span class="mini-ic" aria-hidden="true">${paused ? '<svg class="ei fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>' : '<svg class="ei fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>'}</span></button>
       <button type="button" class="mini-txt" data-l="rest-expand" aria-label="Rozbaliť odpočet"><small id="rest-state">${paused ? 'Zastavené' : 'Pauza'}</small><b id="rest-left">${fmtClock(left)}</b></button>
       <button type="button" class="btn small" data-l="rest-plus">+15 s</button>
       <button type="button" class="btn small primary" data-l="rest-skip">Preskočiť</button>
@@ -271,7 +271,7 @@ function liveRestHtml() {
     <button type="button" class="rest-grab" data-l="rest-collapse" aria-label="Zbaliť odpočet"><span></span></button>
     <div class="rest-main">
       <button type="button" class="ring" data-l="rest-toggle" aria-label="${paused ? 'Pustiť odpočet' : 'Zastaviť odpočet'}">${ring(true)}
-        <span class="ring-txt"><small id="rest-state">${paused ? 'Zastavené' : 'Pauza'}</small><b id="rest-left">${fmtClock(left)}</b><span class="ring-hint">${paused ? '▶ pokračovať' : '⏸ zastaviť'}</span></span></button>
+        <span class="ring-txt"><small id="rest-state">${paused ? 'Zastavené' : 'Pauza'}</small><b id="rest-left">${fmtClock(left)}</b><span class="ring-hint">${paused ? 'pokračovať' : 'zastaviť'}</span></span></button>
       <div class="rest-side">
         <p class="rest-next">${nextTxt}</p>
         <div class="rest-btns"><button type="button" class="btn" data-l="rest-minus">−15 s</button><button type="button" class="btn" data-l="rest-plus">+15 s</button></div>
@@ -296,7 +296,7 @@ function nextTarget() {
 
 /* ---------- Plávajúca lišta, keď je tréning zbalený ---------- */
 function livePill() {
-  // namiesto plávajúcej lišty: tlačidlo ▶ pri rozbehnutom tréningu svieti a ťuknutím sa v ňom pokračuje
+  // namiesto plávajúcej lišty: tlačidlo pri rozbehnutom tréningu svieti a ťuknutím sa v ňom pokračuje
   document.getElementById('live-pill')?.remove();
   const sid = live && !live.summary && getSession(live.sid) && !document.getElementById('live')?.classList.contains('open') ? live.sid : null;
   document.querySelectorAll('[data-action="live-start"]').forEach((b) => {
@@ -332,7 +332,7 @@ function liveTimers() {
       if (mr) mr.setAttribute('stroke-dashoffset', String(100 - (left / live.rest.total) * 100));
       if (pc) pc.textContent = `Pauza ${fmtClock(left)}`;
       if (left <= 3.2 && left > 0 && !live.rest.warned) { live.rest.warned = true; beep(2, 660); }
-    } else if (pc && !live.rest) pc.textContent = `${live.pausedAt ? '⏸ ' : ''}${fmtClock(elapsed())}`;
+    } else if (pc && !live.rest) pc.textContent = fmtClock(elapsed());
   }, 250);
 }
 
@@ -429,7 +429,7 @@ function toggleDone(e, j) {
     const btn = document.querySelector(`#live .lcheck[data-j="${j}"]`)?.getBoundingClientRect();
     if (btn) burst(btn.left + btn.width / 2, btn.top + btn.height / 2);
     navigator.vibrate?.([15, 60, 15, 60, 30]);
-    toast(`🔥 Nový rekord: ${exName(e.exerciseId)} ${fmtSet(set)}`);
+    toast(`Nový rekord: ${exName(e.exerciseId)} ${fmtSet(set)}`);
   }
   // pauza podľa plánu; po poslednej sérii cviku prejsť na ďalší cvik
   const nxt = nextTarget();
@@ -611,13 +611,13 @@ function liveSummaryHtml(s, c) {
   return `
   <header class="live-head"><button type="button" class="icon-btn" data-l="back" aria-label="Späť k tréningu"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><div class="live-title"><b>Tréning hotový</b><small>${esc(c ? c.name : '')} · ${fmtDay(s.date)}</small></div><span></span></header>
   <main class="live-body live-summary">
-    <div class="sum-hero"><span class="sum-emoji" aria-hidden="true">${prs.length ? '🏆' : '💪'}</span><h2>${prs.length ? (prs.length > 1 ? `${prs.length} nové rekordy!` : 'Nový rekord!') : 'Výborná práca!'}</h2></div>
+    <div class="sum-hero"><span class="sum-emoji" aria-hidden="true">${prs.length ? '<svg class="ei" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg>' : '<svg class="ei" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>'}</span><h2>${prs.length ? (prs.length > 1 ? `${prs.length} nové rekordy!` : 'Nový rekord!') : 'Výborná práca!'}</h2></div>
     <div class="sum-stats">
       <div><b>${fmtClock(dur)}</b><span>čas</span></div>
       <div><b>${sets}</b><span>sérií</span></div>
       <div><b>${!vol ? '–' : vol < 10000 ? `${fmtNum(vol, 0)} kg` : `${fmtNum(vol / 1000, 1)} t`}</b><span>objem${diff != null ? ` <em class="${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '+' : ''}${diff} %</em>` : ''}</span></div>
     </div>
-    <ul class="sum-list">${log.map((e) => `<li><span class="ex-pic">${EXERCISE_ICONS(getExercise(e.exerciseId))}</span><div><b>${esc(exName(e.exerciseId))}${prs.includes(e.exerciseId) ? ' 🏆' : ''}</b><small>${esc(e.sets.map(fmtSet).join(' · '))}</small></div></li>`).join('')}</ul>
+    <ul class="sum-list">${log.map((e) => `<li><span class="ex-pic">${EXERCISE_ICONS(getExercise(e.exerciseId))}</span><div><b>${esc(exName(e.exerciseId))}${prs.includes(e.exerciseId) ? ' <svg class="ei" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg>' : ''}</b><small>${esc(e.sets.map(fmtSet).join(' · '))}</small></div></li>`).join('')}</ul>
   </main>
   <footer class="live-foot sum-foot">
     <button type="button" class="btn danger" data-l="discard">Zahodiť</button>
@@ -640,7 +640,7 @@ function liveCommit() {
   flashId = s.id;
   save();
   render();
-  toast(prs ? `Tréning uložený · 🏆 ${prs > 1 ? `${prs} rekordy` : 'nový rekord'}` : 'Tréning uložený · výkony zapísané');
+  toast(prs ? `Tréning uložený · ${prs > 1 ? `${prs} rekordy` : 'nový rekord'}` : 'Tréning uložený · výkony zapísané');
 }
 
 async function liveDiscard(force = false) {

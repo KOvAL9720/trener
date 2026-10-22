@@ -23,7 +23,7 @@ window.I18N_EN = {
 "2–3× týždenne": "2–3× a week",
 "40 kg, vlastná váha…": "40 kg, bodyweight…",
 "Ahoj {meno}, pripomínam tréning {datum} o {cas}. Teším sa!": "Hi {meno}, a reminder of your session {datum} at {cas}. See you there!",
-"Ahoj! Ako sa cítiš po včerajšom tréningu? 💪": "Hi! How do you feel after yesterday's session? 💪",
+"Ahoj! Ako sa cítiš po včerajšom tréningu?": "Hi! How do you feel after yesterday's session?",
 "Aj po zatvorení prehliadača": "Even after closing the browser",
 "Ak si cvičil/a sám/sama, zapíš si to – tréner to uvidí.": "If you trained on your own, log it – your trainer will see it.",
 "Ako sa cítiš psychicky?": "How do you feel mentally?",
@@ -72,7 +72,7 @@ window.I18N_EN = {
 "Deň check-inu": "Check-in day",
 "Dnes": "Today",
 "Dnes máš voľno.": "You have the day off today.",
-"Dnes nemáš naplánovaný žiadny tréning. 🙌": "You have no session scheduled today. 🙌",
+"Dnes nemáš naplánovaný žiadny tréning.": "You have no session scheduled today.",
 "Dnešné návyky": "Today's habits",
 "Dobré ráno": "Good morning",
 "Dobrý deň": "Good afternoon",
@@ -266,7 +266,7 @@ window.I18N_EN = {
 "Nezaplatený": "Unpaid",
 "Niečo sa pokazilo": "Something went wrong",
 "Nikto nezodpovedá hľadaniu.": "No one matches your search.",
-"Nohy cítim, ale dobre 😅 Vo štvrtok platí?": "My legs are sore, but good 😅 Still on for Thursday?",
+"Nohy cítim, ale dobre. Vo štvrtok platí?": "My legs are sore, but good. Still on for Thursday?",
 "Nohy vráť k rukám a vyskoč s rukami hore.": "Jump your feet back to your hands and jump up with arms overhead.",
 "Nová šablóna": "New template",
 "Nové heslo": "New password",
@@ -365,7 +365,7 @@ window.I18N_EN = {
 "Poslať pripomienku": "Send reminder",
 "Poslať skúšobné upozornenie": "Send a test notification",
 "Poslať žiadosť": "Send request",
-"Posledná séria hotová 💪": "Last set done 💪",
+"Posledná séria hotová": "Last set done",
 "Posledný": "Last",
 "Posledných 6 mesiacov": "Last 6 months",
 "Posledných 7 dní": "Last 7 days",
@@ -580,7 +580,7 @@ window.I18N_EN = {
 "Uložiť tréning": "Save session",
 "Univerzálne plány, ktoré môžeš skopírovať ľubovoľnému klientovi.": "General plans you can copy to any client.",
 "Upažovanie": "Lateral raise",
-"Upozornenia fungujú 👍": "Notifications work 👍",
+"Upozornenia fungujú": "Notifications work",
 "Upozornenia na žiadosti": "Request notifications",
 "Upozornenia zapnuté – nastav si appku ntfy": "Notifications on – set up the ntfy app",
 "Upozornenie sa nepodarilo odoslať. Skontroluj internet.": "Couldn't send the notification. Check your internet.",
@@ -650,8 +650,8 @@ window.I18N_EN = {
 "Výkony ✓": "Results ✓",
 "Výpady": "Lunges",
 "Včera": "Yesterday",
-"Všetko je zaplatené. 👌": "Everything is paid. 👌",
-"Všetko zaplatené. 👌": "All paid. 👌",
+"Všetko je zaplatené.": "Everything is paid.",
+"Všetko zaplatené.": "All paid.",
 "Všetky": "All",
 "Všetky dáta vymazané": "All data deleted",
 "Webová stránka": "Website",
@@ -889,14 +889,12 @@ window.I18N_EN = {
 "‹ Správy": "‹ Messages",
 "← Späť na web": "← Back to the website",
 "− Séria": "− Set",
-"⏱ Pauza medzi sériami": "⏱ Rest between sets",
-"⏸ zastaviť": "⏸ pause",
-"▶ pokračovať": "▶ resume",
-"✏️ Upraviť": "✏️ Edit",
+"Pauza medzi sériami": "Rest between sets",
+"zastaviť": "pause",
+"pokračovať": "resume",
 "✓ Prijať": "✓ Accept",
 "✓ Pripomienky na zajtra odoslané": "✓ Reminders for tomorrow sent",
-"💬 Napísať": "💬 Message",
-"💰 Nezaplatené:": "💰 Unpaid:",
+"Napísať": "Message",
 "cviky": "exercises",
 "cvikov": "exercises",
 "dni": "days",
@@ -1319,8 +1317,8 @@ window.I18N_EN = {
 "Solo workout – {0}"
 ],
 [
-"Tréning uložený · 🏆 {0}",
-"Session saved · 🏆 {0}"
+"Tréning uložený · {0}",
+"Session saved · {0}"
 ],
 [
 "Tréning zrušený · platba {0} sa už nepočíta do príjmu",
@@ -1579,12 +1577,12 @@ window.I18N_EN = {
 "Live session{0} · {1} min"
 ],
 [
-"🔥 Nový rekord: {0} {1}",
-"🔥 New record: {0} {1}"
+"Nový rekord: {0} {1}",
+"New record: {0} {1}"
 ],
 [
-"🔥 Nový rekord: {0} {1}{2}",
-"🔥 New record: {0} {1}{2}"
+"Nový rekord: {0} {1}{2}",
+"New record: {0} {1}{2}"
 ],
 [
 "Dnes ťa čaká {0}. Drž sa plánu.",
@@ -1615,8 +1613,8 @@ window.I18N_EN = {
 "Last time ({0}): {1}"
 ],
 [
-"🏆 Rekord: {0}",
-"🏆 Record: {0}"
+"Rekord: {0}",
+"Record: {0}"
 ],
 [
 "{0} × do zlyhania",
