@@ -19,9 +19,9 @@ const LT_PAY = {
   trialDays: 7,
   // balíčky – odkaz na platbu každého variantu (Share → vybrať variant → Checkout URL)
   tiers: {
-    basic: { name: 'Basic', price: '4,99 €', checkout: '' },
-    medium: { name: 'Medium', price: '9,99 €', checkout: '' },
-    pro: { name: 'Pro', price: '14,99 €', checkout: '' }
+    basic: { name: 'Basic', price: '4,99 €', checkout: 'https://liftara.lemonsqueezy.com/checkout/buy/15fb9ba1-bfda-470a-a7e2-52a8c8c64b66' },
+    medium: { name: 'Medium', price: '9,99 €', checkout: 'https://liftara.lemonsqueezy.com/checkout/buy/7af3e0bc-edbc-4068-a9f4-c3c96f368f92' },
+    pro: { name: 'Pro', price: '14,99 €', checkout: 'https://liftara.lemonsqueezy.com/checkout/buy/afed2a00-33c0-4ee2-89f5-a5e1496b6bcf' }
   }
 };
 const TIER_KEYS = ['basic', 'medium', 'pro'];

@@ -2443,3 +2443,12 @@ html body h1 { text-shadow: 3px 3px 0 rgba(198, 42, 60, .45); }
 .hab-btns { display: flex; gap: 6px; }
 .hab-btns .icon-btn { width: 40px; height: 40px; font-size: 1.3rem; font-weight: 700; }
 .hab-week td.hit { color: var(--ok, #4caf7d); font-weight: 800; }
+
+/* živý tréning: váha aj s desatinami („102,5“) sa zmestí celá aj na úzkych mobiloch */
+.stepper { grid-template-columns: 30px 1fr 30px; }
+.stepper input { font-size: 1.05rem; letter-spacing: -.01em !important; }
+@media (max-width: 360px) {
+  .lset { grid-template-columns: 22px 1fr 1fr 42px; gap: 5px; padding: 6px; }
+  .stepper { grid-template-columns: 24px 1fr 24px; }
+  .stepper input { font-size: .95rem; }
+}
