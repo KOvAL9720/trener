@@ -1,18 +1,19 @@
 'use strict';
 
 /* =========================================================
-   Babka Greta – maskot Lift Tara. Na Prehľade povie trénerovi
+   Babka Greta – maskot Lift Tara. Na obrazovke Dnes povie
    krátku hlášku (každý deň inú, počas dňa sa nemení).
    ========================================================= */
 const GRETA_IMG = 'icons/greta/avatar.jpg';
 const GRETA_TRAINER = [
-  'Ráno som odcvičila skôr, než vstali sliepky. Tvoji klienti majú celý deň.',
-  'Klient, ktorý príde načas, je zlato. Ten, čo príde aj v daždi, je diamant.',
-  'Nezabudni si zapísať, kto zaplatil. Ja si pamätám každé euro od roku 1962.',
-  'Pochváľ dnes aspoň jedného klienta. Mňa za drep chválili naposledy pri žatve.',
-  'Plán bez zápisu je ako koláč bez cukru. Dá sa, ale prečo.',
-  'Kto netrénuje nohy, nech mi nechodí na oči.',
-  'Voda, spánok, kroky. Toto som vedela aj bez appky, ale nech sa páči.'
+  'Ráno som odcvičila skôr, než vstali sliepky. Ty máš na to celý deň.',
+  'Nevynechávaj. Vymeň. Kto hľadá, nájde spôsob.',
+  'Voda, spánok, kroky. Toto som vedela aj bez appky.',
+  'Rekordy sa nerobia na gauči.',
+  'Aj ja som raz začínala. V roku 1962.',
+  'Zjedz niečo poriadne, vyzeráš ako rezanec.',
+  'Radšej o jedno opakovanie menej, ale poriadne.',
+  'Kolená von, hrudník hore. Ja drepujem hlbšie aj s vrecom zemiakov.'
 ];
 const gretaPick = (list) => {
   const d = new Date();

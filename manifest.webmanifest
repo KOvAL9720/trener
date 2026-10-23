@@ -1,7 +1,7 @@
 {
-  "name": "Lift Tara Tréner – klienti a tréningy",
-  "short_name": "LT Tréner",
-  "description": "Správa klientov, rozvrh tréningov, tréningové plány a progres.",
+  "name": "Lift Tara – tvoj tréner v mobile",
+  "short_name": "Lift Tara",
+  "description": "Tréningový program na mieru, ukážky cvikov, živý tréning a progres.",
   "lang": "sk",
   "start_url": "./",
   "scope": "./",

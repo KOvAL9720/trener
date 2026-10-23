@@ -5,15 +5,15 @@
   <meta name="color-scheme" content="dark light">
   <style>html, body { background: #15100e; } @media (prefers-color-scheme: light) { html, body { background: #eceef1; } }</style>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Lift Tara Tréner</title>
-  <meta name="description" content="Správa klientov, rozvrh tréningov, tréningové plány a progres.">
+  <title>Lift Tara – tvoj tréner v mobile</title>
+  <meta name="description" content="Tréningový program na mieru, ukážky cvikov, živý tréning a progres.">
   <meta name="theme-color" content="#15100e" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f7f1e6" media="(prefers-color-scheme: light)">
   <!-- Náhľad odkazu v WhatsApp / Messenger / iMessage -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Lift Tara">
   <meta property="og:title" content="Lift Tara Tréner">
-  <meta property="og:description" content="Správa klientov, rozvrh tréningov, tréningové plány a progres.">
+  <meta property="og:description" content="Tréningový program na mieru, ukážky cvikov, živý tréning a progres.">
   <meta property="og:url" content="https://koval9720.github.io/trener/">
   <meta property="og:image" content="https://koval9720.github.io/trener/icons/icon-512.png?v=4">
   <meta property="og:image:width" content="512">
@@ -30,7 +30,7 @@
   <link rel="icon" href="icons/icon.svg?v=4" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=4">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="LT Tréner">
+  <meta name="apple-mobile-web-app-title" content="Lift Tara">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/iphone-1320x2868.png">
   <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="icons/splash/iphone-1206x2622.png">
@@ -74,27 +74,19 @@
   <nav class="nav" aria-label="Hlavná navigácia">
     <a href="#/" data-nav="home">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
-      <span>Prehľad</span>
+      <span>Dnes</span>
     </a>
-    <a href="#/clients" data-nav="clients">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a7 7 0 0 1 14 0v1"/><path d="M16 4a4 4 0 0 1 0 8M19 21v-1a7 7 0 0 0-3-5.7"/></svg>
-      <span>Klienti</span>
+    <a href="#/program" data-nav="program">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15h3"/></svg>
+      <span>Program</span>
     </a>
-    <a href="#/calendar" data-nav="calendar">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-      <span>Kalendár</span>
-    </a>
-    <a href="#/plans" data-nav="plans">
+    <a href="#/exercises" data-nav="exercises">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>
-      <span>Plány</span>
+      <span>Cviky</span>
     </a>
-    <a href="#/finance" data-nav="finance">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.2"/></svg>
-      <span>Financie</span>
-    </a>
-    <a href="#/messages" data-nav="messages">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12z"/></svg>
-      <span>Správy</span><span class="chat-count" data-chat-badge="all" hidden></span>
+    <a href="#/progress" data-nav="progress">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>
+      <span>Progres</span>
     </a>
   </nav>
 
@@ -140,6 +132,8 @@
   <!-- návyky klientov (kroky, voda, spánok) -->
   <script src="js/habits.js" defer></script>
   <script src="js/greta.js" defer></script>
+  <script src="js/catalog.js" defer></script>
+  <script src="js/coach.js" defer></script>
   <script src="js/license.js" defer></script>
 </body>
 </html>
