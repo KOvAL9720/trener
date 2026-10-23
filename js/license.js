@@ -26,7 +26,7 @@ const payOn = () => !!LT_PAY.checkout && !window.DEMO;
   const K = 'lt-license-mig';
   try {
     if (window.DEMO || localStorage.getItem(K)) return;
-    if (db.clients.length && !db.settings.license) { db.settings.license = { plan: 'owner', since: today() }; save(); }
+    if (db.clients.some((c) => c.id !== 'me') && !db.settings.license) { db.settings.license = { plan: 'owner', since: today() }; save(); }
     localStorage.setItem(K, '1');
   } catch (e) { /* bez úložiska nič */ }
 })();
@@ -73,13 +73,13 @@ function viewPaywall() {
   return `<section class="paywall">
     <img class="pw-logo" src="icons/icon.svg?v=4" alt="" width="72" height="72">
     <span class="pw-stamp">${LT_PAY.trialDays} dní zadarmo</span>
-    <h1>Lift Tara pre trénerov</h1>
+    <h1>${ended ? 'Lift Tara' : db.settings.profile ? 'Tvoj program je pripravený' : 'Tvoj tréner v mobile'}</h1>
     <p class="pw-lead">${ended ? 'Tvoje predplatné skončilo. Dáta máš uložené – po obnovení predplatného sa všetko vráti.' : `Vyskúšaj appku ${LT_PAY.trialDays} dní zadarmo, potom ${LT_PAY.price} mesačne. Zrušiť môžeš kedykoľvek.`}</p>
     <ul class="pw-list">
-      <li>Klienti, kalendár a platby na jednom mieste</li>
-      <li>Tréningové plány a zápisy výkonov</li>
-      <li>Klientska zóna a správy pre tvojich klientov</li>
-      <li>Synchronizácia medzi mobilom a počítačom</li>
+      <li>Tréningový program na mieru tvojmu cieľu</li>
+      <li>Ukážky a technika pri každom cviku</li>
+      <li>Živý tréning s pauzami a návrhom váhy</li>
+      <li>Rekordy, merania a progres na jednom mieste</li>
     </ul>
     <a class="btn primary block" href="${esc(LT_PAY.checkout)}" rel="noopener">${ended ? 'Obnoviť predplatné' : `Vyskúšať ${LT_PAY.trialDays} dní zadarmo`}</a>
     <form id="lic-form" class="pw-key" novalidate>
@@ -144,7 +144,10 @@ if (payOn() && new URLSearchParams(location.search).has('kupit') && !licOpen()) 
 const renderWithoutLicense = render;
 render = function (...args) {
   const r = renderWithoutLicense.apply(this, args);
-  if (!licOpen() && !(location.hash || '').startsWith('#/settings')) {
+  const h = location.hash || '#/';
+  // nový používateľ najprv vyplní dotazník, až potom vidí ponuku
+  const onboarding = !db.settings.profile && (h === '#/' || h === '#' || h === '#/start');
+  if (!licOpen() && !h.startsWith('#/settings') && !onboarding) {
     main.innerHTML = viewPaywall();
     document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === 'home'));
   }

@@ -733,7 +733,7 @@ function recordsCard(c) {
   const sel = charted.find((r) => r.exerciseId === chartSel[c.id + ':x']) || charted[0];
   return `<section class="card" id="records-card" data-client="${c.id}">
     <div class="card-head"><h2>Výkony a rekordy</h2>${sel ? shareBtn(c.id, 'x') : ''}</div>
-    ${!recs.length ? `<p class="empty">Po tréningu ťukni na <b>činku</b> pri odtrénovanom tréningu a zapíš váhy a opakovania. Appka ti ukáže progres, porovnanie s minulým tréningom aj osobné rekordy.</p>` : `
+    ${!recs.length && c.id === 'me' ? '<p class="empty">Odcvič prvý tréning a uvidíš tu svoje rekordy a progres pri každom cviku.</p>' : !recs.length ? `<p class="empty">Po tréningu ťukni na <b>činku</b> pri odtrénovanom tréningu a zapíš váhy a opakovania. Appka ti ukáže progres, porovnanie s minulým tréningom aj osobné rekordy.</p>` : `
       ${sel ? `${charted.length > 1 ? `<div class="chips chart-chips">${charted.map((r) => `<button class="chip ${r === sel ? 'active' : ''}" data-action="chart" data-client="${c.id}" data-kind="x" data-val="${esc(r.exerciseId)}">${esc(r.name)}</button>`).join('')}</div>` : ''}
         ${chartSummary(sel.points, sel.unit, sel.name)}
         ${chartHtml(sel.points, sel.unit)}` : ''}
@@ -806,14 +806,13 @@ function viewPlan(id) {
   return `
   <div class="page-head">
     <div>
-      <a href="${p.clientId ? `#/client/${p.clientId}` : '#/plans'}" class="no-print">‹ ${p.clientId ? esc(clientName(p.clientId)) : 'Plány'}</a>
+      <a href="#/program" class="no-print">‹ Program</a>
       <h1>${esc(p.name)}</h1>
-      <p class="muted" style="margin:0">${p.clientId ? `Klient: ${esc(clientName(p.clientId))}` : 'Šablóna'}${p.notes ? ' · ' + esc(p.notes) : ''}</p>
+      <p class="muted" style="margin:0">${nEx(p.items.length)}${typeof planMinutes === 'function' ? ` · ~${planMinutes(p)} min` : ''}${p.notes ? ' · ' + esc(p.notes) : ''}</p>
     </div>
     <div class="row no-print">
+      <button class="btn primary" data-action="coach-start" data-id="${p.id}">Začať tréning</button>
       <button class="btn" data-action="edit-plan" data-id="${p.id}">Upraviť</button>
-      ${p.clientId ? `<button class="btn" data-action="dup-plan" data-id="${p.id}">Kopírovať</button>` : `<button class="btn primary" data-action="dup-plan" data-id="${p.id}" data-assign="1">Priradiť klientovi</button>`}
-      <button class="btn" data-action="share-plan" data-id="${p.id}">Zdieľať</button>
       <button class="btn" data-action="print">Tlačiť</button>
     </div>
   </div>
@@ -821,9 +820,10 @@ function viewPlan(id) {
     <div class="card-head"><h2>Cviky</h2><button class="btn small primary no-print" data-action="new-item" data-plan="${p.id}">+ Cvik</button></div>
     ${p.items.length ? `<ol class="list plan-items">${p.items.map((it, i) => {
       const l = exerciseLine(it);
+      const ex = getExercise(it.exerciseId);
       return `<li data-item="${it.id}">
-        <span class="n">${i + 1}</span>
-        <span class="info"><strong>${esc(l.name)}</strong><br><small>${esc(l.dose) || '–'}${l.note ? ' · ' + esc(l.note) : ''}</small></span>
+        <a class="ex-pic" href="#/exercise/${it.exerciseId}" aria-label="Ako na to: ${esc(l.name)}">${ex && typeof exThumb === 'function' ? exThumb(ex) : i + 1}</a>
+        <a class="info" href="#/exercise/${it.exerciseId}"><strong>${esc(l.name)}</strong><br><small>${esc(l.dose) || '–'}${l.note ? ' · ' + esc(l.note) : ''}</small></a>
         <span class="acts no-print">
           <button class="icon-btn" aria-label="Posunúť vyššie" data-action="move-item" data-plan="${p.id}" data-id="${it.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="icon-btn" aria-label="Posunúť nižšie" data-action="move-item" data-plan="${p.id}" data-id="${it.id}" data-dir="1" ${i === p.items.length - 1 ? 'disabled' : ''}>↓</button>
@@ -999,28 +999,20 @@ function viewSettings() {
   <div class="page-head"><h1>Nastavenia</h1></div>
   ${accountCard()}
   ${typeof licenseGroup === 'function' ? licenseGroup() : ''}
-  ${setGroup('Tréningy', [
-    setRow({ icon: 'tag', title: 'Predvolený tréning', sub: 'Cena, dĺžka a text pripomienky', val: `${fmtMoney(sessionPrice())} · ${db.settings.defaultDuration || 60} min`, action: 'edit-defaults' }),
-    setRow({ icon: 'clock', title: 'Pracovné hodiny', sub: 'Voľné termíny pre klientov', val: days ? cnt(days, 'deň', 'dni', 'dní') + ' / týž.' : 'Nenastavené', href: '#/settings/hours' }),
-    setRow({ icon: 'bell', title: 'Upozornenia', sub: 'Žiadosti klientov cez ntfy', val: db.settings.ntfyTopic ? 'Zapnuté' : 'Vypnuté', href: '#/settings/notify' }),
-    setRow({ icon: 'flask', title: 'Návyky klientov', sub: 'Kroky, voda a spánok v klientskej zóne', val: habitGoals().on ? 'Zapnuté' : 'Vypnuté', href: '#/settings/habits' }),
-    setRow({ icon: 'chat', title: 'Správy a check-in', sub: 'Chat s klientmi a týždenný check-in', val: checkinDay() < 0 ? 'Bez check-inu' : `Check-in ${window.LANG === 'en' ? DAYS_LONG[checkinDay()] : DAYS_LONG[checkinDay()].toLowerCase()}`, href: '#/settings/chat' }),
-    setRow({ icon: 'gcal', title: 'Google kalendár', sub: 'Tréningy sa prenášajú do Google', val: db.settings.gcalOn ? 'Zapnuté' : 'Vypnuté', href: '#/settings/gcal' })
-  ])}
-  ${setGroup('Klientska zóna', [
-    setRow({ icon: 'globe', title: 'Klientska zóna', sub: shared ? `${cnt(shared, 'klient má', 'klienti majú', 'klientov má')} prístup` : 'Zatiaľ nemá prístup žiadny klient', val: '<span class="badge" id="cloud-state">…</span>', href: '#/settings/zone' })
-  ])}
+  ${typeof profile === 'function' && profile() ? setGroup('Tréning', [
+    setRow({ icon: 'spark', title: 'Môj program', sub: 'Zmeniť cieľ, dni alebo miesto', href: '#/start' }),
+    setRow({ icon: 'flask', title: 'Návyky', sub: 'Kroky, voda a spánok', val: habitGoals().on ? 'Zapnuté' : 'Vypnuté', href: '#/settings/habits' })
+  ]) : ''}
   ${setGroup('Dáta', [
     setRow({ icon: 'down', title: 'Stiahnuť zálohu', sub: lb ? `Posledná záloha ${fmtDate(lb)}` : 'Zatiaľ žiadna záloha', action: 'export', chev: false }),
     setRow({ icon: 'up', title: 'Obnoviť zo zálohy', action: 'import', chev: false }),
-    testN ? setRow({ icon: 'trash', title: `Odstrániť testovacích klientov (${testN})`, action: 'remove-test', danger: true, chev: false }) : '',
     setRow({ icon: 'spark', title: 'Načítať ukážkové dáta', action: 'demo', chev: false })
-  ], syncActive() ? 'Dáta sa ukladajú do tvojho účtu. Záloha do súboru je navyše pre istotu – obsahuje aj fotky z galérie.' : 'Dáta sú uložené iba v tomto zariadení. Pravidelne si ich zálohuj.')}
+  ], syncActive() ? 'Dáta sa ukladajú do tvojho účtu. Záloha do súboru je navyše pre istotu – obsahuje aj fotky z galérie.' : 'Dáta sú uložené iba v tomto zariadení. Prihlás sa alebo si ich pravidelne zálohuj.')}
   ${setGroup('Aplikácia', [
     setRow({ icon: 'phone', title: 'Inštalácia appky', sub: 'iPhone, Android a počítač', href: '#/settings/install' }),
     setRow({ icon: 'globe', title: 'Jazyk', sub: 'Language', val: window.LANG === 'en' ? 'English' : 'Slovenčina', action: 'lang', chev: false }),
     setRow({ icon: 'info', title: 'Verzia', val: '<b id="app-version">–</b>', chev: false, action: '' })
-  ], `${cnt(db.clients.length, 'klient', 'klienti', 'klientov')} · ${nTr(db.sessions.length)} · ${cnt(db.plans.length, 'plán', 'plány', 'plánov')} · ${nEx(db.exercises.length)}`)}
+  ], `${nTr(db.sessions.filter((s) => s.status === 'done').length)} · ${cnt(db.plans.length, 'plán', 'plány', 'plánov')} · ${nEx(db.exercises.length)}`)}
   ${setGroup('', [setRow({ icon: 'trash', title: 'Vymazať všetky dáta', action: 'wipe', danger: true, chev: false })])}`;
 }
 
@@ -1716,7 +1708,7 @@ function openExerciseForm(e) {
     fields: [
       { name: 'name', label: 'Názov', required: true },
       { name: 'category', label: 'Partia / kategória', datalist: cats },
-      { name: 'note', label: 'Popis / technika (klient ju uvidí v zóne)', type: 'textarea', placeholder: exerciseTips(e) ? `Prázdne = základné rady: ${exerciseTips(e).join(' ')}` : 'Na čo si dať pozor, ako cvik správne robiť…' },
+      { name: 'note', label: 'Ako na to – technika', type: 'textarea', placeholder: exerciseTips(e) ? `Prázdne = základné rady: ${exerciseTips(e).join(' ')}` : 'Na čo si dať pozor, ako cvik správne robiť…' },
       { name: 'video', label: 'Video – odkaz (YouTube a pod.)', placeholder: 'https://youtu.be/…' }
     ],
     onSubmit: async (d) => {
@@ -3033,7 +3025,7 @@ function accountCard() {
   const remember = `<label class="set-row set-toggle"><span class="set-ic" aria-hidden="true">${SI.lock}</span><span class="set-main"><b>Zostať prihlásený</b><small>Aj po zatvorení prehliadača</small></span><span class="check"><input type="checkbox" id="remember" ${window.cloud?.remembered?.() === false ? '' : 'checked'}></span></label>`;
   const profile = `<section class="set-profile">
     <button type="button" class="avatar lg avatar-edit" data-action="trainer-photo" aria-label="${photoOf(trainerProfile()) ? 'Zmeniť fotku' : 'Pridať fotku'}">${photoOf(trainerProfile()) ? `<img src="${photoOf(trainerProfile())}" alt="">` : esc(name ? initials(name) : '?')}<span class="cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span></button>
-    <div class="set-who"><h2>${esc(name || 'Tréner')}</h2><p>${u ? esc(u.email || u.name || 'Prihlásený') : 'Neprihlásený – dáta sú len v tomto zariadení'}</p></div>
+    <div class="set-who"><h2>${esc(name || 'Tvoje meno')}</h2><p>${u ? esc(u.email || u.name || 'Prihlásený') : 'Neprihlásený – dáta sú len v tomto zariadení'}</p></div>
     <button type="button" class="btn small" data-action="edit-name">Upraviť</button>
   </section>`;
   if (!u) {
@@ -3056,7 +3048,7 @@ function accountCard() {
     setRow({ icon: 'key', title: hasPw ? 'Zmeniť heslo pre mobil' : 'Nastaviť heslo pre mobil', sub: hasPw ? '' : `Na iPhone sa prihlásiš e-mailom ${esc(u.email)}`, action: 'set-password' }),
     remember,
     setRow({ icon: 'out', title: 'Odhlásiť sa', action: 'logout', danger: true, chev: false })
-  ], 'Klienti, tréningy, plány, financie a nastavenia sa synchronizujú medzi všetkými zariadeniami, kde si prihlásený. Fotky v galérii ostávajú len v zariadení.')}
+  ], 'Program, tréningy, rekordy, merania a nastavenia sa synchronizujú medzi všetkými zariadeniami, kde si prihlásený. Fotky ostávajú len v zariadení.')}
   <p class="set-warn" id="sync-why">${syncError && navigator.onLine ? `Dôvod: ${esc(syncError)}. Skúsi sa to znova automaticky.` : ''}</p>
   </div>`;
 }
@@ -3179,10 +3171,10 @@ function ensureTrainerName() {
 function openNameForm() {
   const u = signedUser();
   openForm({
-    title: 'Meno trénera',
+    title: 'Tvoje meno',
     values: { trainerName: db.settings.trainerName || u?.name || '' },
-    fields: [{ name: 'trainerName', label: 'Meno (vidia ho klienti v klientskej zóne)', required: true, placeholder: 'napr. Jakub Kovalčík', hint: u?.name ? `Z Google účtu: ${u.name}` : '' }],
-    onSubmit: (v) => { db.settings.trainerName = v.trainerName.slice(0, 60); db.settings.shareDirty = true; updateBrand(); toast('Meno uložené'); }
+    fields: [{ name: 'trainerName', label: 'Meno', required: true, placeholder: 'napr. Lucia', hint: u?.name ? `Z Google účtu: ${u.name}` : '' }],
+    onSubmit: (v) => { db.settings.trainerName = v.trainerName.slice(0, 60); const me = getClient('me'); if (me) me.name = db.settings.trainerName; updateBrand(); toast('Meno uložené'); }
   });
 }
 

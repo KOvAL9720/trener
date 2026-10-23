@@ -104,7 +104,7 @@ async function liveStart(sid) {
   if (!s) return;
   if (live && live.sid !== sid && getSession(live.sid)) {
     const other = getSession(live.sid);
-    const ok = await askConfirm(`Práve prebieha tréning s klientom ${clientName(other.clientId)}. Ukončiť ho bez uloženia a začať nový?`, { ok: 'Začať nový' });
+    const ok = await askConfirm('Práve prebieha iný tréning. Ukončiť ho bez uloženia a začať nový?', { ok: 'Začať nový' });
     if (!ok) { liveOpen(); return; }
   }
   if (!live || live.sid !== sid) {
