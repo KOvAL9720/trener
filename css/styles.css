@@ -2357,3 +2357,12 @@ html body h1 { text-shadow: 3px 3px 0 rgba(198, 42, 60, .45); }
 .sum-emoji .ei { width: 3.4rem; height: 3.4rem; stroke-width: 1.6; margin: 0 auto; display: block; }
 .lset .n .ei { width: 1.1em; height: 1.1em; }
 @media (prefers-color-scheme: light) { .pr-icon, .record .medal, .sum-emoji, .lset .n, .live-hint > span { color: #9a6a18; } }
+
+/* živý tréning: váha aj s desatinami („102,5“) sa zmestí celá aj na úzkych mobiloch */
+.stepper { grid-template-columns: 30px 1fr 30px; }
+.stepper input { font-size: 1.05rem; letter-spacing: -.01em !important; }
+@media (max-width: 360px) {
+  .lset { grid-template-columns: 22px 1fr 1fr 42px; gap: 5px; padding: 6px; }
+  .stepper { grid-template-columns: 24px 1fr 24px; }
+  .stepper input { font-size: .95rem; }
+}
