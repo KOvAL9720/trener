@@ -14,6 +14,17 @@ const programPlans = () => db.plans.filter((p) => p.program).sort((a, b) => (a.o
 const mySessions = () => db.sessions.filter((s) => s.clientId === ME);
 const doneSessions = () => mySessions().filter((s) => s.status === 'done').sort(bySessionTime);
 const exByName = (n) => db.exercises.find((e) => catFold(e.name) === catFold(n));
+// balíček z predplatného (license.js); bez predplatného plná verzia
+const tierNow = () => (typeof ltTier === 'function' ? ltTier() : 'pro');
+const canTier = (t) => (typeof hasTier === 'function' ? hasTier(t) : true);
+const programKind = () => (canTier('medium') ? 'custom' : 'basic');
+// Basic: hotový program na celé telo (3 dni), miesto, úroveň a obmedzenia ostávajú
+const basicOf = (p) => ({ ...p, goal: 'postava', days: 3 });
+function upsell(t, title, text) {
+  const names = { medium: 'Medium', pro: 'Pro' };
+  return `<section class="card upsell"><span class="badge">${names[t]}</span><h2>${title}</h2><p class="muted">${text}</p>
+    <button class="btn primary" data-action="tier-upgrade" data-tier="${t}">Prejsť na ${names[t]}</button></section>`;
+}
 
 // používateľ a cviky z knižnice musia v dátach existovať
 function coachEnsure() {
@@ -25,7 +36,8 @@ function coachEnsure() {
 
 function coachGenerate(p) {
   coachEnsure();
-  const days = buildProgram(p);
+  const kind = programKind();
+  const days = buildProgram(kind === 'basic' ? basicOf(p) : p);
   db.plans = db.plans.filter((x) => !x.program);
   days.forEach((d, i) => {
     db.plans.push({
@@ -33,7 +45,7 @@ function coachGenerate(p) {
       items: d.items.map((it) => ({ id: uid(), exerciseId: exByName(it.name).id, sets: it.sets, reps: it.reps, rest: it.rest }))
     });
   });
-  db.settings.profile = { ...p, createdAt: today() };
+  db.settings.profile = { ...p, kind, createdAt: today() };
   _idx = null;
   save();
 }
@@ -134,6 +146,8 @@ function viewToday() {
       <span class="ex-pic">${exThumb(e)}</span><span class="info"><strong>${esc(e.name)}</strong><small>${esc(l.dose)}</small></span><span aria-hidden="true">›</span></a></li>` : ''; }).join('')}</ol>
   </section>` : ''}
 
+  ${habitsTodayCard()}
+
   <section class="card week-card">
     <div class="card-head"><h2>Tento týždeň</h2><span class="badge ${wd.length >= target ? 'done' : 'planned'}">${wd.length} z ${target}</span></div>
     <div class="week-dots">${Array.from({ length: 7 }, (_, i) => { const d = addDays(ws, i); const n = wd.filter((s) => s.date === d).length; return `<div class="wd${n ? ' on' : ''}${d === t ? ' today' : ''}"><span>${DAYS_LONG[i].slice(0, 2)}</span><i>${n ? IC.check : ''}</i></div>`; }).join('')}</div>
@@ -158,7 +172,9 @@ function viewProgram() {
   const plans = programPlans();
   const next = nextPlan();
   const own = db.plans.filter((x) => x.clientId === ME && !x.program).sort(byName);
-  const summary = [optLabel(GOALS, p.goal), optLabel(LEVELS, p.level), optLabel(DAYS_OPT, p.days) + ' v týždni', optLabel(PLACES, p.place), ...(p.limits || []).map((l) => `bez záťaže: ${optLabel(LIMITS, l).toLowerCase()}`)];
+  const basic = p.kind === 'basic';
+  const summary = basic ? ['Hotový program na celé telo', '3 dni v týždni', optLabel(LEVELS, p.level), optLabel(PLACES, p.place), ...(p.limits || []).map((l) => `bez záťaže: ${optLabel(LIMITS, l).toLowerCase()}`)]
+    : [optLabel(GOALS, p.goal), optLabel(LEVELS, p.level), optLabel(DAYS_OPT, p.days) + ' v týždni', optLabel(PLACES, p.place), ...(p.limits || []).map((l) => `bez záťaže: ${optLabel(LIMITS, l).toLowerCase()}`)];
   return `
   <div class="page-head"><h1>Môj program</h1><a class="btn" href="#/start">Zmeniť</a></div>
   <div class="tag-row">${summary.map((x) => `<span class="tag">${esc(x)}</span>`).join('')}</div>
@@ -170,11 +186,11 @@ function viewProgram() {
       <button class="icon-btn play" data-action="coach-start" data-id="${pl.id}" title="Začať tréning" aria-label="Začať tréning">${PLAY}</button>
     </li>`).join('')}</ul>
   </section>
-  <section class="card">
+  ${basic ? upsell('medium', 'Program presne podľa teba', `V balíčku Medium ti Lift Tara zostaví program podľa tvojho cieľa (${optLabel(GOALS, p.goal).toLowerCase()}) na ${optLabel(DAYS_OPT, p.days)} v týždni a môžeš si skladať vlastné tréningy.`) : `<section class="card">
     <div class="card-head"><h2>Vlastné tréningy</h2><button class="btn small primary" data-action="coach-new-plan">+ Nový</button></div>
     ${own.length ? `<ul class="list prog-days">${own.map((pl) => `<li class="prog-day"><a class="list-item" href="#/plan/${pl.id}"><span class="info"><strong>${esc(pl.name)}</strong><small>${nEx(pl.items.length)}</small></span></a>
       <button class="icon-btn play" data-action="coach-start" data-id="${pl.id}" title="Začať tréning" aria-label="Začať tréning">${PLAY}</button></li>`).join('')}</ul>` : '<p class="empty">Poskladaj si vlastný tréning z cvikov v knižnici.</p>'}
-  </section>`;
+  </section>`}`;
 }
 
 /* ---------- Knižnica cvikov ---------- */
@@ -220,6 +236,34 @@ function viewExercise(id) {
   <div class="row" style="margin-top:12px"><button class="btn" data-action="edit-exercise" data-id="${e.id}">Upraviť cvik</button></div>`;
 }
 
+/* ---------- Návyky (Medium a Pro) ---------- */
+const HAB = [['steps', 'Kroky', '', 1000], ['water', 'Voda', 'l', 0.25], ['sleep', 'Spánok', 'h', 0.5]];
+const habLog = () => db.settings.habitLog || {};
+const habGoal = () => { const g = typeof habitGoals === 'function' ? habitGoals() : {}; return { steps: g.steps || 8000, water: g.water || 2, sleep: g.sleep || 8 }; };
+const habFmt = (k, v) => (k === 'steps' ? fmtNum(v || 0, 0) : fmtNum(v || 0, 2));
+function habitsTodayCard() {
+  if (!canTier('medium')) return '';
+  const d = habLog()[today()] || {};
+  const g = habGoal();
+  return `<section class="card habits-card" id="habits-today">
+    <div class="card-head"><h2>Návyky dnes</h2><button class="btn small" data-action="coach-habit-goals">Ciele</button></div>
+    ${HAB.map(([k, label, unit, step]) => { const v = d[k] || 0; const pct = Math.min(100, Math.round((v / g[k]) * 100)); return `<div class="hab-row${v >= g[k] ? ' hit' : ''}">
+      <div class="hab-info"><b>${label}</b><small>${habFmt(k, v)}${unit ? ' ' + unit : ''} / ${habFmt(k, g[k])}${unit ? ' ' + unit : ''}</small><span class="hab-bar"><i style="width:${pct}%"></i></span></div>
+      <div class="hab-btns"><button class="icon-btn" data-action="coach-hab" data-k="${k}" data-d="-${step}" aria-label="Menej: ${label}">−</button><button class="icon-btn" data-action="coach-hab" data-k="${k}" data-d="${step}" aria-label="Viac: ${label}">+</button></div>
+    </div>`; }).join('')}
+  </section>`;
+}
+function habitsWeekCard() {
+  const log = habLog();
+  const g = habGoal();
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today(), i - 6));
+  if (!days.some((d) => log[d])) return '';
+  return `<section class="card"><div class="card-head"><h2>Návyky za 7 dní</h2></div>
+    <div class="table-wrap"><table class="hab-week"><thead><tr><th></th>${days.map((d) => `<th class="num">${DAYS_LONG[weekday(d)].slice(0, 2)}</th>`).join('')}</tr></thead>
+    <tbody>${HAB.map(([k, label]) => `<tr><th>${label}</th>${days.map((d) => { const v = log[d]?.[k]; return `<td class="num${v >= g[k] ? ' hit' : ''}">${v ? habFmt(k, v) : '–'}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
+  </section>`;
+}
+
 /* ---------- Progres ---------- */
 function historyRow(s) {
   const plan = s.planId ? getPlan(s.planId) : null;
@@ -238,23 +282,23 @@ function viewProgress() {
   const totalVol = done.reduce((a, s) => a + workoutVolume(s), 0);
   const shown = showAllMine ? done : done.slice(0, 10);
   return `
-  <div class="page-head"><h1>Progres</h1><button class="btn" data-action="new-measurement" data-client="${ME}">+ Meranie</button></div>
+  <div class="page-head"><h1>Progres</h1>${canTier('medium') ? `<button class="btn" data-action="new-measurement" data-client="${ME}">+ Meranie</button>` : ''}</div>
   <div class="stats">
     <div class="stat"><i aria-hidden="true">${IC.check}</i><b>${done.length}</b><span>${pl(done.length, 'tréning', 'tréningy', 'tréningov')}</span></div>
     <div class="stat"><i aria-hidden="true">${IC.calendar}</i><b>${weekStreak()}</b><span>${pl(weekStreak(), 'týždeň', 'týždne', 'týždňov')} v rade</span></div>
     <div class="stat"><i aria-hidden="true">${DUMBBELL}</i><b>${totalVol ? fmtVol(totalVol) : '0'}</b><span>zdvihnuté spolu</span></div>
   </div>
   ${recordsCard(me)}
-  ${measureCard(me)}
+  ${canTier('medium') ? measureCard(me) + habitsWeekCard() : upsell('medium', 'Merania, fotky a návyky', 'Sleduj váhu a obvody s grafom, porovnávaj fotky progresu a zapisuj si kroky, vodu a spánok.')}
   <section class="card" id="sec-history">
     <div class="card-head"><h2>História tréningov</h2>${done.length ? `<span class="badge">${done.length}</span>` : ''}</div>
     ${done.length ? shown.map(historyRow).join('') : '<p class="empty">Zatiaľ žiadny odcvičený tréning. Začni na obrazovke Dnes.</p>'}
     ${done.length > 10 && !showAllMine ? `<button class="btn small" style="margin-top:10px" data-action="coach-all-history">Zobraziť všetko (${done.length})</button>` : ''}
   </section>
-  <section class="card" id="sec-photos">
+  ${canTier('medium') ? `<section class="card" id="sec-photos">
     <div class="card-head"><h2>Fotky progresu</h2><span class="spacer"></span><span class="badge" id="photo-count" hidden></span><button class="btn small" data-action="add-photos" data-client="${ME}">+ Fotky</button></div>
     <div class="photo-grid" id="photo-grid" data-client="${ME}"></div>
-  </section>`;
+  </section>` : ''}`;
 }
 
 /* ---------- Ukážka (?demo) ---------- */
@@ -300,13 +344,16 @@ routes.unshift(
   [/^#\/progress$/, viewProgress]
 );
 // trénerské obrazovky v appke pre jedného človeka nie sú
-const COACH_HIDDEN = /^#\/(clients|client\/|calendar|finance|messages|plans$|settings\/(hours|notify|zone|gcal))/;
+const COACH_HIDDEN = /^#\/(clients|client\/|calendar|finance|messages|plans$|settings\/(hours|notify|zone|gcal|habits))/;
 const coachSection = (h) => (/^#\/(program|plan\/|start)/.test(h) ? 'program' : /^#\/exercise/.test(h) ? 'exercises' : /^#\/progress/.test(h) ? 'progress' : /^#\/settings/.test(h) ? 'settings' : 'home');
 
 const renderWithoutCoach = render;
 render = function (...args) {
   const h = location.hash || '#/';
   if (COACH_HIDDEN.test(h)) { location.replace(h.startsWith('#/client/') ? '#/progress' : h.startsWith('#/settings/') ? '#/settings' : '#/'); return; }
+  // po kúpe / zmene balíčka sa program prispôsobí (Basic = hotový program, Medium a Pro = na mieru)
+  const pr = profile();
+  if (pr && typeof ltTier === 'function' && ltTier() && (pr.kind || 'custom') !== programKind()) { const { kind, createdAt, ...answers } = pr; coachGenerate(answers); toast(programKind() === 'basic' ? 'Program upravený pre balíček Basic' : 'Tvoj program na mieru je pripravený'); }
   const r = renderWithoutCoach.apply(this, args);
   const sec = coachSection(h);
   document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === sec));
@@ -315,6 +362,27 @@ render = function (...args) {
 };
 
 actions['coach-start'] = (d) => coachStart(d.id);
+actions['coach-hab'] = (d) => {
+  const log = { ...habLog() };
+  const t = today();
+  const cur = { ...(log[t] || {}) };
+  cur[d.k] = Math.max(0, Math.round(((cur[d.k] || 0) + Number(d.d)) * 100) / 100);
+  log[t] = cur;
+  // držíme posledných 400 dní
+  Object.keys(log).sort().slice(0, -400).forEach((k) => delete log[k]);
+  db.settings.habitLog = log;
+  save();
+  const el = document.getElementById('habits-today');
+  if (el) el.outerHTML = habitsTodayCard();
+};
+actions['coach-habit-goals'] = () => {
+  const g = habGoal();
+  openForm({
+    title: 'Ciele návykov', values: { steps: g.steps, water: g.water, sleep: g.sleep },
+    fields: [{ name: 'steps', label: 'Kroky za deň', type: 'number', min: 0, step: 500 }, { name: 'water', label: 'Voda za deň (l)', type: 'number', min: 0, step: 0.25, half: true }, { name: 'sleep', label: 'Spánok (h)', type: 'number', min: 0, step: 0.5, half: true }],
+    onSubmit: (v) => { db.settings.habits = { ...(db.settings.habits || {}), steps: v.steps || 8000, water: v.water || 2, sleep: v.sleep || 8 }; toast('Ciele uložené'); }
+  });
+};
 actions['coach-resume'] = () => liveOpen();
 actions['coach-all-history'] = () => { showAllMine = true; render(); };
 actions['lib-cat'] = (d) => { libCat = d.val || ''; render(); };

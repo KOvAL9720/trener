@@ -288,7 +288,7 @@ window.I18N_EN = {
 "Názov nového plánu": "New plan name",
 "Názov plánu": "Plan name",
 "Názov šablóny": "Template name",
-"Obnoviť": "Refresh",
+"Obnoviť": "Renew",
 "Obnoviť pripojenie a synchronizovať": "Reconnect and sync",
 "Obnoviť zo zálohy": "Restore from backup",
 "Obnoviť údaje": "Refresh data",
@@ -1341,7 +1341,34 @@ window.I18N_EN = {
 "Tvrdý dopad na päty.": "Landing hard on your heels.",
 "Polovičný pohyb rúk.": "Half arm movement.",
 "Ťahanie rukami skôr ako nohami.": "Pulling with the arms before the legs.",
-"Príliš rýchle tempo bez sily.": "Too fast a pace without power."
+"Príliš rýchle tempo bez sily.": "Too fast a pace without power.",
+"/ mesiac": "/ month",
+"4,99 €": "€4.99",
+"9,99 €": "€9.99",
+"14,99 €": "€14.99",
+"Hotový program na celé telo": "Ready-made full-body program",
+"Knižnica cvikov s technikou": "Exercise library with technique",
+"Živý tréning a rekordy": "Live workouts and records",
+"Program na mieru tvojmu cieľu": "Program tailored to your goal",
+"Vlastné tréningy, 2 až 5 dní": "Custom workouts, 2 to 5 days",
+"Merania, fotky a návyky": "Measurements, photos and habits",
+"Všetko z Medium": "Everything in Medium",
+"Všetko z Basic": "Everything in Basic",
+"AI asistent (pripravujeme)": "AI assistant (coming soon)",
+"Nové funkcie ako prvý": "New features first",
+"Program presne podľa teba": "A program made just for you",
+"Sleduj váhu a obvody s grafom, porovnávaj fotky progresu a zapisuj si kroky, vodu a spánok.": "Track your weight and measurements on a chart, compare progress photos and log your steps, water and sleep.",
+"Balíček zmeníš na stránke predplatného. Po zmene ťukni v Nastaveniach na Predplatné a appka sa aktualizuje.": "You can change your plan on the subscription page. After the change, tap Subscription in Settings and the app will update.",
+"Program upravený pre balíček Basic": "Program adjusted for the Basic plan",
+"Tvoj program na mieru je pripravený": "Your tailored program is ready",
+"Návyky dnes": "Today's habits",
+"Ciele": "Goals",
+"Návyky za 7 dní": "Habits in the last 7 days",
+"Ciele návykov": "Habit goals",
+"Spánok (h)": "Sleep (h)",
+"AI asistent": "AI assistant",
+"V balíčku Pro": "In the Pro plan",
+"Pripravujeme": "Coming soon"
 },
 "rules": [
 [
@@ -2063,6 +2090,34 @@ window.I18N_EN = {
 [
 "~{0} min",
 "~{0} min"
+],
+[
+"Vyber si balíček. Každý má {0} dní zadarmo a zrušiť ho môžeš kedykoľvek.",
+"Choose a plan. Each one comes with {0} days free and you can cancel anytime."
+],
+[
+"Balíček {0} je aktívny. Vitaj v Lift Tara!",
+"The {0} plan is active. Welcome to Lift Tara!"
+],
+[
+"Balíček {0}",
+"{0} plan"
+],
+[
+"Prejsť na {0}",
+"Switch to {0}"
+],
+[
+"V balíčku Medium ti Lift Tara zostaví program podľa tvojho cieľa ({0}) na {1} v týždni a môžeš si skladať vlastné tréningy.",
+"With the Medium plan, Lift Tara builds a program for your goal ({0}) for {1} a week, and you can build your own workouts."
+],
+[
+"Menej: {0}",
+"Less: {0}"
+],
+[
+"Viac: {0}",
+"More: {0}"
 ]
 ]
 };

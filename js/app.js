@@ -1001,7 +1001,8 @@ function viewSettings() {
   ${typeof licenseGroup === 'function' ? licenseGroup() : ''}
   ${typeof profile === 'function' && profile() ? setGroup('Tréning', [
     setRow({ icon: 'spark', title: 'Môj program', sub: 'Zmeniť cieľ, dni alebo miesto', href: '#/start' }),
-    setRow({ icon: 'flask', title: 'Návyky', sub: 'Kroky, voda a spánok', val: habitGoals().on ? 'Zapnuté' : 'Vypnuté', href: '#/settings/habits' })
+    ...(typeof hasTier !== 'function' || hasTier('medium') ? [setRow({ icon: 'flask', title: 'Ciele návykov', sub: 'Kroky, voda a spánok', action: 'coach-habit-goals' })] : []),
+    setRow({ icon: 'chat', title: 'AI asistent', sub: 'V balíčku Pro', val: '<span class="badge">Pripravujeme</span>', chev: false })
   ]) : ''}
   ${setGroup('Dáta', [
     setRow({ icon: 'down', title: 'Stiahnuť zálohu', sub: lb ? `Posledná záloha ${fmtDate(lb)}` : 'Zatiaľ žiadna záloha', action: 'export', chev: false }),
