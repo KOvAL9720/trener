@@ -1297,7 +1297,15 @@ const navMark = () => {
     navState.stack.length = navState.i;
     history.replaceState({ nav: 1, i: navState.i }, '');
   } else if (history.state?.nav && Number.isInteger(history.state.i)) navState.i = history.state.i;
-  else { navState.i = history.state?.nav ? 0 : (navState.i ?? -1) + 1; navState.stack.length = navState.i; history.replaceState({ nav: 1, i: navState.i }, ''); }
+  else {
+    // nový záznam histórie len vtedy, keď ho prehliadač naozaj pridal (zmena adresy počas načítania stránky
+    // ho len nahradí) – inak by spodné menu skočilo o krok späť priveľa, napr. na web, z ktorého človek prišiel
+    const grew = navState.len == null || history.length > navState.len;
+    navState.i = history.state?.nav ? 0 : grew ? (navState.i ?? -1) + 1 : (navState.i ?? 0);
+    navState.stack.length = navState.i;
+    history.replaceState({ nav: 1, i: navState.i }, '');
+  }
+  navState.len = history.length;
   navState.stack[navState.i] = h;
   try { sessionStorage.setItem('nav-stack', JSON.stringify(navState.stack.slice(-50))); } catch (e) { /* ok */ }
 };
@@ -3988,7 +3996,6 @@ const bgReady = new Promise((resolve) => {
 // bez úvodnej čiary a animácií – inak by sa ukázal posledný stav, potom tma a znova obsah (blikanie)
 // Ukážková verzia: pri prvom otvorení sa načítajú vymyslení klienti; odznak „Ukážka“ vedľa názvu
 if (window.DEMO) {
-  if (!db.clients.length) loadDemo();
   document.querySelector('.topbar .brand')?.insertAdjacentHTML('afterend', '<button type="button" class="demo-badge" data-action="demo-info">Ukážka</button>');
 }
 const LAST_SHOWN_KEY = 'trener-last-shown';
