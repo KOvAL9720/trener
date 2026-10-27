@@ -29,7 +29,7 @@ function upsell(t, title, text) {
 // používateľ a cviky z knižnice musia v dátach existovať
 // premenované a zrušené cviky v dátach používateľa (história a rekordy ostávajú pri cviku)
 const EX_RENAME = { 'Veslovanie s činkou': 'Jednoručný príťah na lavičke', 'Dipy na stoličke': 'Dipy' };
-const EX_REMOVED = ['Arnoldov tlak'];
+const EX_REMOVED = ['Arnoldov tlak', 'Kopanie nohou na štyroch'];
 function coachMigrate() {
   let changed = false;
   for (const [from, to] of Object.entries(EX_RENAME)) {
