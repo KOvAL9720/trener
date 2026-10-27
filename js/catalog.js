@@ -26,7 +26,8 @@ const CATALOG = [
   { name: 'Mŕtvy ťah', category: 'Chrbát', places: ['gym'], muscles: 'Celá zadná strana tela', mistakes: ['Guľatý chrbát.', 'Trhnutie činky zo zeme.', 'Záklon hore.'] },
   { name: 'Príťahy na hrazde', category: 'Chrbát', places: ['gym'], muscles: 'Široký sval chrbta, biceps', mistakes: ['Hojdanie a švihanie nohami.', 'Polovičný rozsah.', 'Ramená vytiahnuté k ušiam.'] },
   { name: 'Stiahnutie kladky', category: 'Chrbát', places: ['gym'], muscles: 'Široký sval chrbta, biceps', mistakes: ['Záklon a ťahanie trupom.', 'Tyč za hlavu.', 'Ramená hore pri ušiach.'] },
-  { name: 'Veslovanie s činkou', category: 'Chrbát', places: ['gym', 'db'], muscles: 'Stred chrbta, zadné ramená, biceps', mistakes: ['Rotácia trupu.', 'Ťahanie lakťom k uchu.', 'Guľatý chrbát.'] },
+  { name: 'T-bar row', category: 'Chrbát', places: ['gym'], muscles: 'Stred chrbta, široký sval chrbta, zadné ramená, biceps', tips: ['Postav sa nad činku, chodidlá na šírku ramien, kolená mierne pokrčené.', 'Predklon v bokoch asi 45°, chrbát rovný.', 'Ťahaj rúčky k hrudníku, lakte popri tele.', 'Hore stiahni lopatky, spúšťaj pomaly.'], mistakes: ['Guľatý chrbát.', 'Švihanie trupom hore.', 'Príliš ťažká váha a malý rozsah.'] },
+  { name: 'Jednoručný príťah na lavičke', category: 'Chrbát', places: ['gym', 'db'], muscles: 'Stred chrbta, zadné ramená, biceps', tips: ['Opri sa rukou a kolenom o lavičku, chrbát rovno.', 'Ťahaj lakeť dozadu k boku, nie hore k uchu.', 'Hore stiahni lopatku, chvíľu podrž.', 'Neotáčaj trup, pohyb ide len z ruky a lopatky.'], mistakes: ['Rotácia trupu.', 'Ťahanie lakťom k uchu.', 'Guľatý chrbát.'] },
   { name: 'Austrálske príťahy', category: 'Chrbát', places: ['gym', 'db', 'bw'], muscles: 'Stred chrbta, biceps, stred tela', tips: ['Ľahni pod pevný stôl alebo nízku hrazdu a chyť hranu.', 'Telo rovné ako doska, päty na zemi.', 'Pritiahni hrudník k hrane, lopatky k sebe.', 'Spúšťaj sa pomaly do vystretých rúk.'], mistakes: ['Boky padajú dole.', 'Ťahanie len rukami bez lopatiek.', 'Trhavý pohyb.'] },
   { name: 'Superman', category: 'Chrbát', places: ['gym', 'db', 'bw'], muscles: 'Vzpriamovače chrbta, zadok', tips: ['Ľahni na brucho, ruky vystreté pred sebou.', 'Súčasne zdvihni ruky, hrudník a nohy kúsok od zeme.', 'Hore 2 sekundy podrž, pozeraj do zeme.', 'Pomaly spusti.'], mistakes: ['Záklon hlavy.', 'Prudké trhnutie hore.', 'Príliš vysoký zdvih s bolesťou v drieku.'] },
   // Hrudník
@@ -43,7 +44,7 @@ const CATALOG = [
   { name: 'Bicepsový zdvih', category: 'Ruky', places: ['gym', 'db'], muscles: 'Biceps', mistakes: ['Lakte idú dopredu.', 'Hojdanie trupom.', 'Rýchle spúšťanie.'] },
   { name: 'Tricepsové stlačenie', category: 'Ruky', places: ['gym'], muscles: 'Triceps', mistakes: ['Lakte odstupujú od tela.', 'Pomáhanie trupom.', 'Neúplné vystretie.'] },
   { name: 'Francúzsky tlak s jednoručkou', category: 'Ruky', places: ['gym', 'db'], muscles: 'Triceps', tips: ['Jednoručku drž oboma rukami nad hlavou.', 'Lakte smerujú dopredu a ostávajú pri hlave.', 'Spúšťaj jednoručku za hlavu.', 'Vystri ruky späť hore.'], mistakes: ['Lakte sa rozťahujú do strán.', 'Prehýbanie chrbta.', 'Príliš ťažká váha.'] },
-  { name: 'Dipy na stoličke', category: 'Ruky', places: ['gym', 'db', 'bw'], muscles: 'Triceps, predné ramená', tips: ['Oprí dlane o hranu stabilnej stoličky za sebou.', 'Nohy pred sebou, zadok tesne pri stoličke.', 'Krč lakte dozadu do pravého uhla.', 'Vytlač sa hore do vystretých rúk.'], mistakes: ['Lakte do strán.', 'Zadok ďaleko od stoličky.', 'Príliš hlboko s bolesťou v ramenách.'] },
+  { name: 'Dipy', category: 'Ruky', places: ['gym', 'db', 'bw'], muscles: 'Triceps, hrudník, predné ramená', tips: ['Opri sa o bradlá (doma o dve stabilné stoličky alebo o hranu jednej za sebou).', 'Ramená dole a dozadu, telo mierne naklonené dopredu.', 'Krč lakte dozadu, kým ramená nie sú zhruba vo výške lakťov.', 'Vytlač sa hore do vystretých rúk.'], mistakes: ['Lakte do strán.', 'Ramená vytiahnuté k ušiam.', 'Príliš hlboko s bolesťou v ramenách.'] },
   // Stred tela
   { name: 'Plank', category: 'Core', places: ['gym', 'db', 'bw'], muscles: 'Brucho, stred tela', mistakes: ['Boky padajú.', 'Zadok trčí hore.', 'Zadržiavanie dychu.'] },
   { name: 'Bočný plank', category: 'Core', places: ['gym', 'db', 'bw'], muscles: 'Šikmé brušné svaly, boky', tips: ['Ľahni na bok, lakeť pod ramenom.', 'Zdvihni boky, telo v jednej línii.', 'Druhú ruku polož na bok.', 'Vydrž a vymeň strany.'], mistakes: ['Boky klesajú.', 'Rameno uteká k uchu.', 'Telo sa stáča dopredu.'] },
@@ -109,7 +110,6 @@ CATALOG.push(
   { name: 'Kopanie nohou na štyroch', category: 'Zadok', places: ['gym', 'db', 'bw'], muscles: 'Zadok', tips: ['Kľakni na štyri, ruky pod ramenami, kolená pod bokmi.', 'Pokrčenú nohu zdvihni pätou k stropu.', 'Hore zatni zadok, chrbát ostáva rovný.', 'Spusti pomaly, koleno sa nedotkne zeme.'], mistakes: ['Prehýbanie v drieku.', 'Švihanie nohou.', 'Otáčanie bokov.'] },
   { name: 'Veslovanie s jednoručkami v predklone', category: 'Chrbát', places: ['gym', 'db'], muscles: 'Stred chrbta, široký sval chrbta, biceps', tips: ['Predklon v bokoch, chrbát rovný, jednoručky visia pod ramenami.', 'Ťahaj obe jednoručky k bokom.', 'Hore stiahni lopatky k sebe.', 'Spúšťaj pomaly.'], mistakes: ['Guľatý chrbát.', 'Švihanie trupom.', 'Ťahanie lakťami do strán.'] },
   { name: 'Y-T-W na bruchu', category: 'Chrbát', places: ['gym', 'db', 'bw'], muscles: 'Horný chrbát, zadné ramená, lopatky', tips: ['Ľahni na brucho, čelo nad zemou.', 'Zdvihni vystreté ruky do tvaru Y, potom T, potom W.', 'V každej polohe stiahni lopatky a podrž 2 s.', 'Ramená dole od uší.'], mistakes: ['Záklon hlavy.', 'Prehýbanie v drieku.', 'Ramená pri ušiach.'] },
-  { name: 'Arnoldov tlak', category: 'Ramená', places: ['gym', 'db'], muscles: 'Ramená, triceps', tips: ['Jednoručky pred tvárou, dlane k sebe.', 'Pri tlaku hore otáčaj dlane dopredu.', 'Hore vystri ruky nad hlavou.', 'Pri spúšťaní otoč dlane späť k sebe.'], mistakes: ['Prehýbanie v drieku.', 'Príliš rýchla rotácia.', 'Neúplné vystretie.'] },
   { name: 'Predpažovanie s jednoručkami', category: 'Ramená', places: ['gym', 'db'], muscles: 'Predné ramená', tips: ['Jednoručky pred stehnami, lakte mierne pokrčené.', 'Zdvihni ruky pred seba po výšku ramien.', 'Trup sa nehýbe.', 'Spúšťaj pomaly.'], mistakes: ['Hojdanie trupom.', 'Dvíhanie nad hlavu.', 'Rýchle spúšťanie.'] },
   { name: 'Tricepsový kickback', category: 'Ruky', places: ['gym', 'db'], muscles: 'Triceps', tips: ['Predkloň sa, lakeť pri tele vo výške trupu.', 'Vystri ruku dozadu až do konca.', 'Na konci zatni triceps.', 'Vráť predlaktie pomaly späť.'], mistakes: ['Lakeť klesá.', 'Švihanie.', 'Neúplné vystretie.'] },
   { name: 'Diamantové kliky', category: 'Ruky', places: ['gym', 'db', 'bw'], muscles: 'Triceps, hrudník', tips: ['Ruky pod hrudníkom, palce a ukazováky tvoria kosoštvorec.', 'Telo v jednej línii.', 'Lakte idú dozadu popri tele.', 'Vytlač sa hore do vystretých rúk.'], mistakes: ['Boky padajú.', 'Lakte do strán.', 'Malý rozsah.'] }
@@ -117,7 +117,7 @@ CATALOG.push(
 // zameranie cvikov: mobilita, sila (celková sila), kondicia, svaly (svalová hmota)
 const FOCUSES = [['svaly', 'Svalová hmota'], ['sila', 'Celková sila'], ['kondicia', 'Kondícia'], ['mobilita', 'Mobilita']];
 const FOCUS_EXTRA = {
-  sila: ['Sumo drep', 'Drep', 'Mŕtvy ťah', 'Rumunský mŕtvy ťah', 'Bench press', 'Tlaky nad hlavu', 'Príťahy na hrazde', 'Veslovanie s činkou', 'Hip thrust', 'Výpady', 'Bulharský drep', 'Plank', 'Dead bug', 'Kettlebell swing', 'Front squat', 'Trap-bar deadlift', 'Príťahy v predklone s veľkou činkou', 'Pallof press', 'Výpady v chôdzi', 'Tlak jednoručkou nad hlavu v kľaku', 'TRX fallout', 'Jednonožový rumunský mŕtvy ťah', 'TRX príťah k tvári', 'Farmárska chôdza', 'Plank na fitlopte', 'Tlak jednoručiek na lavičke', 'Stiahnutie kladky', 'Glute bridge', 'Bočný plank'],
+  sila: ['Sumo drep', 'Drep', 'Mŕtvy ťah', 'Rumunský mŕtvy ťah', 'Bench press', 'Tlaky nad hlavu', 'Príťahy na hrazde', 'T-bar row', 'Jednoručný príťah na lavičke', 'Hip thrust', 'Výpady', 'Bulharský drep', 'Plank', 'Dead bug', 'Kettlebell swing', 'Front squat', 'Trap-bar deadlift', 'Príťahy v predklone s veľkou činkou', 'Pallof press', 'Výpady v chôdzi', 'Tlak jednoručkou nad hlavu v kľaku', 'TRX fallout', 'Jednonožový rumunský mŕtvy ťah', 'TRX príťah k tvári', 'Farmárska chôdza', 'Plank na fitlopte', 'Tlak jednoručiek na lavičke', 'Stiahnutie kladky', 'Glute bridge', 'Bočný plank'],
   kondicia: ['Burpees', 'Horolezec', 'Skákajúci panák', 'Kettlebell swing', 'Farmárska chôdza'],
   mobilita: ['Bird dog', 'Hip airplane', 'Dead bug', 'Glute bridge', 'Superman', 'Y-T-W na bruchu']
 };
@@ -140,9 +140,10 @@ const ICON_ALIAS = {
   'goblet drep': 'Drep', 'drep s vlastnou vahou': 'Drep', 'bulharsky drep': 'Výpady', 'rumunsky mrtvy tah s jednoruckami': 'Rumunský mŕtvy ťah',
   'glute bridge': 'Hip thrust', 'tlak jednoruciek na lavicke': 'Bench press', 'kliky na kolenach': 'Kliky', 'tlaky jednoruciek nad hlavu': 'Tlaky nad hlavu',
   'pike kliky': 'Kliky', 'australske pritahy': 'Veslovanie s činkou', 'superman': 'Plank',
-  'francuzsky tlak s jednoruckou': 'Tricepsové stlačenie', 'dipy na stolicke': 'Kliky', 'bocny plank': 'Plank', 'horolezec': 'Burpees', 'skakajuci panak': 'Burpees'
+  'francuzsky tlak s jednoruckou': 'Tricepsové stlačenie', 'dipy': 'Kliky', 'bocny plank': 'Plank', 'horolezec': 'Burpees', 'skakajuci panak': 'Burpees'
 };
 Object.assign(ICON_ALIAS, {
+  't-bar row': 'Veslovanie s činkou', 'jednorucny pritah na lavicke': 'Veslovanie s činkou', 'dipy': 'Kliky',
   'front squat': 'Drep', 'trap-bar deadlift': 'Mŕtvy ťah', 'pritahy v predklone s velkou cinkou': 'Veslovanie s činkou', 'pallof press': 'Upažovanie',
   'vypady v chodzi': 'Výpady', 'tlak jednoruckou nad hlavu v klaku': 'Tlaky nad hlavu', 'trx fallout': 'Plank', 'jednonozovy rumunsky mrtvy tah': 'Rumunský mŕtvy ťah',
   'trx pritah k tvari': 'Veslovanie s činkou', 'farmarska chodza': 'Bicepsový zdvih', 'plank na fitlopte': 'Plank', 'bird dog': 'Plank', 'hip airplane': 'Rumunský mŕtvy ťah',
@@ -153,7 +154,7 @@ Object.assign(ICON_ALIAS, {
   'airbike': 'Veslovací trenažér', 'vyskoky na box': 'Burpees', 'rozpazovanie s jednoruckami': 'Bench press', 'predkopavanie na stroji': 'Leg press', 'zakopavanie na stroji': 'Leg press',
   'kladivovy zdvih': 'Bicepsový zdvih', 'pritah kladky k tvari': 'Veslovanie s činkou',
   'sumo drep': 'Drep', 'jednonozovy glute bridge': 'Hip thrust', 'kopanie nohou na styroch': 'Plank', 'veslovanie s jednoruckami v predklone': 'Veslovanie s činkou',
-  'y-t-w na bruchu': 'Plank', 'arnoldov tlak': 'Tlaky nad hlavu', 'predpazovanie s jednoruckami': 'Upažovanie', 'tricepsovy kickback': 'Tricepsové stlačenie', 'diamantove kliky': 'Kliky'
+  'y-t-w na bruchu': 'Plank', 'predpazovanie s jednoruckami': 'Upažovanie', 'tricepsovy kickback': 'Tricepsové stlačenie', 'diamantove kliky': 'Kliky'
 });
 const exThumb = (e) => EXERCISE_ICONS(ICON_ALIAS[catFold(e?.name)] ? { name: ICON_ALIAS[catFold(e?.name)], category: e.category } : e);
 
@@ -172,12 +173,12 @@ const PATTERNS = {
   lunge: { gym: ['Výpady', 'Bulharský drep', 'Výpady v chôdzi'], db: ['Bulharský drep', 'Výpady', 'Výpady v chôdzi'], bw: ['Výpady', 'Bulharský drep', 'Výpady v chôdzi'] },
   glute: { gym: ['Hip thrust', 'Glute bridge', 'Jednonožový glute bridge'], db: ['Glute bridge', 'Jednonožový glute bridge', 'Kopanie nohou na štyroch'], bw: ['Glute bridge', 'Jednonožový glute bridge', 'Kopanie nohou na štyroch'] },
   hpush: { gym: ['Bench press', 'Tlak jednoručiek na lavičke', 'Kliky', 'Rozpažovanie s jednoručkami'], db: ['Tlak jednoručiek na lavičke', 'Kliky'], bw: ['Kliky', 'Kliky na kolenách'] },
-  vpush: { gym: ['Tlaky nad hlavu', 'Tlaky jednoručiek nad hlavu'], db: ['Tlaky jednoručiek nad hlavu', 'Arnoldov tlak'], bw: ['Pike kliky'] },
-  hpull: { gym: ['Veslovanie s činkou', 'Príťahy v predklone s veľkou činkou', 'Príťah kladky k tvári'], db: ['Veslovanie s činkou', 'Veslovanie s jednoručkami v predklone', 'Austrálske príťahy'], bw: ['Austrálske príťahy', 'Y-T-W na bruchu'] },
+  vpush: { gym: ['Tlaky nad hlavu', 'Tlaky jednoručiek nad hlavu'], db: ['Tlaky jednoručiek nad hlavu'], bw: ['Pike kliky'] },
+  hpull: { gym: ['T-bar row', 'Jednoručný príťah na lavičke', 'Príťahy v predklone s veľkou činkou', 'Príťah kladky k tvári'], db: ['Jednoručný príťah na lavičke', 'Veslovanie s jednoručkami v predklone', 'Austrálske príťahy'], bw: ['Austrálske príťahy', 'Y-T-W na bruchu'] },
   vpull: { gym: ['Stiahnutie kladky', 'Príťahy na hrazde'], db: ['Superman', 'Y-T-W na bruchu'], bw: ['Superman', 'Y-T-W na bruchu'] },
   lat: { gym: ['Upažovanie', 'Príťah kladky k tvári', 'Predpažovanie s jednoručkami'], db: ['Upažovanie', 'Predpažovanie s jednoručkami'], bw: [] },
   bi: { gym: ['Bicepsový zdvih', 'Kladivový zdvih'], db: ['Bicepsový zdvih', 'Kladivový zdvih'], bw: [] },
-  tri: { gym: ['Tricepsové stlačenie', 'Francúzsky tlak s jednoručkou', 'Tricepsový kickback'], db: ['Francúzsky tlak s jednoručkou', 'Tricepsový kickback', 'Diamantové kliky'], bw: ['Dipy na stoličke', 'Diamantové kliky'] },
+  tri: { gym: ['Tricepsové stlačenie', 'Francúzsky tlak s jednoručkou', 'Tricepsový kickback'], db: ['Francúzsky tlak s jednoručkou', 'Tricepsový kickback', 'Diamantové kliky'], bw: ['Dipy', 'Diamantové kliky'] },
   calf: { gym: ['Výpony na lýtka'], db: ['Výpony na lýtka'], bw: ['Výpony na lýtka'] },
   core: { gym: ['Plank', 'Dead bug', 'Bočný plank'], db: ['Plank', 'Dead bug', 'Bočný plank'], bw: ['Plank', 'Dead bug', 'Bočný plank'] },
   cond: { gym: ['Airbike', 'Veslovací trenažér', 'Kettlebell swing', 'Burpees'], db: ['Švihadlo', 'Burpees', 'Horolezec'], bw: ['Burpees', 'Horolezec', 'Švihadlo', 'Skákajúci panák'] }
@@ -186,7 +187,7 @@ const PATTERNS = {
 const AVOID = {
   chrbat: ['Mŕtvy ťah', 'Rumunský mŕtvy ťah', 'Rumunský mŕtvy ťah s jednoručkami', 'Kettlebell swing', 'Burpees', 'Drep', 'Superman', 'Front squat', 'Trap-bar deadlift', 'Jednonožový rumunský mŕtvy ťah', 'Príťahy v predklone s veľkou činkou', 'Veslovanie s jednoručkami v predklone'],
   kolena: ['Výpady', 'Bulharský drep', 'Burpees', 'Skákajúci panák', 'Drep', 'Goblet drep', 'Front squat', 'Výpady v chôdzi', 'Sumo drep'],
-  ramena: ['Tlaky nad hlavu', 'Tlaky jednoručiek nad hlavu', 'Pike kliky', 'Dipy na stoličke', 'Bench press', 'Arnoldov tlak', 'Diamantové kliky']
+  ramena: ['Tlaky nad hlavu', 'Tlaky jednoručiek nad hlavu', 'Pike kliky', 'Dipy', 'Bench press', 'Diamantové kliky']
 };
 // náhrady, keď vzor nemá bezpečný cvik
 const FALLBACK = { squat: ['Leg press', 'Glute bridge'], hinge: ['Glute bridge', 'Hip thrust'], lunge: ['Glute bridge'], vpush: ['Upažovanie'], cond: ['Horolezec', 'Veslovací trenažér'] };
@@ -225,7 +226,7 @@ const STRENGTH_PLAN = [
   ['Predný reťazec A', [['Dead bug', 2, '8 na stranu', '30 s', 'Aktivácia, ľahko a s kontrolou'], ['Pallof press', 2, '8 na stranu', '30 s', 'Aktivácia'], ['Drep', 4, '6–8', '2–3 min', 'RPE 7–8'], ['Bench press', 4, '6–8', '2 min', 'RPE 7–8'], ['Bulharský drep', 3, '8–10 na nohu', '90 s', 'S jednoručkami, RPE 7'], ['Tlaky nad hlavu', 3, '8–10', '90 s', 'V stoji, RPE 7'], ['Plank na fitlopte', 3, '30–45 s', '45 s', '']]],
   ['Zadný reťazec A', [['Glute bridge', 2, '10', '30 s', 'Aktivácia'], ['Bird dog', 2, '8 na stranu', '30 s', 'Aktivácia'], ['Mŕtvy ťah', 4, '5–6', '3 min', 'RPE 7–8'], ['Príťahy v predklone s veľkou činkou', 4, '6–8', '2 min', 'RPE 7–8'], ['Rumunský mŕtvy ťah', 3, '8–10', '90 s', 'RPE 7'], ['Príťahy na hrazde', 3, '8–10', '90 s', 'Alebo stiahnutie kladky, RPE 7–8'], ['Pallof press', 3, '10 na stranu', '45 s', 'Anti-rotácia']]],
   ['Predný reťazec B', [['Pallof press', 2, '8 na stranu', '30 s', 'Aktivácia v kľaku na jednom kolene'], ['Rotácie bokov 90/90', 2, '8 na stranu', '30 s', 'Mobilita bedier'], ['Front squat', 4, '6–8', '2–3 min', 'RPE 7'], ['Tlak jednoručiek na lavičke', 3, '8–10', '90 s', 'Neutrálny úchop, RPE 7'], ['Výpady v chôdzi', 3, '10 na nohu', '90 s', 'S jednoručkami, RPE 7'], ['Tlak jednoručkou nad hlavu v kľaku', 3, '8 na stranu', '75 s', 'RPE 7, stabilita'], ['TRX fallout', 3, '8–12', '60 s', '']]],
-  ['Zadný reťazec B', [['Hip airplane', 2, '6 na stranu', '30 s', 'Aktivácia, s kontrolou'], ['Glute bridge', 2, '8', '30 s', 'Aktivácia'], ['Trap-bar deadlift', 4, '6–8', '2–3 min', 'RPE 7–8'], ['Veslovanie s činkou', 3, '10 na stranu', '75 s', 'Jednoručný príťah na lavičke, RPE 7'], ['Jednonožový rumunský mŕtvy ťah', 3, '8 na nohu', '90 s', 'S kettlebellom, RPE 7, balans'], ['TRX príťah k tvári', 3, '12–15', '60 s', ''], ['Farmárska chôdza', 3, '30–40 m', '60 s', 'S kettlebellmi']]]
+  ['Zadný reťazec B', [['Hip airplane', 2, '6 na stranu', '30 s', 'Aktivácia, s kontrolou'], ['Glute bridge', 2, '8', '30 s', 'Aktivácia'], ['Trap-bar deadlift', 4, '6–8', '2–3 min', 'RPE 7–8'], ['Jednoručný príťah na lavičke', 3, '10 na stranu', '75 s', 'RPE 7'], ['Jednonožový rumunský mŕtvy ťah', 3, '8 na nohu', '90 s', 'S kettlebellom, RPE 7, balans'], ['TRX príťah k tvári', 3, '12–15', '60 s', ''], ['Farmárska chôdza', 3, '30–40 m', '60 s', 'S kettlebellmi']]]
 ];
 // Mobilita – tri striedajúce sa tréningy
 const MOBILITY_PLAN = [

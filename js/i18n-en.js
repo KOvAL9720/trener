@@ -1774,7 +1774,19 @@ window.I18N_EN = {
 "Kettlebell alebo jednoručku drž v ruke oproti stojnej nohe (doma môžeš bez záťaže).": "Hold a kettlebell or dumbbell in the hand opposite the standing leg (at home you can go without weight).",
 "Boky sa nakláňajú.": "Hips tilt.",
 "Švihanie trupom.": "Swinging the torso.",
-"Telo v jednej línii.": "Body in one line."
+"Telo v jednej línii.": "Body in one line.",
+"T-bar row": "T-bar row",
+"Jednoručný príťah na lavičke": "One-arm dumbbell row",
+"Dipy": "Dips",
+"Stred chrbta, široký sval chrbta, zadné ramená, biceps": "Mid back, lats, rear delts, biceps",
+"Postav sa nad činku, chodidlá na šírku ramien, kolená mierne pokrčené.": "Stand over the bar, feet shoulder-width apart, knees slightly bent.",
+"Predklon v bokoch asi 45°, chrbát rovný.": "Hinge to about 45°, back flat.",
+"Ťahaj rúčky k hrudníku, lakte popri tele.": "Pull the handles to your chest, elbows close to your body.",
+"Príliš ťažká váha a malý rozsah.": "Too heavy and a short range of motion.",
+"Triceps, hrudník, predné ramená": "Triceps, chest, front delts",
+"Opri sa o bradlá (doma o dve stabilné stoličky alebo o hranu jednej za sebou).": "Support yourself on parallel bars (at home on two sturdy chairs or the edge of one behind you).",
+"Ramená dole a dozadu, telo mierne naklonené dopredu.": "Shoulders down and back, body leaning slightly forward.",
+"Krč lakte dozadu, kým ramená nie sú zhruba vo výške lakťov.": "Bend your elbows back until your upper arms are roughly level with the elbows."
 },
 "rules": [
 [

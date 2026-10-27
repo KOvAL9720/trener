@@ -27,8 +27,26 @@ function upsell(t, title, text) {
 }
 
 // používateľ a cviky z knižnice musia v dátach existovať
-function coachEnsure() {
+// premenované a zrušené cviky v dátach používateľa (história a rekordy ostávajú pri cviku)
+const EX_RENAME = { 'Veslovanie s činkou': 'Jednoručný príťah na lavičke', 'Dipy na stoličke': 'Dipy' };
+const EX_REMOVED = ['Arnoldov tlak'];
+function coachMigrate() {
   let changed = false;
+  for (const [from, to] of Object.entries(EX_RENAME)) {
+    const e = exByName(from);
+    if (e && !exByName(to)) { e.name = to; changed = true; }
+  }
+  for (const n of EX_REMOVED) {
+    const e = exByName(n);
+    if (!e) continue;
+    const used = db.plans.some((p) => p.items.some((i) => i.exerciseId === e.id)) || db.sessions.some((s) => (s.log || []).some((l) => l.exerciseId === e.id));
+    if (!used) { db.exercises = db.exercises.filter((x) => x !== e); changed = true; }
+  }
+  return changed;
+}
+
+function coachEnsure() {
+  let changed = coachMigrate();
   if (!meClient()) { db.clients.push({ id: ME, name: db.settings.trainerName || '', createdAt: today(), archived: false }); changed = true; }
   CATALOG.forEach((c) => { if (!exByName(c.name)) { db.exercises.push({ id: uid(), name: c.name, category: c.category }); changed = true; } });
   if (changed) { db = normalize(db); _idx = null; save(); }
@@ -314,7 +332,7 @@ function coachDemo() {
   db.settings.trainerName = 'Lucia';
   coachGenerate({ goal: 'postava', level: 'mierne', days: 3, place: 'gym', limits: [] });
   const plans = programPlans();
-  const base = { 'Drep': 40, 'Rumunský mŕtvy ťah': 45, 'Bench press': 30, 'Tlaky nad hlavu': 20, 'Veslovanie s činkou': 14, 'Stiahnutie kladky': 35, 'Hip thrust': 50, 'Výpady': 8, 'Upažovanie': 5, 'Bicepsový zdvih': 8, 'Tricepsové stlačenie': 15 };
+  const base = { 'Drep': 40, 'Rumunský mŕtvy ťah': 45, 'Bench press': 30, 'Tlaky nad hlavu': 20, 'Jednoručný príťah na lavičke': 14, 'T-bar row': 30, 'Stiahnutie kladky': 35, 'Hip thrust': 50, 'Výpady': 8, 'Upažovanie': 5, 'Bicepsový zdvih': 8, 'Tricepsové stlačenie': 15 };
   const t = today();
   let n = 0;
   for (let w = 6; w >= 0; w--) {
