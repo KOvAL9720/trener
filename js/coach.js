@@ -41,8 +41,8 @@ function coachGenerate(p) {
   db.plans = db.plans.filter((x) => !x.program);
   days.forEach((d, i) => {
     db.plans.push({
-      id: uid(), clientId: ME, program: true, order: i, name: d.name, notes: '',
-      items: d.items.map((it) => ({ id: uid(), exerciseId: exByName(it.name).id, sets: it.sets, reps: it.reps, rest: it.rest }))
+      id: uid(), clientId: ME, program: true, order: i, name: d.name, notes: d.notes || '',
+      items: d.items.map((it) => ({ id: uid(), exerciseId: exByName(it.name).id, sets: it.sets, reps: it.reps, rest: it.rest, ...(it.note ? { note: it.note } : {}) }))
     });
   });
   db.settings.profile = { ...p, kind, createdAt: today() };
@@ -173,14 +173,16 @@ function viewProgram() {
   const next = nextPlan();
   const own = db.plans.filter((x) => x.clientId === ME && !x.program).sort(byName);
   const basic = p.kind === 'basic';
+  const fixed = !basic && usesStrengthPlan(p);
   const summary = basic ? ['Hotový program na celé telo', '3 dni v týždni', optLabel(LEVELS, p.level), optLabel(PLACES, p.place), ...(p.limits || []).map((l) => `bez záťaže: ${optLabel(LIMITS, l).toLowerCase()}`)]
+    : fixed ? ['Funkčný silový plán', '4 silové tréningy + 2× beh týždenne', optLabel(LEVELS, p.level), optLabel(PLACES, p.place)]
     : [optLabel(GOALS, p.goal), optLabel(LEVELS, p.level), optLabel(DAYS_OPT, p.days) + ' v týždni', optLabel(PLACES, p.place), ...(p.limits || []).map((l) => `bez záťaže: ${optLabel(LIMITS, l).toLowerCase()}`)];
   return `
   <div class="page-head"><h1>Môj program</h1><a class="btn" href="#/start">Zmeniť</a></div>
   <div class="tag-row">${summary.map((x) => `<span class="tag">${esc(x)}</span>`).join('')}</div>
   <section class="card">
     <div class="card-head"><h2>Tréningové dni</h2><span class="badge">${plans.length}</span></div>
-    <p class="muted" style="margin-top:-6px">Cvič ich po poradí. Keď jeden odcvičíš, na rade je ďalší.</p>
+    <p class="muted" style="margin-top:-6px">Cvič ich po poradí. Keď jeden odcvičíš, na rade je ďalší.${fixed ? ' Každý tréning začína aktivačným blokom. Váhu zvyšuj, keď zvládneš horný počet opakovaní v dobrej technike. RPE hovorí, ako ťažko to má byť (10 = maximum).' : ''}</p>
     <ul class="list prog-days">${plans.map((pl, i) => `<li class="prog-day${pl === next ? ' next' : ''}">
       <a class="list-item" href="#/plan/${pl.id}"><span class="day-n">${i + 1}</span><span class="info"><strong>${esc(pl.name)}${pl === next ? ' <span class="badge planned">Na rade</span>' : ''}</strong><small>${esc(pl.items.map((it) => exName(it.exerciseId)).join(' · '))}</small><small>${nEx(pl.items.length)} · ~${planMinutes(pl)} min</small></span></a>
       <button class="icon-btn play" data-action="coach-start" data-id="${pl.id}" title="Začať tréning" aria-label="Začať tréning">${PLAY}</button>
@@ -196,14 +198,17 @@ function viewProgram() {
 /* ---------- Knižnica cvikov ---------- */
 const CAT_ORDER = ['Nohy', 'Zadok', 'Chrbát', 'Hrudník', 'Ramená', 'Ruky', 'Core', 'Celé telo', 'Kardio'];
 let libCat = '';
+let libFocus = '';
+const focusOfEx = (e) => catalogOf(e)?.focus || [];
 function viewLibrary() {
   const cats = [...new Set(db.exercises.map((e) => e.category || 'Ostatné'))].sort((a, b) => ((CAT_ORDER.indexOf(a) + 1 || 99) - (CAT_ORDER.indexOf(b) + 1 || 99)) || a.localeCompare(b, 'sk'));
-  const list = db.exercises.filter((e) => !libCat || (e.category || 'Ostatné') === libCat);
+  const list = db.exercises.filter((e) => (!libCat || (e.category || 'Ostatné') === libCat) && (!libFocus || focusOfEx(e).includes(libFocus)));
   const groups = cats.filter((c) => !libCat || c === libCat).map((c) => [c, list.filter((e) => (e.category || 'Ostatné') === c).sort(byName)]).filter(([, l]) => l.length);
   return `
   <div class="page-head"><h1>Cviky</h1><button class="btn" data-action="new-exercise">+ Vlastný cvik</button></div>
   <input type="search" class="search" id="ex-search" placeholder="Hľadať cvik…" aria-label="Hľadať cvik">
-  <div class="chips lib-chips"><button class="chip${libCat ? '' : ' active'}" data-action="lib-cat" data-val="">Všetky</button>${cats.map((c) => `<button class="chip${c === libCat ? ' active' : ''}" data-action="lib-cat" data-val="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+  <div class="chips lib-chips lib-focus"><button class="chip${libFocus ? '' : ' active'}" data-action="lib-focus" data-val="">Všetky zamerania</button>${FOCUSES.map(([k, l]) => `<button class="chip${k === libFocus ? ' active' : ''}" data-action="lib-focus" data-val="${k}">${l}</button>`).join('')}</div>
+  <div class="chips lib-chips"><button class="chip${libCat ? '' : ' active'}" data-action="lib-cat" data-val="">Všetky partie</button>${cats.map((c) => `<button class="chip${c === libCat ? ' active' : ''}" data-action="lib-cat" data-val="${esc(c)}">${esc(c)}</button>`).join('')}</div>
   <section class="card" id="lib-list">
     ${groups.map(([c, l]) => `<h3 class="section-title ex-cat">${esc(c)}</h3>
       <ul class="list">${l.map((e) => { const k = catalogOf(e); return `<li data-name="${esc(catFold(e.name))} ${esc(catFold(k?.muscles))}"><a class="list-item" href="#/exercise/${e.id}">
@@ -226,6 +231,7 @@ function viewExercise(id) {
   <section class="card ex-detail">
     <div class="ex-hero">${exThumb(e)}</div>
     <h1>${esc(e.name)}</h1>
+    ${focusOfEx(e).length ? `<div class="tag-row focus-row">${focusOfEx(e).map((f) => `<a class="tag focus" href="#/exercises" data-action="lib-focus-go" data-val="${f}">${optLabel(FOCUSES, f)}</a>`).join('')}</div>` : ''}
     <div class="tag-row"><span class="tag">${esc(e.category || 'Ostatné')}</span>${places.map((x) => `<span class="tag">${esc(x)}</span>`).join('')}</div>
     ${k ? `<p class="ex-muscles"><b>Zapojené svaly:</b> ${esc(k.muscles)}</p>` : ''}
     ${best ? `<p class="ex-best"><b>Tvoj rekord:</b> ${esc(fmtSet(best.best))} · ${fmtShort(best.date)}</p>` : ''}
@@ -386,6 +392,8 @@ actions['coach-habit-goals'] = () => {
 actions['coach-resume'] = () => liveOpen();
 actions['coach-all-history'] = () => { showAllMine = true; render(); };
 actions['lib-cat'] = (d) => { libCat = d.val || ''; render(); };
+actions['lib-focus'] = (d) => { libFocus = d.val || ''; render(); };
+actions['lib-focus-go'] = (d) => { libFocus = d.val || ''; libCat = ''; go('#/exercises'); };
 actions['coach-new-plan'] = () => {
   openPlanForm(null, ME);
   const sel = document.querySelector('#modal-form [name="clientId"]');

@@ -2452,3 +2452,6 @@ html body h1 { text-shadow: 3px 3px 0 rgba(198, 42, 60, .45); }
   .stepper { grid-template-columns: 24px 1fr 24px; }
   .stepper input { font-size: .95rem; }
 }
+.lib-focus { margin-bottom: 6px; }
+.tag.focus { background: color-mix(in srgb, var(--accent, #c62a3c) 14%, var(--surface-2)); border-color: color-mix(in srgb, var(--accent, #c62a3c) 40%, transparent); color: var(--text); text-decoration: none; }
+.focus-row { justify-content: center; margin-bottom: 6px; }
