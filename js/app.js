@@ -24,7 +24,7 @@ const PACKAGES = false;
 const DEFAULT_EXERCISES = [
   ['Drep', 'Nohy'], ['Leg press', 'Nohy'], ['Výpady', 'Nohy'], ['Rumunský mŕtvy ťah', 'Nohy'],
   ['Hip thrust', 'Zadok'], ['Mŕtvy ťah', 'Chrbát'], ['Príťahy na hrazde', 'Chrbát'],
-  ['Veslovanie s činkou', 'Chrbát'], ['Stiahnutie kladky', 'Chrbát'], ['Bench press', 'Hrudník'],
+  ['Jednoručný príťah na lavičke', 'Chrbát'], ['Stiahnutie kladky', 'Chrbát'], ['Bench press', 'Hrudník'],
   ['Kliky', 'Hrudník'], ['Tlaky nad hlavu', 'Ramená'], ['Upažovanie', 'Ramená'],
   ['Bicepsový zdvih', 'Ruky'], ['Tricepsové stlačenie', 'Ruky'], ['Plank', 'Core'],
   ['Dead bug', 'Core'], ['Kettlebell swing', 'Celé telo'], ['Burpees', 'Celé telo'], ['Veslovací trenažér', 'Kardio']
@@ -3529,7 +3529,7 @@ async function loadDemo() {
     items: [
       { id: uid(), exerciseId: ex('Drep'), sets: 3, reps: '10–12', weight: 'vlastná váha', rest: '60 s', note: '' },
       { id: uid(), exerciseId: ex('Kliky'), sets: 3, reps: '8–10', weight: '', rest: '60 s', note: 'z kolien podľa potreby' },
-      { id: uid(), exerciseId: ex('Veslovanie s činkou'), sets: 3, reps: '10', weight: '8 kg', rest: '60 s', note: '' },
+      { id: uid(), exerciseId: ex('Jednoručný príťah na lavičke'), sets: 3, reps: '10', weight: '8 kg', rest: '60 s', note: '' },
       { id: uid(), exerciseId: ex('Hip thrust'), sets: 3, reps: '12', weight: '20 kg', rest: '60 s', note: '' },
       { id: uid(), exerciseId: ex('Plank'), sets: 3, reps: '30 s', weight: '', rest: '45 s', note: '' }
     ]
@@ -3582,7 +3582,7 @@ async function loadDemo() {
   d.sessions.filter((x) => x.clientId === jana.id && x.status === 'done').sort((a, b) => a.date.localeCompare(b.date)).slice(-6).forEach((x, i) => {
     x.log = [
       { exerciseId: ex('Drep'), sets: sets(3, null, 10 + Math.floor(i / 2)) },
-      { exerciseId: ex('Veslovanie s činkou'), sets: sets(3, 8 + Math.floor(i / 2) * 2, 10) },
+      { exerciseId: ex('Jednoručný príťah na lavičke'), sets: sets(3, 8 + Math.floor(i / 2) * 2, 10) },
       { exerciseId: ex('Hip thrust'), sets: sets(3, 20 + i * 5, 12) }
     ];
   });
