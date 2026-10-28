@@ -1,37 +1,36 @@
 'use strict';
 
 /* =========================================================
-   Predplatné Lift Tara (Lemon Squeezy) – balíčky Basic, Medium a Pro
-   Používateľ si balíček kúpi na platobnej stránke Lemon Squeezy (7 dní zadarmo)
+   Predplatné Lift Tara (Gumroad) – balíčky Basic, Medium a Pro
+   Používateľ si balíček kúpi na stránke produktu v Gumroade (7 dní zadarmo)
    a e-mailom dostane licenčný kľúč. Kľúč zadá v apke,
    apka ho overí a uloží do nastavení (synchronizujú sa s jeho účtom).
    Keď predplatné skončí, kľúč prestane platiť a apka ukáže platobnú obrazovku.
    Dáta ostávajú uložené. Ukážka (?demo) je zadarmo.
-   Balíček sa zistí z názvu variantu v Lemon Squeezy (Basic / Medium / Pro).
+   Balíček sa zistí z názvu balíčka (tier) v Gumroade (Basic / Medium / Pro).
    Kým nie je vyplnený žiadny odkaz na platbu, zamykanie je vypnuté.
    ========================================================= */
 const LT_PAY = {
-  checkout: '',   // odkaz na platbu z Lemon Squeezy (Share → Checkout URL)
-  portal: 'https://liftara.lemonsqueezy.com/billing',     // stránka zákazníka na zrušenie predplatného (https://<obchod>.lemonsqueezy.com/billing)
-  storeId: 504347,     // číslo obchodu – kľúč z iného obchodu neplatí
-  productId: 1462756,   // číslo produktu Lift Tara
-  price: '15 €',
+  checkout: 'https://kubo44.gumroad.com/l/lift-tara',   // stránka produktu v Gumroade
+  portal: 'https://app.gumroad.com/library',     // knižnica zákazníka – tam spravuje a ruší predplatné
+  productId: 'pBzAuLPF6ajAPVprtxhi0A==',   // ID produktu Lift Tara (Content → License key) – kľúč z iného produktu neplatí
+  price: '14,99 €',
   trialDays: 7,
-  // balíčky – odkaz na platbu každého variantu (Share → vybrať variant → Checkout URL)
+  // balíčky – odkaz na stránku produktu s predvybraným balíčkom (?option=ID balíčka)
   tiers: {
-    basic: { name: 'Basic', price: '4,99 €', checkout: '' },
-    medium: { name: 'Medium', price: '9,99 €', checkout: '' },
-    pro: { name: 'Pro', price: '14,99 €', checkout: '' }
+    basic: { name: 'Basic', price: '4,99 €', checkout: 'https://kubo44.gumroad.com/l/lift-tara?option=GMNDqHGrpfsTsi0279caOA%3D%3D' },
+    medium: { name: 'Medium', price: '9,99 €', checkout: 'https://kubo44.gumroad.com/l/lift-tara?option=3sMS25t2Rtd7Q0zK10l7jQ%3D%3D' },
+    pro: { name: 'Pro', price: '14,99 €', checkout: 'https://kubo44.gumroad.com/l/lift-tara?option=65TqrmuJM-7ki57phOWdxw%3D%3D' }
   }
 };
 const TIER_KEYS = ['basic', 'medium', 'pro'];
 const TIER_RANK = { basic: 1, medium: 2, pro: 3 };
 const tiersOn = () => TIER_KEYS.some((k) => LT_PAY.tiers[k].checkout);
-// variant „Basic“ / „Medium“ / „Pro“; iný (napr. pôvodné predplatné) = plná verzia
+// balíček „Basic“ / „Medium“ / „Pro“ (Gumroad ho vracia ako „(Pro)“); iný = plná verzia
 const tierOfVariant = (name) => TIER_KEYS.find((k) => String(name || '').toLowerCase().includes(k)) || 'pro';
 try { const q = new URLSearchParams(location.search).get('plan'); if (TIER_KEYS.includes(q)) sessionStorage.setItem('lt-plan', q); } catch (e) { /* ok */ }
 const wantedTier = () => { try { return sessionStorage.getItem('lt-plan') || 'medium'; } catch (e) { return 'medium'; } };
-const LIC_API = 'https://api.lemonsqueezy.com/v1/licenses/validate';
+const LIC_API = 'https://api.gumroad.com/v2/licenses/verify';
 const LIC_RECHECK = 12 * 3600e3;
 const payOn = () => (!!LT_PAY.checkout || tiersOn()) && !window.DEMO;
 
@@ -43,6 +42,22 @@ const payOn = () => (!!LT_PAY.checkout || tiersOn()) && !window.DEMO;
     if (db.clients.some((c) => c.id !== 'me') && !db.settings.license) { db.settings.license = { plan: 'owner', since: today() }; save(); }
     localStorage.setItem(K, '1');
   } catch (e) { /* bez úložiska nič */ }
+})();
+
+// Majiteľ appky: tajný odkaz ?majitel=<kód> odomkne appku natrvalo (uloží sa do účtu a synchronizuje).
+// V kóde je len odtlačok (SHA-256) kódu, samotný kód tu nie je.
+const LT_OWNER_HASH = 'e4528bbae69e36ffdf757d2e51633d5bc22942ed8fb51812f10e30c598006503';
+(async function ownerUnlock() {
+  const code = new URLSearchParams(location.search).get('majitel');
+  if (!code || !window.crypto?.subtle) return;
+  history.replaceState(null, '', location.pathname + location.hash);
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code));
+  const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  if (hex !== LT_OWNER_HASH) return;
+  db.settings.license = { plan: 'owner', since: today() };
+  save();
+  render();
+  toast('Apka je odomknutá natrvalo.');
 })();
 
 const lic = () => db.settings.license || null;
@@ -66,15 +81,16 @@ async function licCheck(key) {
   const r = await fetch(LIC_API, {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ license_key: key })
+    body: new URLSearchParams({ product_id: LT_PAY.productId, license_key: key, increment_uses_count: 'false' })
   });
   const j = await r.json().catch(() => ({}));
-  if (r.status >= 500 || (!j.license_key && r.status !== 404 && r.status !== 400)) throw new Error('net');
-  const m = j.meta || {};
-  const ours = (!LT_PAY.storeId || m.store_id === LT_PAY.storeId) && (!LT_PAY.productId || m.product_id === LT_PAY.productId);
-  const st = j.license_key?.status;
-  const ok = !!j.valid && ours && (st === 'active' || st === 'inactive');
-  return { ok, status: ok ? 'active' : (ours ? (st || 'invalid') : 'invalid'), email: m.customer_email || '', expires: j.license_key?.expires_at || null, tier: tierOfVariant(m.variant_name) };
+  // 404 = kľúč k tomuto produktu neexistuje; iná chyba bez odpovede = problém so spojením
+  if (r.status >= 500 || (!j.purchase && r.status !== 404)) throw new Error('net');
+  const p = j.purchase || {};
+  if (!j.success || !p.license_key) return { ok: false, status: 'invalid', email: '', tier: 'pro' };
+  // skončené, neuhradené alebo vrátené predplatné už neplatí
+  const ended = !!(p.subscription_ended_at || p.subscription_failed_at || p.refunded || p.chargebacked || p.disputed);
+  return { ok: !ended, status: ended ? 'expired' : 'active', email: p.email || '', expires: p.subscription_ended_at || null, tier: tierOfVariant(p.variants) };
 }
 
 async function licRefresh(force = false) {
@@ -138,7 +154,7 @@ function licenseGroup() {
   const val = owner || l?.status === 'active' ? '<span class="badge done">Aktívne</span>' : '<span class="badge warn">Neaktívne</span>';
   return setGroup('Predplatné', [
     setRow({ icon: 'key', title: 'Lift Tara', sub, val, action: owner ? '' : 'license-manage', chev: !owner })
-  ], owner ? '' : `${tiersOn() && l?.key ? (LT_PAY.tiers[l.tier] || LT_PAY.tiers.pro).price : LT_PAY.price} mesačne. Predplatné spravuješ na stránke Lemon Squeezy.`);
+  ], owner ? '' : `${tiersOn() && l?.key ? (LT_PAY.tiers[l.tier] || LT_PAY.tiers.pro).price : LT_PAY.price} mesačne. Predplatné spravuješ v Gumroade (Library).`);
 }
 
 actions['license-manage'] = async () => {

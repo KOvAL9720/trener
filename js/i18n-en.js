@@ -1030,6 +1030,7 @@ window.I18N_EN = {
 "Tento kľúč nepoznáme. Skontroluj, či si ho skopíroval celý.": "We don't recognize this key. Check that you copied all of it.",
 "Nepodarilo sa overiť kľúč. Skontroluj pripojenie na internet a skús znova.": "Couldn't verify the key. Check your internet connection and try again.",
 "Apka je odomknutá. Vitaj v Lift Tara!": "The app is unlocked. Welcome to Lift Tara!",
+"Apka je odomknutá natrvalo.": "The app is unlocked for good.",
 "Tvoj tréner v mobile": "Your trainer in your pocket",
 "Lift Tara – tvoj tréner v mobile": "Lift Tara – your trainer in your pocket",
 "Odpovedz na pár otázok a Lift Tara ti zostaví tréningový program na mieru. Pri každom cviku uvidíš, ako ho robiť správne.": "Answer a few questions and Lift Tara will build a training program tailored to you. For every exercise you'll see how to do it right.",
@@ -2470,8 +2471,8 @@ window.I18N_EN = {
 "Key …{0}"
 ],
 [
-"{0} mesačne. Predplatné spravuješ na stránke Lemon Squeezy.",
-"{0} per month. You manage your subscription on the Lemon Squeezy page."
+"{0} mesačne. Predplatné spravuješ v Gumroade (Library).",
+"{0} per month. You manage your subscription in Gumroad (Library)."
 ],
 [
 "Na rade: {0}",
