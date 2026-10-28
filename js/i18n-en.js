@@ -2470,8 +2470,8 @@ window.I18N_EN = {
 "Key …{0}"
 ],
 [
-"{0} mesačne. Predplatné spravuješ na stránke Lemon Squeezy.",
-"{0} per month. You manage your subscription on the Lemon Squeezy page."
+"{0} mesačne. Predplatné spravuješ v Gumroade (Library).",
+"{0} per month. You manage your subscription in Gumroad (Library)."
 ],
 [
 "Na rade: {0}",
