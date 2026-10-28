@@ -11,16 +11,16 @@
    Kým nie je vyplnený žiadny odkaz na platbu, zamykanie je vypnuté.
    ========================================================= */
 const LT_PAY = {
-  checkout: '',   // stránka produktu v Gumroade
+  checkout: 'https://kubo44.gumroad.com/l/lift-tara',   // stránka produktu v Gumroade
   portal: 'https://app.gumroad.com/library',     // knižnica zákazníka – tam spravuje a ruší predplatné
   productId: 'pBzAuLPF6ajAPVprtxhi0A==',   // ID produktu Lift Tara (Content → License key) – kľúč z iného produktu neplatí
-  price: '15 €',
+  price: '14,99 €',
   trialDays: 7,
-  // balíčky – odkaz na stránku produktu, balíček si zákazník vyberie tam
+  // balíčky – odkaz na stránku produktu s predvybraným balíčkom (?option=ID balíčka)
   tiers: {
-    basic: { name: 'Basic', price: '4,99 €', checkout: '' },
-    medium: { name: 'Medium', price: '9,99 €', checkout: '' },
-    pro: { name: 'Pro', price: '14,99 €', checkout: '' }
+    basic: { name: 'Basic', price: '4,99 €', checkout: 'https://kubo44.gumroad.com/l/lift-tara?option=GMNDqHGrpfsTsi0279caOA%3D%3D' },
+    medium: { name: 'Medium', price: '9,99 €', checkout: 'https://kubo44.gumroad.com/l/lift-tara?option=3sMS25t2Rtd7Q0zK10l7jQ%3D%3D' },
+    pro: { name: 'Pro', price: '14,99 €', checkout: 'https://kubo44.gumroad.com/l/lift-tara?option=65TqrmuJM-7ki57phOWdxw%3D%3D' }
   }
 };
 const TIER_KEYS = ['basic', 'medium', 'pro'];
