@@ -44,6 +44,22 @@ const payOn = () => (!!LT_PAY.checkout || tiersOn()) && !window.DEMO;
   } catch (e) { /* bez úložiska nič */ }
 })();
 
+// Majiteľ appky: tajný odkaz ?majitel=<kód> odomkne appku natrvalo (uloží sa do účtu a synchronizuje).
+// V kóde je len odtlačok (SHA-256) kódu, samotný kód tu nie je.
+const LT_OWNER_HASH = 'e4528bbae69e36ffdf757d2e51633d5bc22942ed8fb51812f10e30c598006503';
+(async function ownerUnlock() {
+  const code = new URLSearchParams(location.search).get('majitel');
+  if (!code || !window.crypto?.subtle) return;
+  history.replaceState(null, '', location.pathname + location.hash);
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code));
+  const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  if (hex !== LT_OWNER_HASH) return;
+  db.settings.license = { plan: 'owner', since: today() };
+  save();
+  render();
+  toast('Apka je odomknutá natrvalo.');
+})();
+
 const lic = () => db.settings.license || null;
 const licOpen = () => {
   if (!payOn()) return true;
