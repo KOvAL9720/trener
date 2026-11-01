@@ -1791,7 +1791,10 @@ window.I18N_EN = {
 "Opakovania": "Reps",
 "Ako minule": "Same as last time",
 "+ Meranie": "+ Measurement",
-"opak.": "reps"
+"opak.": "reps",
+"Nepovinné. Cviky, ktoré by ju zaťažovali, vynecháme. Je to údaj o zdraví – označením súhlasíš s jeho spracovaním na prispôsobenie programu. Súhlas odvoláš zrušením označenia.": "Optional. We'll leave out exercises that would strain it. This is health data – by ticking it you agree to it being processed to tailor your program. You can withdraw consent by unticking it.",
+"Váha a obvody sú údaje o zdraví. Zadávaš ich dobrovoľne – uložením súhlasíš s ich spracovaním na sledovanie progresu. Kedykoľvek ich môžeš vymazať.": "Weight and body measurements are health data. You enter them voluntarily – by saving you agree to them being processed to track your progress. You can delete them at any time.",
+"Obvod bokov (cm)": "Hips (cm)"
 },
 "rules": [
 [
