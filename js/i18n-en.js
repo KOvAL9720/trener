@@ -1030,7 +1030,6 @@ window.I18N_EN = {
 "Tento kľúč nepoznáme. Skontroluj, či si ho skopíroval celý.": "We don't recognize this key. Check that you copied all of it.",
 "Nepodarilo sa overiť kľúč. Skontroluj pripojenie na internet a skús znova.": "Couldn't verify the key. Check your internet connection and try again.",
 "Apka je odomknutá. Vitaj v Lift Tara!": "The app is unlocked. Welcome to Lift Tara!",
-"Apka je odomknutá natrvalo.": "The app is unlocked for good.",
 "Tvoj tréner v mobile": "Your trainer in your pocket",
 "Lift Tara – tvoj tréner v mobile": "Lift Tara – your trainer in your pocket",
 "Odpovedz na pár otázok a Lift Tara ti zostaví tréningový program na mieru. Pri každom cviku uvidíš, ako ho robiť správne.": "Answer a few questions and Lift Tara will build a training program tailored to you. For every exercise you'll see how to do it right.",
@@ -1787,7 +1786,12 @@ window.I18N_EN = {
 "Triceps, hrudník, predné ramená": "Triceps, chest, front delts",
 "Opri sa o bradlá (doma o dve stabilné stoličky alebo o hranu jednej za sebou).": "Support yourself on parallel bars (at home on two sturdy chairs or the edge of one behind you).",
 "Ramená dole a dozadu, telo mierne naklonené dopredu.": "Shoulders down and back, body leaning slightly forward.",
-"Krč lakte dozadu, kým ramená nie sú zhruba vo výške lakťov.": "Bend your elbows back until your upper arms are roughly level with the elbows."
+"Krč lakte dozadu, kým ramená nie sú zhruba vo výške lakťov.": "Bend your elbows back until your upper arms are roughly level with the elbows.",
+"Apka je odomknutá natrvalo.": "The app is unlocked for good.",
+"Opakovania": "Reps",
+"Ako minule": "Same as last time",
+"+ Meranie": "+ Measurement",
+"opak.": "reps"
 },
 "rules": [
 [
@@ -2537,6 +2541,30 @@ window.I18N_EN = {
 [
 "Viac: {0}",
 "More: {0}"
+],
+[
+"Minule {0} opak. → skús {1}",
+"Last time {0} reps → try {1}"
+],
+[
+"Minule {0} s → skús {1} s",
+"Last time {0} s → try {1} s"
+],
+[
+"{0} opak.",
+"{0} reps"
+],
+[
+"Pauza {0}",
+"Rest {0}"
+],
+[
+"{0} v rade",
+"{0} in a row"
+],
+[
+"pauza {0} min",
+"rest {0} min"
 ]
 ]
 };
