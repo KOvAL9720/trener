@@ -124,7 +124,7 @@ function viewStart() {
       <fieldset class="q"><legend>Aké máš skúsenosti s cvičením?</legend>${choice('level', LEVELS, p.level)}</fieldset>
       <fieldset class="q"><legend>Koľko dní v týždni chceš cvičiť?</legend>${choice('days', DAYS_OPT, p.days)}</fieldset>
       <fieldset class="q"><legend>Kde budeš cvičiť?</legend>${choice('place', PLACES, p.place)}</fieldset>
-      <fieldset class="q"><legend>Máš problémy s niektorou časťou tela?</legend>${choice('limits', LIMITS, p.limits, true)}<small class="hint">Nepovinné. Cviky, ktoré by ju zaťažovali, vynecháme.</small></fieldset>
+      <fieldset class="q"><legend>Máš problémy s niektorou časťou tela?</legend>${choice('limits', LIMITS, p.limits, true)}<small class="hint">Nepovinné. Cviky, ktoré by ju zaťažovali, vynecháme. Je to údaj o zdraví – označením súhlasíš s jeho spracovaním na prispôsobenie programu. Súhlas odvoláš zrušením označenia.</small></fieldset>
       <button class="btn primary block" type="submit">${first ? 'Vytvoriť môj program' : 'Vytvoriť nový program'}</button>
       ${first ? '<p class="hint" style="text-align:center;margin-top:12px">Odpovede môžeš kedykoľvek zmeniť v sekcii Program.</p>' : ''}
     </form>

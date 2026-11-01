@@ -1439,10 +1439,10 @@ function fieldHtml(fd, values) {
   return `<div class="field ${fd.half ? 'half' : ''}"><label for="${id}">${esc(fd.label)}</label>${input}${chips}${datalist}${fd.hint ? `<span class="hint">${esc(fd.hint)}</span>` : ''}</div>`;
 }
 
-function openForm({ title, fields, values = {}, submitLabel = 'Uložiť', onSubmit, onDelete, deleteLabel = 'Vymazať', deleteConfirm = 'Naozaj vymazať?' }) {
+function openForm({ title, intro = '', fields, values = {}, submitLabel = 'Uložiť', onSubmit, onDelete, deleteLabel = 'Vymazať', deleteConfirm = 'Naozaj vymazať?' }) {
   modalForm.innerHTML = `
     <header class="modal-head"><h2>${esc(title)}</h2><button type="button" class="icon-btn" data-close aria-label="Zavrieť">✕</button></header>
-    <div class="modal-body">${fields.map((f) => fieldHtml(f, values)).join('')}</div>
+    <div class="modal-body">${intro ? `<p class="hint form-intro">${esc(intro)}</p>` : ''}${fields.map((f) => fieldHtml(f, values)).join('')}</div>
     <footer class="modal-foot">
       ${onDelete ? `<button type="button" class="btn danger" data-delete>${esc(deleteLabel)}</button>` : ''}
       <span class="spacer"></span>
@@ -1636,6 +1636,7 @@ function openPackageForm(p, clientId) {
 function openMeasurementForm(m, clientId) {
   openForm({
     title: m ? 'Upraviť meranie' : 'Nové meranie',
+    intro: 'Váha a obvody sú údaje o zdraví. Zadávaš ich dobrovoľne – uložením súhlasíš s ich spracovaním na sledovanie progresu. Kedykoľvek ich môžeš vymazať.',
     values: m || { date: today() },
     fields: [
       { name: 'date', label: 'Dátum', type: 'date', required: true },
