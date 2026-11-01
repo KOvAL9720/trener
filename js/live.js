@@ -429,7 +429,7 @@ function toggleDone(e, j) {
     const btn = document.querySelector(`#live .lcheck[data-j="${j}"]`)?.getBoundingClientRect();
     if (btn) burst(btn.left + btn.width / 2, btn.top + btn.height / 2);
     navigator.vibrate?.([15, 60, 15, 60, 30]);
-    toast(`Nový rekord: ${exName(e.exerciseId)} ${fmtSet(set)}`);
+    toast(`Nový rekord: ${tr(exName(e.exerciseId))} ${tr(fmtSet(set))}`);
   }
   // pauza podľa plánu; po poslednej sérii cviku prejsť na ďalší cvik
   const nxt = nextTarget();

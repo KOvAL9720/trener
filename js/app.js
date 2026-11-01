@@ -1905,7 +1905,7 @@ function openLogSheet(s) {
     if (records.length) {
       burst(btn.left + btn.width / 2, btn.top + btn.height / 2);
       navigator.vibrate?.([15, 60, 15]);
-      toast(`Nový rekord: ${exName(records[0].e.exerciseId)} ${fmtSet(records[0].top)}${records.length > 1 ? ` (+${records.length - 1})` : ''}`);
+      toast(`Nový rekord: ${tr(exName(records[0].e.exerciseId))} ${tr(fmtSet(records[0].top))}${records.length > 1 ? ` (+${records.length - 1})` : ''}`);
     } else {
       toast(log.length ? `Výkony uložené${markDone ? ' · tréning odtrénovaný' : ''}` : 'Výkony vymazané');
     }
