@@ -6,6 +6,7 @@
    prekladajú podľa slovníka (i18n-en.js): celé textové uzly a atribúty
    presnou zhodou, vety s menami a číslami podľa vzorov s {0}, {1}…
    Jazyk: ?lang=en / ?lang=sk v adrese, potom sa pamätá v zariadení.
+   Bez voľby podľa jazyka prehliadača (slovenčina / čeština → SK, inak EN).
    ========================================================= */
 (function () {
   const KEY = 'lt-lang';
@@ -13,7 +14,10 @@
   try {
     const q = new URLSearchParams(location.search).get('lang');
     if (q === 'en' || q === 'sk') localStorage.setItem(KEY, q);
-    lang = localStorage.getItem(KEY) === 'en' ? 'en' : 'sk';
+    const saved = localStorage.getItem(KEY);
+    // bez uloženej voľby: slovenčina pre slovenský a český prehliadač, inak angličtina
+    const langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+    lang = saved === 'en' || saved === 'sk' ? saved : (langs.some((l) => /^(sk|cs)(-|_|$)/i.test(l)) ? 'sk' : 'en');
   } catch (e) { /* bez úložiska ostáva slovenčina */ }
   window.LANG = lang;
   window.setLang = (l) => {
