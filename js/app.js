@@ -973,12 +973,16 @@ const SI = {
   spark: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
   phone: '<svg class="i" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18.5h2"/></svg>',
   info: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg>',
+  mail: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>',
   chat: '<svg class="i" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12z"/></svg>',
   gcal: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>',
   trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   chev: '<svg class="i set-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
 };
 // jeden riadok nastavení: ikona, názov (+ popis), hodnota vpravo, šípka
+// e-mail na podporu (Nastavenia → Podpora, web, podmienky)
+const SUPPORT_MAIL = 'lifttara.support@gmail.com';
+
 function setRow({ icon, title, sub = '', val = '', href = '', action = '', danger = false, chev = true, id = '', subId = '' }) {
   const inner = `<span class="set-ic" aria-hidden="true">${SI[icon] || ''}</span>
     <span class="set-main"><b>${title}</b>${sub || subId ? `<small${subId ? ` id="${subId}"` : ''}>${sub}</small>` : ''}</span>
@@ -1012,6 +1016,7 @@ function viewSettings() {
   ${setGroup('Aplikácia', [
     setRow({ icon: 'phone', title: 'Inštalácia appky', sub: 'iPhone, Android a počítač', href: '#/settings/install' }),
     setRow({ icon: 'globe', title: 'Jazyk', sub: 'Language', val: window.LANG === 'en' ? 'English' : 'Slovenčina', action: 'lang', chev: false }),
+    setRow({ icon: 'mail', title: 'Podpora', sub: SUPPORT_MAIL, href: `mailto:${SUPPORT_MAIL}?subject=Lift%20Tara` }),
     setRow({ icon: 'info', title: 'Verzia', val: '<b id="app-version">–</b>', chev: false, action: '' })
   ], `${nTr(db.sessions.filter((s) => s.status === 'done').length)} · ${cnt(db.plans.length, 'plán', 'plány', 'plánov')} · ${nEx(db.exercises.length)}`)}
   ${setGroup('', [setRow({ icon: 'trash', title: 'Vymazať všetky dáta', action: 'wipe', danger: true, chev: false })])}`;
