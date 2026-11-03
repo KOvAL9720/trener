@@ -763,7 +763,7 @@ window.I18N_EN = {
 "máj": "May",
 "na účet": "bank transfer",
 "napr. Celé telo A, Nohy + core…": "e.g. Full body A, Legs + core…",
-"napr. Jakub Kovalčík": "e.g. Jakub Kovalčík",
+"napr. Tomáš Novák": "e.g. Tomáš Novák",
 "napr. ako si sa cítil/a": "e.g. how you felt",
 "napr. môžem aj o hodinu neskôr": "e.g. I can also do an hour later",
 "napr. schudnúť 5 kg, zlepšiť kondíciu…": "e.g. lose 5 kg, improve fitness…",
@@ -1795,7 +1795,8 @@ window.I18N_EN = {
 "Nepovinné. Cviky, ktoré by ju zaťažovali, vynecháme. Je to údaj o zdraví – označením súhlasíš s jeho spracovaním na prispôsobenie programu. Súhlas odvoláš zrušením označenia.": "Optional. We'll leave out exercises that would strain it. This is health data – by ticking it you agree to it being processed to tailor your program. You can withdraw consent by unticking it.",
 "Váha a obvody sú údaje o zdraví. Zadávaš ich dobrovoľne – uložením súhlasíš s ich spracovaním na sledovanie progresu. Kedykoľvek ich môžeš vymazať.": "Weight and body measurements are health data. You enter them voluntarily – by saving you agree to them being processed to track your progress. You can delete them at any time.",
 "Obvod bokov (cm)": "Hips (cm)",
-"Podpora": "Support"
+"Podpora": "Support",
+"napr. Tomáš": "e.g. Tom"
 },
 "rules": [
 [
