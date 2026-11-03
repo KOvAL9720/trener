@@ -3734,7 +3734,7 @@ const actions = {
       { name: 'sessionPrice', label: 'Cena tréningu (€)', type: 'number', min: 0, step: 0.5, hint: 'Platí pre nové tréningy a tréningy bez vlastnej ceny' },
       { name: 'defaultDuration', label: 'Dĺžka tréningu (min)', type: 'number', min: 5, step: 5 },
       { name: 'reminderText', label: 'Text SMS pripomienky', type: 'textarea', hint: 'Zástupné znaky: {meno}, {datum}, {cas}' },
-      { name: 'trainerName', label: 'Tvoje meno (vidia klienti v klientskej zóne)', placeholder: 'napr. Jakub' },
+      { name: 'trainerName', label: 'Tvoje meno (vidia klienti v klientskej zóne)', placeholder: 'napr. Tomáš' },
       { name: 'trainerPhone', label: 'Tvoj telefón (tlačidlo „Napísať trénerovi“)', type: 'tel', placeholder: '+421 900 000 000' }
     ],
     onSubmit: (v) => { Object.assign(db.settings, v); db.settings.shareDirty = true; toast('Nastavenia uložené'); }
